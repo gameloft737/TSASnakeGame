@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 public class SnakeBody : MonoBehaviour
@@ -42,6 +43,16 @@ public class SnakeBody : MonoBehaviour
         }
     }
 
+    // Input System callback method
+    public void OnAdd(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            IncreaseSize(1);
+            Debug.Log($"Added segment! Total body length: {bodyLength}");
+        }
+    }
+
     void FixedUpdate()
     {
         // Only record new position if head has moved significantly
@@ -65,9 +76,11 @@ public class SnakeBody : MonoBehaviour
         }
 
         // Update each body part based on DISTANCE, not time
+        // REVERSED: Count from the end so newest parts (end of list) follow closest to head
         for (int i = 0; i < bodyParts.Count; i++)
         {
-            float targetDistance = (i + 1) * segmentSpacing;
+            int reverseIndex = bodyParts.Count - 1 - i;
+            float targetDistance = (reverseIndex + 1) * segmentSpacing;
             var targetData = GetPositionAtDistance(targetDistance);
             bodyParts[i].FollowTarget(targetData.position, targetData.rotation, isHeadMoving);
         }
@@ -75,6 +88,28 @@ public class SnakeBody : MonoBehaviour
         // Clean up old history (keep extra buffer for safety)
         float maxDistance = bodyLength * segmentSpacing + segmentSpacing * 2;
         CleanupHistory(maxDistance);
+    }
+    
+    public void IncreaseSize(int amount = 1)
+    {
+        for (int i = 0; i < amount; i++)
+        {
+            // Spawn new segment right behind the head
+            Vector3 spawnPos = head.position - head.forward * segmentSpacing;
+            Quaternion spawnRot = head.rotation;
+            
+            GameObject newPart = Instantiate(bodyPartPrefab, spawnPos, spawnRot);
+            BodyPart bodyPartComponent = newPart.GetComponent<BodyPart>();
+            
+            // Add to the END of the list (newest parts at end)
+            bodyParts.Add(bodyPartComponent);
+            bodyLength++;
+        }
+    }
+    
+    public int GetBodyLength()
+    {
+        return bodyLength;
     }
 
     private PositionData GetPositionAtDistance(float targetDistance)
