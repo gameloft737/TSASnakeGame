@@ -6,7 +6,8 @@ public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private float moveForce = 50f;
-    [SerializeField] private float maxSpeed = 5f;
+    public float maxSpeed = 5f;
+    public float defaultSpeed = 2f; // Speed when not boosting
     [SerializeField] private float rotationSpeed = 180f;
     [SerializeField] private float surfaceAlignSpeed = 10f;
     [SerializeField] private float gravityForce = 20f;
@@ -67,18 +68,23 @@ public class PlayerMovement : MonoBehaviour
     {
         if (!isGrounded || orientation == null) return;
 
-        if (moveForward)
+        // Always move forward, use different speed based on input
+        float targetSpeed = moveForward ? maxSpeed : defaultSpeed;
+        
+        // Move along the surface
+        Vector3 moveDir = Vector3.ProjectOnPlane(orientation.forward, surfaceNormal).normalized;
+        
+        // Check current speed along surface
+        Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, surfaceNormal);
+        float currentSpeed = planarVelocity.magnitude;
+        
+        // Apply stronger force when below target to overcome friction smoothly
+        if (currentSpeed < targetSpeed)
         {
-            // Move along the surface
-            Vector3 moveDir = Vector3.ProjectOnPlane(orientation.forward, surfaceNormal).normalized;
-            
-            // Check current speed along surface
-            Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, surfaceNormal);
-            
-            if (planarVelocity.magnitude < maxSpeed)
-            {
-                rb.AddForce(moveDir * moveForce, ForceMode.Acceleration);
-            }
+            // Scale force based on how far we are from target speed
+            float speedDeficit = targetSpeed - currentSpeed;
+            float forceMultiplier = Mathf.Clamp01(speedDeficit / targetSpeed) * 2f + 0.5f;
+            rb.AddForce(moveDir * moveForce * forceMultiplier, ForceMode.Acceleration);
         }
     }
 
@@ -88,7 +94,21 @@ public class PlayerMovement : MonoBehaviour
 
         // Slow down movement along the surface
         Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, surfaceNormal);
-        rb.AddForce(-planarVelocity * groundDrag, ForceMode.Acceleration);
+        float currentSpeed = planarVelocity.magnitude;
+        
+        // Always move forward, use different speed based on input
+        float targetSpeed = moveForward ? maxSpeed : defaultSpeed;
+        
+        // Only apply friction if we're going faster than target speed
+        if (currentSpeed > targetSpeed)
+        {
+            rb.AddForce(-planarVelocity * groundDrag, ForceMode.Acceleration);
+        }
+        else
+        {
+            // Apply minimal friction at slow speeds to reduce jitter
+            rb.AddForce(-planarVelocity * (groundDrag * 0.3f), ForceMode.Acceleration);
+        }
     }
 
     private void HandleRotation()

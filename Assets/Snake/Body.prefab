@@ -154,7 +154,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 529829409a484da48a7dbe9e52bfafad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  followSpeed: 10
+  positionStrength: 50
+  dampingStrength: 10
+  rotationSpeed: 10
+  maxSpeed: 20
+  stoppedDamping: 5
 --- !u!54 &7634758640324253545
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -177,8 +181,8 @@ Rigidbody:
     m_Bits: 128
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 1
-  m_Constraints: 0
+  m_Constraints: 112
   m_CollisionDetection: 1
