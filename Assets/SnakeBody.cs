@@ -40,6 +40,15 @@ public class SnakeBody : MonoBehaviour
             Vector3 startPos = head.position - head.forward * segmentSpacing * (i + 1);
             GameObject part = Instantiate(bodyPartPrefab, startPos, head.rotation);
             bodyParts.Add(part.GetComponent<BodyPart>());
+            
+            // Scale the first 3 parts (tail end) as we create them
+            if (i < 3)
+            {
+                float[] tailScales = { 0.5f, 0.7f, 0.8f, };
+                Vector3 scale = part.transform.localScale;
+                scale.x = tailScales[i];
+                part.transform.localScale = scale;
+            }
         }
     }
 
