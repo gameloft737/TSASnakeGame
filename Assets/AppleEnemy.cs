@@ -11,6 +11,7 @@ public class AppleEnemy : MonoBehaviour
     [SerializeField] private float contactDuration = 5f; // Duration to stay in contact before destroying
     [SerializeField] private float contactDistance = 1.5f; // Distance to count as "touching" a body part
     [SerializeField] private Transform agentObj; // Visual object to flip
+    [SerializeField] private AppleChecker appleChecker; // Reference to checker component
 
     private Transform nearestBodyPart;
     private float contactTimer = 0f;
@@ -82,9 +83,12 @@ public class AppleEnemy : MonoBehaviour
         {
             if (nearestBodyPart != null)
             {
+                // Check if the apple checker is touching snake
+                bool touchingSnake = appleChecker != null && appleChecker.isTouching;
+
                 // Check if ANY body part is nearby (not just the target we're moving toward)
                 Transform contactedPart;
-                isInContact = IsAnyBodyPartNearby(out contactedPart);
+                isInContact = IsAnyBodyPartNearby(out contactedPart) || touchingSnake;
 
                 if (isInContact)
                 {
@@ -92,6 +96,7 @@ public class AppleEnemy : MonoBehaviour
                     if (agent.isOnNavMesh)
                     {
                         agent.SetDestination(transform.position);
+                        agent.velocity = Vector3.zero;
                     }
 
                     // Increment contact timer
@@ -119,12 +124,12 @@ public class AppleEnemy : MonoBehaviour
                     }
                 }
 
-                // Flip the GameObject based on movement direction
-                if (agentObj != null && agent.velocity.x != 0)
+                // Face the direction of movement (only if moving)
+                if (agentObj != null && agent.velocity.sqrMagnitude > 0.01f)
                 {
-                    Vector3 rotation = agentObj.transform.eulerAngles;
-                    rotation.y = agent.velocity.x > 0 ? 0 : 180;
-                    agentObj.transform.eulerAngles = rotation;
+                    // Calculate the angle based on the direction of movement
+                    float angle = Mathf.Atan2(agent.velocity.z, agent.velocity.x) * Mathf.Rad2Deg;
+                    agentObj.transform.rotation = Quaternion.Euler(0, -angle + 90, 0);
                 }
             }
             else
