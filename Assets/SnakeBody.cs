@@ -10,7 +10,7 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private float segmentSpacing = 0.5f;
     [SerializeField] private float minRecordDistance = 0.05f; // Only record when head moves this far
 
-    private List<BodyPart> bodyParts = new List<BodyPart>();
+    public List<BodyPart> bodyParts = new List<BodyPart>();
     private List<PositionData> positionHistory = new List<PositionData>();
     private Vector3 lastRecordedPosition;
     private bool isHeadMoving = false;
