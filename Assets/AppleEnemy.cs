@@ -6,20 +6,49 @@ public class AppleEnemy : MonoBehaviour
 {
     private NavMeshAgent agent;
 
-    [SerializeField] private SnakeBody snakeBody; // Reference to the snake
-    [SerializeField] private float contactDuration = 5f; // Duration to stay in contact before destroying
-    [SerializeField] private float contactDistance = 1.5f; // Distance to count as "touching" a body part
-    [SerializeField] private Transform agentObj; // Visual object to flip
-    [SerializeField] private AppleChecker appleChecker; // Reference to checker component
-
+    [Header("References")]
+    [SerializeField] private SnakeBody snakeBody;
+    [SerializeField] private SnakeHealth snakeHealth; // ADD THIS LINE
+    [SerializeField] private Transform agentObj;
+    [SerializeField] private AppleChecker appleChecker;
+    [SerializeField] private ParticleSystem biteParticles;
+    
+    [Header("Tracking Settings")]
+    [SerializeField] private float contactDistance = 1.5f;
+    
+    [Header("Biting Settings")]
+    [SerializeField] private float contactTimeBeforeBiting = 0.5f;
+    [SerializeField] private float biteDamageInterval = 0.5f;
+    [SerializeField] private float minDamage = 5f;
+    [SerializeField] private float maxDamage = 15f;
+    
+    [Header("Apple Health")]
+    [SerializeField] private float maxHealth = 100f;
+    
     private Transform nearestBodyPart;
     private float contactTimer = 0f;
+    private float biteTimer = 0f;
     private bool isInContact = false;
+    private bool isBiting = false;
+    private float currentHealth;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         agent.updateRotation = false;
+        
+        currentHealth = maxHealth;
+        
+        if (biteParticles != null)
+        {
+            biteParticles.Stop();
+        }
+        
+        // Auto-find SnakeHealth if not assigned
+        if (snakeHealth == null && snakeBody != null)
+        {
+            snakeHealth = snakeBody.GetComponent<SnakeHealth>();
+        }
         
         StartCoroutine(TrackAndMonitorContact());
     }
@@ -75,17 +104,13 @@ public class AppleEnemy : MonoBehaviour
 
     private IEnumerator TrackAndMonitorContact()
     {
-        // Find initial target
         nearestBodyPart = FindNearestBodyPart();
 
         while (true)
         {
             if (nearestBodyPart != null)
             {
-                // Check if the apple checker is touching snake
                 bool touchingSnake = appleChecker != null && appleChecker.isTouching;
-
-                // Check if ANY body part is nearby (not just the target we're moving toward)
                 Transform contactedPart;
                 isInContact = IsAnyBodyPartNearby(out contactedPart) || touchingSnake;
 
@@ -101,22 +126,37 @@ public class AppleEnemy : MonoBehaviour
                     // Increment contact timer
                     contactTimer += Time.deltaTime;
 
-                    // Destroy after sustained contact
-                    if (contactTimer >= contactDuration)
+                    // Check if we should start biting
+                    if (contactTimer >= contactTimeBeforeBiting)
                     {
-                        Destroy(gameObject);
-                        yield break;
+                        if (!isBiting)
+                        {
+                            StartBiting();
+                        }
+                        
+                        // Increment bite timer and deal damage periodically
+                        biteTimer += Time.deltaTime;
+                        if (biteTimer >= biteDamageInterval)
+                        {
+                            DealDamage();
+                            biteTimer = 0f;
+                        }
                     }
                 }
                 else
                 {
-                    // Reset timer if not in contact
+                    // Lost contact - reset everything
+                    if (isBiting)
+                    {
+                        StopBiting();
+                    }
+                    
                     contactTimer = 0f;
+                    biteTimer = 0f;
 
-                    // Re-find nearest body part occasionally for better tracking
+                    // Continue tracking
                     nearestBodyPart = FindNearestBodyPart();
 
-                    // Move toward the nearest body part
                     if (nearestBodyPart != null && agent.isOnNavMesh)
                     {
                         agent.SetDestination(nearestBodyPart.position);
@@ -126,25 +166,92 @@ public class AppleEnemy : MonoBehaviour
                 // Face the direction of movement (only if moving)
                 if (agentObj != null && agent.velocity.sqrMagnitude > 0.01f)
                 {
-                    // Calculate the angle based on the direction of movement
                     float angle = Mathf.Atan2(agent.velocity.z, agent.velocity.x) * Mathf.Rad2Deg;
                     agentObj.transform.rotation = Quaternion.Euler(0, -angle + 90, 0);
                 }
             }
             else
             {
-                // No body parts found, try searching again
                 nearestBodyPart = FindNearestBodyPart();
             }
 
-            yield return null; // Wait for the next frame
+            yield return null;
         }
     }
 
-    // Optional: Visualize the contact distance in the editor
+    private void StartBiting()
+    {
+        isBiting = true;
+        
+        if (biteParticles != null)
+        {
+            biteParticles.Play();
+        }
+        
+        Debug.Log("Apple started biting!");
+    }
+
+    private void StopBiting()
+    {
+        isBiting = false;
+        
+        if (biteParticles != null)
+        {
+            biteParticles.Stop();
+        }
+        
+        Debug.Log("Apple stopped biting!");
+    }
+
+    private void DealDamage()
+    {
+        // Random damage within range
+        float damage = Random.Range(minDamage, maxDamage);
+        
+        // Apply damage to snake
+        if (snakeHealth != null)
+        {
+            snakeHealth.TakeDamage(damage);
+            Debug.Log($"Apple dealt {damage:F1} damage to snake!");
+        }
+        else
+        {
+            Debug.LogWarning("SnakeHealth reference is missing! Cannot deal damage.");
+        }
+    }
+
+    public void TakeDamage(float damage)
+    {
+        currentHealth -= damage;
+        
+        Debug.Log($"Apple took {damage:F1} damage! Health: {currentHealth:F1}/{maxHealth}");
+        
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+
+    private void Die()
+    {
+        Debug.Log("Apple destroyed!");
+        
+        if (biteParticles != null)
+        {
+            biteParticles.Stop();
+        }
+        
+        Destroy(gameObject);
+    }
+
+    public float GetHealthPercentage()
+    {
+        return currentHealth / maxHealth;
+    }
+
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = isInContact ? Color.green : Color.yellow;
+        Gizmos.color = isBiting ? Color.red : (isInContact ? Color.green : Color.yellow);
         Gizmos.DrawWireSphere(transform.position, contactDistance);
         
         if (nearestBodyPart != null)

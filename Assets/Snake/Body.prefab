@@ -151,6 +151,8 @@ MonoBehaviour:
   rotationSpeed: 10
   maxSpeed: 20
   stoppedDamping: 5
+  maxDistanceFromTarget: 0.6
+  constraintStrength: 100
 --- !u!54 &7634758640324253545
 Rigidbody:
   m_ObjectHideFlags: 0
