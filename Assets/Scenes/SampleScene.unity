@@ -401,7 +401,7 @@ GameObject:
   - component: {fileID: 233340502}
   - component: {fileID: 233340504}
   - component: {fileID: 233340503}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Particle System
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -417,7 +417,7 @@ Transform:
   m_GameObject: {fileID: 233340501}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.307, z: 0.47699985}
+  m_LocalPosition: {x: 0, y: -0, z: -0.284}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1078,7 +1078,7 @@ ParticleSystem:
     gravityModifier:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.5
+      scalar: 0.2
       minScalar: 0
       maxCurve:
         serializedVersion: 2
@@ -1131,14 +1131,14 @@ ParticleSystem:
   ShapeModule:
     serializedVersion: 6
     enabled: 1
-    type: 0
+    type: 4
     angle: 25
     length: 5
     boxThickness: {x: 0, y: 0, z: 0}
     radiusThickness: 1
     donutRadius: 0.2
-    m_Position: {x: 0, y: 0, z: 0}
-    m_Rotation: {x: 0, y: 0, z: 0}
+    m_Position: {x: 0, y: 0.13, z: 0}
+    m_Rotation: {x: -20.82, y: -180, z: 0}
     m_Scale: {x: 1, y: 1, z: 1}
     placementMode: 0
     m_MeshMaterialIndex: 0
@@ -5754,7 +5754,7 @@ GameObject:
   - component: {fileID: 500245422}
   - component: {fileID: 500245421}
   - component: {fileID: 500245420}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Apple
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5774,7 +5774,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   snakeBody: {fileID: 936577875}
-  searchRadius: 50
   contactDuration: 2.5
   contactDistance: 1
   agentObj: {fileID: 1819163030}
@@ -6530,6 +6529,8 @@ MonoBehaviour:
   maxSpeed: 7.5
   defaultSpeed: 2
   rotationSpeed: 180
+  aimRotationSpeed: 50
+  aimInputDelay: 0.5
   surfaceAlignSpeed: 10
   gravityForce: 20
   groundDrag: 10
@@ -6539,6 +6540,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   orientation: {fileID: 1184833550}
+  cameraManager: {fileID: 330585550}
 --- !u!4 &936577872
 Transform:
   m_ObjectHideFlags: 0
@@ -6633,6 +6635,22 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: cb2465b1-7b84-4816-af01-da0f3414d576
     m_ActionName: 'Snake/Aim[/Mouse/rightButton]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 936577871}
+        m_TargetAssemblyTypeName: PlayerMovement, Assembly-CSharp
+        m_MethodName: OnLook
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: 6517089f-807e-4752-a4f6-57e50faaedf9
+    m_ActionName: 'Snake/MouseMovement[/Mouse/delta]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Snake
@@ -7404,7 +7422,7 @@ GameObject:
   - component: {fileID: 1819163032}
   - component: {fileID: 1819163031}
   - component: {fileID: 1819163033}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7571,14 +7589,38 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -7635343244176704799, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -7029948723529949830, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -4258411891960909470, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: -4010881036162677873, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
       propertyPath: m_Name
       value: apple 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: bca0fa0b6e11d7c47b276a506e5521d5, type: 2}
+    - target: {fileID: 7179158139332175658, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 7205140776170859923, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 

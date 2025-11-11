@@ -7,7 +7,6 @@ public class AppleEnemy : MonoBehaviour
     private NavMeshAgent agent;
 
     [SerializeField] private SnakeBody snakeBody; // Reference to the snake
-    [SerializeField] private float searchRadius = 50f; // Radius to search for snake initially
     [SerializeField] private float contactDuration = 5f; // Duration to stay in contact before destroying
     [SerializeField] private float contactDistance = 1.5f; // Distance to count as "touching" a body part
     [SerializeField] private Transform agentObj; // Visual object to flip

@@ -9,6 +9,7 @@ public class CameraManager : MonoBehaviour
     public CinemachineCamera aimCam;
     
     private CinemachineCamera currentCam;
+    private bool isAiming = false;
     
     private void Start()
     {
@@ -32,11 +33,14 @@ public class CameraManager : MonoBehaviour
             SwitchToNormalCamera();
         }
     }
+    
     private void SwitchToAimCamera()
     {
         currentCam = aimCam;
         aimCam.Priority = 2;
         normalCam.Priority = 1;
+        isAiming = true;
+        
     }
     
     private void SwitchToNormalCamera()
@@ -44,5 +48,9 @@ public class CameraManager : MonoBehaviour
         currentCam = normalCam;
         normalCam.Priority = 2;
         aimCam.Priority = 1;
+        isAiming = false;
+        
     }
+    
+    public bool IsAiming() => isAiming;
 }

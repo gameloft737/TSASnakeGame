@@ -9,6 +9,8 @@ public class PlayerMovement : MonoBehaviour
     public float maxSpeed = 5f;
     public float defaultSpeed = 2f; // Speed when not boosting
     [SerializeField] private float rotationSpeed = 180f;
+    [SerializeField] private float aimRotationSpeed = 30f; // Mouse sensitivity for aim mode
+    [SerializeField] private float aimInputDelay = 0.5f; // Delay before look input is active
     [SerializeField] private float surfaceAlignSpeed = 10f;
     [SerializeField] private float gravityForce = 20f;
     
@@ -22,12 +24,18 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Orientation")]
     [SerializeField] private Transform orientation;
+    
+    [Header("Camera Reference")]
+    [SerializeField] private CameraManager cameraManager;
 
     private Rigidbody rb;
     private bool isGrounded;
     private bool moveForward;
     private float rotationInput;
+    private Vector2 lookInput; // Mouse/look input
     private Vector3 surfaceNormal = Vector3.up;
+    private float aimStartTime; // Track when aiming started
+    private bool wasAiming; // Track previous aim state
 
     void Start()
     {
@@ -115,7 +123,34 @@ public class PlayerMovement : MonoBehaviour
     {
         if (orientation == null) return;
 
-        float rotation = rotationInput * rotationSpeed * Time.deltaTime;
+        float rotation = 0f;
+        
+        // Check if we're aiming
+        bool isAiming = cameraManager != null && cameraManager.IsAiming();
+        
+        // Detect when we start aiming
+        if (isAiming && !wasAiming)
+        {
+            aimStartTime = Time.time;
+        }
+        wasAiming = isAiming;
+        
+        if (isAiming)
+        {
+            // Check if enough time has passed since starting to aim
+            float timeSinceAimStart = Time.time - aimStartTime;
+            if (timeSinceAimStart >= aimInputDelay)
+            {
+                // Use mouse/look input for rotation when aiming (after delay)
+                rotation = lookInput.x * aimRotationSpeed * Time.deltaTime;
+            }
+        }
+        else
+        {
+            // Use keyboard input for rotation when not aiming
+            rotation = rotationInput * rotationSpeed * Time.deltaTime;
+        }
+        
         orientation.Rotate(Vector3.up, rotation, Space.Self);
     }
 
@@ -148,6 +183,7 @@ public class PlayerMovement : MonoBehaviour
     // Input callbacks
     public void OnForward(InputAction.CallbackContext context) => moveForward = context.ReadValueAsButton();
     public void OnMove(InputAction.CallbackContext context) => rotationInput = context.ReadValue<Vector2>().x;
+    public void OnLook(InputAction.CallbackContext context) => lookInput = context.ReadValue<Vector2>();
 
     private void OnDrawGizmos()
     {
