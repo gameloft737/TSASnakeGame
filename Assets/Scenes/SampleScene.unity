@@ -10651,7 +10651,7 @@ MonoBehaviour:
   minDamage: 5
   maxDamage: 15
   agentReEnableDelay: 0.5
-  maxHealth: 100
+  maxHealth: 10
   groundingForce: 20
 --- !u!195 &378902900
 NavMeshAgent:
@@ -15850,7 +15850,7 @@ MonoBehaviour:
   minDamage: 5
   maxDamage: 15
   agentReEnableDelay: 0.5
-  maxHealth: 100
+  maxHealth: 10
   groundingForce: 20
 --- !u!195 &500245421
 NavMeshAgent:
@@ -16177,7 +16177,7 @@ MonoBehaviour:
   minDamage: 5
   maxDamage: 15
   agentReEnableDelay: 0.5
-  maxHealth: 100
+  maxHealth: 10
   groundingForce: 20
 --- !u!195 &575542989
 NavMeshAgent:
@@ -26766,6 +26766,22 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: 6517089f-807e-4752-a4f6-57e50faaedf9
     m_ActionName: 'Snake/MouseMovement[/Mouse/delta]'
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1310546278}
+        m_TargetAssemblyTypeName: AttackManager, Assembly-CSharp
+        m_MethodName: OnAttack
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: bd5ebbf3-0f18-4f8d-9687-f8c1c1df7e5f
+    m_ActionName: 'Snake/Attack[/Mouse/leftButton]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Snake
@@ -26815,6 +26831,7 @@ MonoBehaviour:
   bodyLength: 15
   segmentSpacing: 0.4
   minRecordDistance: 0.05
+  impulseCarryover: 1
   bodyParts: []
 --- !u!114 &936577876
 MonoBehaviour:
@@ -27234,8 +27251,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1310546277}
+  - component: {fileID: 1310546278}
   m_Layer: 7
-  m_Name: WeaponManager
+  m_Name: AttackManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -27253,9 +27271,26 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1517726316}
   m_Father: {fileID: 936577872}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1310546278
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1310546276}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ee97746c1716a547aeb2576ca08fc57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  attacks:
+  - {fileID: 1517726317}
+  currentAttackIndex: 0
+  animator: {fileID: 1670074350}
 --- !u!1 &1361739460
 GameObject:
   m_ObjectHideFlags: 0
@@ -27298,7 +27333,7 @@ MonoBehaviour:
   minDamage: 5
   maxDamage: 15
   agentReEnableDelay: 0.5
-  maxHealth: 100
+  maxHealth: 10
   groundingForce: 20
 --- !u!195 &1361739462
 NavMeshAgent:
@@ -27703,6 +27738,59 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 293ecedfd81cb3147baa577e9f274309, type: 3}
   m_PrefabInstance: {fileID: 318373475}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1517726315
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1517726316}
+  - component: {fileID: 1517726317}
+  m_Layer: 7
+  m_Name: Lunge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1517726316
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1517726315}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1310546277}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1517726317
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1517726315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8aec311100004c04ba29e88c4835bd80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  damage: 10
+  cooldown: 0.1
+  lungeForce: 30
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 256
+  hitRadius: 1.5
+  hitRange: 2.5
+  attackTrigger: bite
 --- !u!1 &1527968186
 GameObject:
   m_ObjectHideFlags: 0
@@ -33031,6 +33119,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1451577457}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!95 &1670074350 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: e2508fdcaa36d814a83194f8e2b91247, type: 3}
+  m_PrefabInstance: {fileID: 2146739278}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1684327911
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -33672,7 +33765,7 @@ MonoBehaviour:
   minDamage: 5
   maxDamage: 15
   agentReEnableDelay: 0.5
-  maxHealth: 100
+  maxHealth: 10
   groundingForce: 20
 --- !u!195 &1953750583
 NavMeshAgent:
@@ -33781,7 +33874,7 @@ MonoBehaviour:
   minDamage: 5
   maxDamage: 15
   agentReEnableDelay: 0.5
-  maxHealth: 100
+  maxHealth: 10
   groundingForce: 20
 --- !u!195 &1975459720
 NavMeshAgent:

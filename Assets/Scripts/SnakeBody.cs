@@ -10,6 +10,7 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private float segmentSpacing = 0.5f;
     [SerializeField] private float minRecordDistance = 0.05f; // Only record when head moves this far
 
+    [SerializeField] private float impulseCarryover = 0.9f;
     public List<BodyPart> bodyParts = new List<BodyPart>();
     private List<PositionData> positionHistory = new List<PositionData>();
     private Vector3 lastRecordedPosition;
@@ -98,7 +99,27 @@ public class SnakeBody : MonoBehaviour
         float maxDistance = bodyLength * segmentSpacing + segmentSpacing * 2;
         CleanupHistory(maxDistance);
     }
-    
+    public void ApplyForceToBody(Vector3 direction, float force)
+    {
+        Vector3 lungeDirection = direction;
+        
+        // Project along surface if grounded
+        PlayerMovement pm = GetComponent<PlayerMovement>();
+        if (pm != null && pm.IsGrounded())
+        {
+            lungeDirection = Vector3.ProjectOnPlane(direction, Vector3.up).normalized;
+        }
+        
+        // Apply scaled force to each body part (80% to keep them tight)
+        foreach (BodyPart part in bodyParts)
+        {
+            Rigidbody partRb = part.GetComponent<Rigidbody>();
+            if (partRb != null)
+            {
+                partRb.AddForce(lungeDirection * force * impulseCarryover, ForceMode.Impulse);
+            }
+        }
+    }
     public void IncreaseSize(int amount = 1)
     {
         for (int i = 0; i < amount; i++)

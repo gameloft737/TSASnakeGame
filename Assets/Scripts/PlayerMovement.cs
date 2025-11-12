@@ -179,6 +179,20 @@ public class PlayerMovement : MonoBehaviour
             surfaceNormal = Vector3.up;
         }
     }
+    public void ApplyLunge(float force)
+    {
+        if (orientation == null) return;
+        
+        Vector3 lungeDirection = orientation.forward;
+        
+        // If grounded, project lunge along surface
+        if (isGrounded)
+        {
+            lungeDirection = Vector3.ProjectOnPlane(orientation.forward, surfaceNormal).normalized;
+        }
+        
+        rb.AddForce(lungeDirection * force, ForceMode.Impulse);
+    }
 
     // Input callbacks
     public void OnForward(InputAction.CallbackContext context) => moveForward = context.ReadValueAsButton();
