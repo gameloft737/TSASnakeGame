@@ -10645,12 +10645,14 @@ MonoBehaviour:
   agentObj: {fileID: 1415345590}
   appleChecker: {fileID: 1415345587}
   biteParticles: {fileID: 697843074}
-  contactDistance: 1
+  contactDistance: 1.5
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 5
   maxDamage: 15
+  agentReEnableDelay: 0.5
   maxHealth: 100
+  groundingForce: 20
 --- !u!195 &378902900
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -10705,7 +10707,7 @@ Rigidbody:
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -15842,12 +15844,14 @@ MonoBehaviour:
   agentObj: {fileID: 1819163030}
   appleChecker: {fileID: 1819163033}
   biteParticles: {fileID: 233340504}
-  contactDistance: 1
+  contactDistance: 1.5
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 5
   maxDamage: 15
+  agentReEnableDelay: 0.5
   maxHealth: 100
+  groundingForce: 20
 --- !u!195 &500245421
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -15902,7 +15906,7 @@ Rigidbody:
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -16167,12 +16171,14 @@ MonoBehaviour:
   agentObj: {fileID: 1096538706}
   appleChecker: {fileID: 1096538703}
   biteParticles: {fileID: 1543251673}
-  contactDistance: 1
+  contactDistance: 1.5
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 5
   maxDamage: 15
+  agentReEnableDelay: 0.5
   maxHealth: 100
+  groundingForce: 20
 --- !u!195 &575542989
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -16227,7 +16233,7 @@ Rigidbody:
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -27286,12 +27292,14 @@ MonoBehaviour:
   agentObj: {fileID: 1089402904}
   appleChecker: {fileID: 1089402901}
   biteParticles: {fileID: 870345748}
-  contactDistance: 1
+  contactDistance: 1.5
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 5
   maxDamage: 15
+  agentReEnableDelay: 0.5
   maxHealth: 100
+  groundingForce: 20
 --- !u!195 &1361739462
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -27346,7 +27354,7 @@ Rigidbody:
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -33658,12 +33666,14 @@ MonoBehaviour:
   agentObj: {fileID: 1527968190}
   appleChecker: {fileID: 1527968187}
   biteParticles: {fileID: 247270468}
-  contactDistance: 1
+  contactDistance: 1.5
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 5
   maxDamage: 15
+  agentReEnableDelay: 0.5
   maxHealth: 100
+  groundingForce: 20
 --- !u!195 &1953750583
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -33718,7 +33728,7 @@ Rigidbody:
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -33765,12 +33775,14 @@ MonoBehaviour:
   agentObj: {fileID: 824781869}
   appleChecker: {fileID: 824781866}
   biteParticles: {fileID: 442872375}
-  contactDistance: 1
+  contactDistance: 1.5
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 5
   maxDamage: 15
+  agentReEnableDelay: 0.5
   maxHealth: 100
+  groundingForce: 20
 --- !u!195 &1975459720
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -33826,7 +33838,7 @@ Rigidbody:
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
