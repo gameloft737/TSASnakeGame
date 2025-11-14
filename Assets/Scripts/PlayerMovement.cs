@@ -25,6 +25,10 @@ public class PlayerMovement : MonoBehaviour
     [Header("Orientation")]
     [SerializeField] private Transform orientation;
     
+    [Header("Weapon")]
+    [SerializeField] private Transform weaponHolder;
+    [SerializeField] private float weaponRotationSpeed = 10f;
+    
     [Header("Camera Reference")]
     [SerializeField] private CameraManager cameraManager;
 
@@ -49,6 +53,7 @@ public class PlayerMovement : MonoBehaviour
         CheckGround();
         AlignToSurface();
         HandleRotation();
+        UpdateWeaponRotation();
     }
 
     void FixedUpdate()
@@ -152,6 +157,20 @@ public class PlayerMovement : MonoBehaviour
         }
         
         orientation.Rotate(Vector3.up, rotation, Space.Self);
+    }
+
+    private void UpdateWeaponRotation()
+    {
+        if (orientation == null || weaponHolder == null) return;
+
+        // Get orientation's Y rotation only
+        float yRotation = orientation.eulerAngles.y;
+        
+        // Create target rotation with only Y axis from orientation
+        Quaternion targetRotation = Quaternion.Euler(0f, yRotation, 0f);
+        
+        // Smoothly rotate weapon holder
+        weaponHolder.rotation = Quaternion.Slerp(weaponHolder.rotation, targetRotation, weaponRotationSpeed * Time.deltaTime);
     }
 
     private void AlignToSurface()

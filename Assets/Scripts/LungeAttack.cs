@@ -12,24 +12,11 @@ public class LungeAttack : Attack
     [Header("Animation")]
     [SerializeField] private string attackTrigger = "Lunge";
     
-    private Transform orientation;
-    private PlayerMovement playerMovement;
-    private SnakeBody snakeBody;
-    private AttackManager attackManager;
+    [SerializeField]private Transform orientation;
+    [SerializeField]private PlayerMovement playerMovement;
+    [SerializeField]private SnakeBody snakeBody;
+    [SerializeField]private AttackManager attackManager;
     private HashSet<AppleEnemy> hitEnemies = new HashSet<AppleEnemy>();
-
-    void Start()
-    {
-        // Get components from parent (the snake head)
-        playerMovement = GetComponentInParent<PlayerMovement>();
-        snakeBody = GetComponentInParent<SnakeBody>();
-        attackManager = GetComponentInParent<AttackManager>();
-        
-        if (playerMovement != null)
-        {
-            orientation = playerMovement.transform.Find("Orientation");
-        }
-    }
 
     protected override void Use()
     {

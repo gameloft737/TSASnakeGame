@@ -17,6 +17,10 @@ public class AppleEnemy : MonoBehaviour
     [Header("Tracking Settings")]
     [SerializeField] private float contactDistance = 1.5f;
     
+    [Header("Rotation Settings")]
+    [SerializeField] private float rotationSpeed = 10f;
+    [SerializeField] private float minVelocityForRotation = 0.1f;
+    
     [Header("Biting Settings")]
     [SerializeField] private float contactTimeBeforeBiting = 0.5f;
     [SerializeField] private float biteDamageInterval = 0.5f;
@@ -38,6 +42,7 @@ public class AppleEnemy : MonoBehaviour
     private float currentHealth;
     private Coroutine reEnableAgentCoroutine;
     private bool wasInContactLastFrame = false;
+    private Vector3 lastValidVelocity;
 
     void Start()
     {
@@ -59,6 +64,8 @@ public class AppleEnemy : MonoBehaviour
             snakeHealth = snakeBody.GetComponent<SnakeHealth>();
         }
         
+        lastValidVelocity = agentObj != null ? agentObj.forward : transform.forward;
+        
         StartCoroutine(TrackAndMonitorContact());
     }
 
@@ -68,6 +75,29 @@ public class AppleEnemy : MonoBehaviour
         if (rb != null)
         {
             rb.AddForce(Vector3.down * groundingForce, ForceMode.Force);
+        }
+    }
+
+    void LateUpdate()
+    {
+        // Smooth rotation based on movement direction
+        if (agentObj != null && agent.enabled)
+        {
+            Vector3 velocity = agent.velocity;
+            
+            // Only rotate if moving fast enough
+            if (velocity.sqrMagnitude > minVelocityForRotation * minVelocityForRotation)
+            {
+                // Update last valid velocity
+                lastValidVelocity = velocity.normalized;
+            }
+            
+            // Always smoothly rotate towards last valid direction
+            if (lastValidVelocity.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(lastValidVelocity);
+                agentObj.rotation = Quaternion.Slerp(agentObj.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
         }
     }
 
@@ -200,13 +230,6 @@ public class AppleEnemy : MonoBehaviour
                     }
                 }
 
-                // Face the direction of movement (only if agent is enabled and moving)
-                if (agentObj != null && agent.enabled && agent.velocity.sqrMagnitude > 0.01f)
-                {
-                    float angle = Mathf.Atan2(agent.velocity.z, agent.velocity.x) * Mathf.Rad2Deg;
-                    agentObj.transform.rotation = Quaternion.Euler(0, -angle + 90, 0);
-                }
-
                 wasInContactLastFrame = isInContact;
             }
             else
@@ -245,8 +268,6 @@ public class AppleEnemy : MonoBehaviour
         {
             biteParticles.Play();
         }
-        
-        Debug.Log("Apple started biting!");
     }
 
     private void StopBiting()
@@ -257,8 +278,6 @@ public class AppleEnemy : MonoBehaviour
         {
             biteParticles.Stop();
         }
-        
-        Debug.Log("Apple stopped biting!");
     }
 
     private void DealDamage()
@@ -270,19 +289,12 @@ public class AppleEnemy : MonoBehaviour
         if (snakeHealth != null)
         {
             snakeHealth.TakeDamage(damage);
-            Debug.Log($"Apple dealt {damage:F1} damage to snake!");
-        }
-        else
-        {
-            Debug.LogWarning("SnakeHealth reference is missing! Cannot deal damage.");
         }
     }
 
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;
-        
-        Debug.Log($"Apple took {damage:F1} damage! Health: {currentHealth:F1}/{maxHealth}");
         
         if (currentHealth <= 0)
         {
