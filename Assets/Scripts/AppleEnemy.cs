@@ -5,7 +5,6 @@ using UnityEngine.AI;
 public class AppleEnemy : MonoBehaviour
 {
     private NavMeshAgent agent;
-    private Rigidbody rb;
 
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
@@ -49,7 +48,6 @@ public class AppleEnemy : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         agent.updateRotation = false;
         
-        rb = GetComponent<Rigidbody>();
         
         currentHealth = maxHealth;
         
@@ -67,15 +65,6 @@ public class AppleEnemy : MonoBehaviour
         lastValidVelocity = agentObj != null ? agentObj.forward : transform.forward;
         
         StartCoroutine(TrackAndMonitorContact());
-    }
-
-    void FixedUpdate()
-    {
-        // Apply constant downward force to prevent flying
-        if (rb != null)
-        {
-            rb.AddForce(Vector3.down * groundingForce, ForceMode.Force);
-        }
     }
 
     void LateUpdate()
