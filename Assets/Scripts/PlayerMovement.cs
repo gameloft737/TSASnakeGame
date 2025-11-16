@@ -33,7 +33,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private CameraManager cameraManager;
 
     private Rigidbody rb;
-    private bool isGrounded;
+    [SerializeField]private bool isGrounded;
     private bool moveForward;
     private float rotationInput;
     private Vector2 lookInput; // Mouse/look input

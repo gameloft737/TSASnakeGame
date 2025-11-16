@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5978063758743123679}
   - component: {fileID: 5570526897610543925}
   - component: {fileID: 8000986986902181814}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Flower_LOD0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -58,6 +58,9 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -96,7 +99,7 @@ GameObject:
   - component: {fileID: 4557096404942065983}
   - component: {fileID: 3117426342798262120}
   - component: {fileID: 2370692049457438481}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Flower_LOD1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -143,6 +146,9 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -180,8 +186,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7449938613439987909}
   - component: {fileID: 2378410654433487957}
-  - component: {fileID: 1103281335214843079}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Flower
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -221,45 +226,23 @@ LODGroup:
   m_AnimateCrossFading: 1
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.25
+  - screenRelativeHeight: 0.7
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 8000986986902181814}
-  - screenRelativeHeight: 0.14915624
+  - screenRelativeHeight: 0.4
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 2370692049457438481}
-  - screenRelativeHeight: 0.06884693
+  - screenRelativeHeight: 0.2
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 3629183933544186210}
-  - screenRelativeHeight: 0.013744898
+  - screenRelativeHeight: 0.05
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 2442467147008190802}
   m_Enabled: 1
---- !u!64 &1103281335214843079
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5008984729542433618}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: -439356785465359677, guid: 46ceee1e0f8fec547ad8c36842afe15f, type: 3}
 --- !u!1 &6959547021868583040
 GameObject:
   m_ObjectHideFlags: 0
@@ -271,7 +254,7 @@ GameObject:
   - component: {fileID: 9007786977880487828}
   - component: {fileID: 4472745449031132099}
   - component: {fileID: 2442467147008190802}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Flower_LOD3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -318,6 +301,9 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -356,7 +342,7 @@ GameObject:
   - component: {fileID: 8164130338943381542}
   - component: {fileID: 8864919173676673262}
   - component: {fileID: 3629183933544186210}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Flower_LOD2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -403,6 +389,9 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
