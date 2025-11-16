@@ -98,6 +98,7 @@ GameObject:
   - component: {fileID: 4945563664222880364}
   - component: {fileID: 2577801678900187767}
   - component: {fileID: -409502043181198388}
+  - component: {fileID: 8544551623049278248}
   m_Layer: 9
   m_Name: Spruce 2
   m_TagString: Untagged
@@ -178,6 +179,27 @@ CapsuleCollider:
   m_Height: 5.1354537
   m_Direction: 1
   m_Center: {x: 0, y: 2.3491118, z: 0}
+--- !u!65 &8544551623049278248
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3731095390187986728}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2, y: 4, z: 2}
+  m_Center: {x: 0, y: 3, z: 0}
 --- !u!1 &3828991336546146468
 GameObject:
   m_ObjectHideFlags: 0
