@@ -12,35 +12,41 @@ public class LungeAttack : Attack
     [Header("Animation")]
     [SerializeField] private string attackTrigger = "Lunge";
     
-    [SerializeField]private Transform orientation;
-    [SerializeField]private PlayerMovement playerMovement;
-    [SerializeField]private SnakeBody snakeBody;
-    [SerializeField]private AttackManager attackManager;
+    [SerializeField] private Transform orientation;
+    [SerializeField] private PlayerMovement playerMovement;
+    [SerializeField] private SnakeBody snakeBody;
+    [SerializeField] private AttackManager attackManager;
+    
     private HashSet<AppleEnemy> hitEnemies = new HashSet<AppleEnemy>();
 
-    protected override void Use()
+    private void Awake()
+    {
+        attackType = AttackType.Burst;
+    }
+
+    protected override void OnActivate()
+    {
+        ExecuteLunge();
+    }
+
+    private void ExecuteLunge()
     {
         if (orientation == null || playerMovement == null) return;
 
-        // Trigger animation through AttackManager
         if (attackManager != null)
         {
             attackManager.TriggerAnimation(attackTrigger);
         }
 
-        // Tell player movement to apply the lunge
         playerMovement.ApplyLunge(lungeForce);
         
-        // Tell snake body to apply lunge to all segments
         if (snakeBody != null)
         {
             snakeBody.ApplyForceToBody(orientation.forward, lungeForce);
         }
         
-        // Clear previous hits
         hitEnemies.Clear();
         
-        // Use OverlapSphere for better performance (no raycast needed)
         Collider[] hitColliders = Physics.OverlapSphere(
             orientation.position + orientation.forward * (hitRange * 0.5f), 
             hitRadius, 
@@ -49,7 +55,6 @@ public class LungeAttack : Attack
         
         foreach (Collider col in hitColliders)
         {
-            // Try to find AppleEnemy in the hit object or its parents
             AppleEnemy apple = col.GetComponentInParent<AppleEnemy>();
             
             if (apple != null && !hitEnemies.Contains(apple))
@@ -64,10 +69,6 @@ public class LungeAttack : Attack
         {
             Debug.Log($"Lunge attack hit {hitEnemies.Count} enemies!");
         }
-        else
-        {
-            Debug.Log("Lunge attack missed!");
-        }
     }
 
     private void OnDrawGizmosSelected()
@@ -75,9 +76,7 @@ public class LungeAttack : Attack
         if (orientation == null) return;
         
         Gizmos.color = Color.red;
-        // Draw the actual hit detection sphere
         Gizmos.DrawWireSphere(orientation.position + orientation.forward * (hitRange * 0.5f), hitRadius);
-        // Draw direction line
         Gizmos.DrawLine(orientation.position, orientation.position + orientation.forward * hitRange);
     }
 }

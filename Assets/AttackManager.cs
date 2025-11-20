@@ -12,10 +12,11 @@ public class AttackManager : MonoBehaviour
     [SerializeField] private Animator animator;
 
     private Attack CurrentAttack => attacks.Count > 0 && currentAttackIndex < attacks.Count ? attacks[currentAttackIndex] : null;
+    
+    private bool isHoldingAttack = false;
 
     private void Start()
     {
-        // Auto-find animator if not assigned
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -26,16 +27,52 @@ public class AttackManager : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        // Handle continuous attacks while holding
+        if (isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.HoldUpdate();
+        }
+    }
+
     public void OnAttack(InputAction.CallbackContext context)
     {
-        if (context.performed && CurrentAttack != null)
+        if (CurrentAttack == null) return;
+
+        // Button pressed
+        if (context.started)
         {
-            CurrentAttack.TryUse();
+            if (CurrentAttack.TryActivate())
+            {
+                // For burst attacks, TryActivate handles everything and immediately deactivates
+                // For continuous attacks, we need to track that we're holding
+                if (CurrentAttack.GetAttackType() == Attack.AttackType.Continuous)
+                {
+                    isHoldingAttack = true;
+                }
+            }
+        }
+        // Button released
+        else if (context.canceled)
+        {
+            if (isHoldingAttack)
+            {
+                CurrentAttack.StopUsing();
+                isHoldingAttack = false;
+            }
         }
     }
 
     public void SetAttackIndex(int index)
     {
+        // Stop current attack if switching
+        if (isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.StopUsing();
+            isHoldingAttack = false;
+        }
+
         if (index >= 0 && index < attacks.Count)
         {
             currentAttackIndex = index;
@@ -46,7 +83,7 @@ public class AttackManager : MonoBehaviour
     {
         if (attacks.Count > 0)
         {
-            currentAttackIndex = (currentAttackIndex + 1) % attacks.Count;
+            SetAttackIndex((currentAttackIndex + 1) % attacks.Count);
         }
     }
 
@@ -54,7 +91,7 @@ public class AttackManager : MonoBehaviour
     {
         if (attacks.Count > 0)
         {
-            currentAttackIndex = (currentAttackIndex - 1 + attacks.Count) % attacks.Count;
+            SetAttackIndex((currentAttackIndex - 1 + attacks.Count) % attacks.Count);
         }
     }
 
@@ -72,13 +109,18 @@ public class AttackManager : MonoBehaviour
     
     public int GetAttackCount() => attacks.Count;
     
-    public float GetCooldownProgress()
+    public float GetFuelPercentage()
     {
-        if (CurrentAttack == null) return 1f;
-        return 1f - (CurrentAttack.GetCooldownRemaining() / CurrentAttack.GetCooldown());
+        if (CurrentAttack == null) return 0f;
+        return CurrentAttack.GetFuelPercentage();
     }
 
-    // New method for attacks to trigger animations
+    public bool CanActivateCurrentAttack()
+    {
+        if (CurrentAttack == null) return false;
+        return CurrentAttack.CanActivate();
+    }
+
     public void TriggerAnimation(string triggerName)
     {
         if (animator != null && !string.IsNullOrEmpty(triggerName))

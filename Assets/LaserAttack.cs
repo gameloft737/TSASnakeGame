@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class LaserAttack : Attack
@@ -12,15 +13,10 @@ public class LaserAttack : Attack
     [SerializeField] private float laserDistance = 8f;
     [SerializeField] private float laserWidth = 0.1f;
     [SerializeField] private LayerMask ignoreMask;
-    [SerializeField] private float laserDuration = 5f;
 
     [Header("References")]
     [SerializeField] private Transform leftLaserOrigin;
     [SerializeField] private Transform rightLaserOrigin;
-    [SerializeField] private AttackManager attackManager;
-
-    private bool isLaserActive = false;
-    private float laserActiveTimer = 0f;
 
     private AppleEnemy leftTarget;
     private AppleEnemy rightTarget;
@@ -29,6 +25,8 @@ public class LaserAttack : Attack
 
     private void Awake()
     {
+        attackType = AttackType.Continuous;
+        
         SetupLineRenderer(leftLineRenderer);
         SetupLineRenderer(rightLineRenderer);
 
@@ -44,59 +42,37 @@ public class LaserAttack : Attack
             lr.enabled = false;
             lr.startWidth = laserWidth;
             lr.endWidth = laserWidth;
-            lr.useWorldSpace = false; // now local to origin
+            lr.useWorldSpace = false;
         }
     }
 
-    private void Update()
+    protected override void OnActivate()
     {
-        if (isLaserActive)
-        {
-            laserActiveTimer += Time.deltaTime;
-
-            if (laserActiveTimer >= laserDuration)
-            {
-                DeactivateLaser();
-            }
-            else
-            {
-                UpdateLaser(leftLaserOrigin, leftLineRenderer, leftParticles, ref leftTarget, ref isDamagingLeft);
-                UpdateLaser(rightLaserOrigin, rightLineRenderer, rightParticles, ref rightTarget, ref isDamagingRight);
-            }
-        }
-    }
-
-    protected override void Use()
-    {
-        if (leftLaserOrigin == null || rightLaserOrigin == null) return;
-        ActivateLaser();
-    }
-
-    private void ActivateLaser()
-    {
-        isLaserActive = true;
-        laserActiveTimer = 0f;
-
         if (leftLineRenderer != null) leftLineRenderer.enabled = true;
         if (rightLineRenderer != null) rightLineRenderer.enabled = true;
+        if (leftParticles != null) leftParticles.Play();
+        if (rightParticles != null) rightParticles.Play();
 
         Debug.Log("Lasers activated!");
-        leftParticles.Play();
-        rightParticles.Play();
     }
 
-    private void DeactivateLaser()
+    protected override void OnHoldUpdate()
     {
-        isLaserActive = false;
-        laserActiveTimer = 0f;
+        UpdateLaser(leftLaserOrigin, leftLineRenderer, leftParticles, ref leftTarget, ref isDamagingLeft);
+        UpdateLaser(rightLaserOrigin, rightLineRenderer, rightParticles, ref rightTarget, ref isDamagingRight);
+    }
 
+    protected override void OnDeactivate()
+    {
         if (leftLineRenderer != null) leftLineRenderer.enabled = false;
         if (rightLineRenderer != null) rightLineRenderer.enabled = false;
 
         StopDamaging(ref leftTarget, ref isDamagingLeft);
         StopDamaging(ref rightTarget, ref isDamagingRight);
-        leftParticles.Stop();
-        rightParticles.Stop();
+        
+        if (leftParticles != null) leftParticles.Stop();
+        if (rightParticles != null) rightParticles.Stop();
+
         Debug.Log("Lasers deactivated!");
     }
 
@@ -104,10 +80,9 @@ public class LaserAttack : Attack
     {
         if (origin == null || lineRenderer == null) return;
 
-        Vector3 localStart = Vector3.zero; // start at origin
-        Vector3 localEnd = Vector3.forward * laserDistance; // default end in local space
+        Vector3 localStart = Vector3.zero;
+        Vector3 localEnd = Vector3.forward * laserDistance;
 
-        // Raycast in world space
         Ray ray = new Ray(origin.position, origin.forward);
         RaycastHit hit;
         bool hitSomething = Physics.Raycast(ray, out hit, laserDistance, ~ignoreMask);
@@ -115,7 +90,6 @@ public class LaserAttack : Attack
         if (hitSomething)
         {
             Vector3 worldEnd = hit.point;
-            // Convert world hit point to local space relative to origin
             localEnd = origin.InverseTransformPoint(worldEnd);
 
             AppleEnemy hitApple = hit.collider.GetComponentInParent<AppleEnemy>();
@@ -144,23 +118,18 @@ public class LaserAttack : Attack
             StopDamaging(ref currentTarget, ref isDamaging);
         }
 
-        // Set LineRenderer in local space
         lineRenderer.SetPosition(0, localStart);
         lineRenderer.SetPosition(1, localEnd);
 
-        // Move particles to laser endpoint in world space
         if (particles != null)
         {
             particles.transform.position = origin.TransformPoint(localEnd);
-            
         }
     }
 
     private void StartDamaging(ref bool isDamaging)
     {
         isDamaging = true;
-
- 
     }
 
     private void StopDamaging(ref AppleEnemy target, ref bool isDamaging)
@@ -169,13 +138,14 @@ public class LaserAttack : Attack
         {
             isDamaging = false;
             target = null;
-
-
         }
     }
 
     private void OnDisable()
     {
-        DeactivateLaser();
+        if (isActive)
+        {
+            StopUsing();
+        }
     }
 }

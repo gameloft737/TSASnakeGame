@@ -31,7 +31,6 @@ public class AppleEnemy : MonoBehaviour
     [SerializeField] private float maxHealth = 100f;
     
     [Header("Physics")]
-    [SerializeField] private float groundingForce = 20f;
     
     private Transform nearestBodyPart;
     private float contactTimer = 0f;
