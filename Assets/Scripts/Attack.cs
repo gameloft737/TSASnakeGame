@@ -4,16 +4,16 @@ public abstract class Attack : MonoBehaviour
 {
     [Header("Attack Stats")]
     [SerializeField] protected float damage = 10f;
-    
+
     [Header("Fuel System")]
     [SerializeField] protected float minFuelToActivate = 50f;
     [SerializeField] protected float fuelRechargeRate = 20f;
-    
+
     [Header("Attack Type")]
     [SerializeField] protected AttackType attackType = AttackType.Burst;
     [SerializeField] protected float burstFuelCost = 15f;
     [SerializeField] protected float continuousDrainRate = 10f;
-    
+
     public enum AttackType
     {
         Burst,
@@ -23,7 +23,11 @@ public abstract class Attack : MonoBehaviour
     protected const float MAX_FUEL = 100f;
     protected static float sharedFuel = MAX_FUEL;
     protected bool isActive = false;
+
     private static Attack lastUsedAttack = null;
+
+    // New: fast global tracking
+    protected static int activeAttackCount = 0;
 
     protected virtual void Update()
     {
@@ -36,12 +40,7 @@ public abstract class Attack : MonoBehaviour
 
     private static bool IsAnyAttackActive()
     {
-        Attack[] allAttacks = FindObjectsOfType<Attack>();
-        foreach (Attack attack in allAttacks)
-        {
-            if (attack.isActive) return true;
-        }
-        return false;
+        return activeAttackCount > 0;
     }
 
     public bool CanActivate()
@@ -54,15 +53,16 @@ public abstract class Attack : MonoBehaviour
         if (CanActivate())
         {
             isActive = true;
+            activeAttackCount += 1;        // increment
             lastUsedAttack = this;
             OnActivate();
-            
+
             if (attackType == AttackType.Burst)
             {
                 sharedFuel = Mathf.Max(0f, sharedFuel - burstFuelCost);
                 StopUsing();
             }
-            
+
             return true;
         }
         return false;
@@ -90,6 +90,7 @@ public abstract class Attack : MonoBehaviour
         if (isActive)
         {
             isActive = false;
+            activeAttackCount -= 1;         // decrement
             OnDeactivate();
         }
     }
