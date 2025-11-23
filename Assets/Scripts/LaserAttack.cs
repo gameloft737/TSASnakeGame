@@ -53,7 +53,6 @@ public class LaserAttack : Attack
         if (leftParticles != null) leftParticles.Play();
         if (rightParticles != null) rightParticles.Play();
 
-        Debug.Log("Lasers activated!");
     }
 
     protected override void OnHoldUpdate()
@@ -73,7 +72,6 @@ public class LaserAttack : Attack
         if (leftParticles != null) leftParticles.Stop();
         if (rightParticles != null) rightParticles.Stop();
 
-        Debug.Log("Lasers deactivated!");
     }
 
     private void UpdateLaser(Transform origin, LineRenderer lineRenderer, ParticleSystem particles, ref AppleEnemy currentTarget, ref bool isDamaging)

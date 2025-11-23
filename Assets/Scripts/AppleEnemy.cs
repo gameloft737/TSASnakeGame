@@ -1,9 +1,12 @@
-using System.Collections;
 using UnityEngine;
+using System.Collections;
 using UnityEngine.AI;
+using System;
 
 public class AppleEnemy : MonoBehaviour
 {
+    public static event Action<AppleEnemy> OnAppleDied;
+    
     private NavMeshAgent agent;
 
     [Header("References")]
@@ -30,8 +33,6 @@ public class AppleEnemy : MonoBehaviour
     [Header("Apple Health")]
     [SerializeField] private float maxHealth = 100f;
     
-    [Header("Physics")]
-    
     private Transform nearestBodyPart;
     private float contactTimer = 0f;
     private float biteTimer = 0f;
@@ -41,12 +42,12 @@ public class AppleEnemy : MonoBehaviour
     private Coroutine reEnableAgentCoroutine;
     private bool wasInContactLastFrame = false;
     private Vector3 lastValidVelocity;
+    private bool isInitialized = false;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         agent.updateRotation = false;
-        
         
         currentHealth = maxHealth;
         
@@ -55,15 +56,31 @@ public class AppleEnemy : MonoBehaviour
             biteParticles.Stop();
         }
         
-        // Auto-find SnakeHealth if not assigned
-        if (snakeHealth == null && snakeBody != null)
+        // Auto-find if not already initialized by spawner
+        if (!isInitialized)
         {
-            snakeHealth = snakeBody.GetComponent<SnakeHealth>();
+            Debug.Log("ayyyy");
+            if (snakeBody == null)
+            {
+                snakeBody = FindFirstObjectByType<SnakeBody>();
+            }
+            
+            if (snakeHealth == null)
+            {
+                snakeHealth = FindFirstObjectByType<SnakeHealth>();
+            }
         }
         
         lastValidVelocity = agentObj != null ? agentObj.forward : transform.forward;
         
         StartCoroutine(TrackAndMonitorContact());
+    }
+
+    public void Initialize(SnakeBody body, SnakeHealth health)
+    {
+        snakeBody = body;
+        snakeHealth = health;
+        isInitialized = true;
     }
 
     void LateUpdate()
@@ -73,14 +90,11 @@ public class AppleEnemy : MonoBehaviour
         {
             Vector3 velocity = agent.velocity;
             
-            // Only rotate if moving fast enough
             if (velocity.sqrMagnitude > minVelocityForRotation * minVelocityForRotation)
             {
-                // Update last valid velocity
                 lastValidVelocity = velocity.normalized;
             }
             
-            // Always smoothly rotate towards last valid direction
             if (lastValidVelocity.sqrMagnitude > 0.01f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(lastValidVelocity);
@@ -152,7 +166,6 @@ public class AppleEnemy : MonoBehaviour
 
                 if (isInContact)
                 {
-                    // Just entered contact - disable agent immediately
                     if (!wasInContactLastFrame)
                     {
                         if (reEnableAgentCoroutine != null)
@@ -168,10 +181,8 @@ public class AppleEnemy : MonoBehaviour
                         }
                     }
 
-                    // Increment contact timer
                     contactTimer += Time.deltaTime;
 
-                    // Check if we should start biting
                     if (contactTimer >= contactTimeBeforeBiting)
                     {
                         if (!isBiting)
@@ -179,7 +190,6 @@ public class AppleEnemy : MonoBehaviour
                             StartBiting();
                         }
                         
-                        // Increment bite timer and deal damage periodically
                         biteTimer += Time.deltaTime;
                         if (biteTimer >= biteDamageInterval)
                         {
@@ -190,7 +200,6 @@ public class AppleEnemy : MonoBehaviour
                 }
                 else
                 {
-                    // Just left contact - schedule agent re-enable
                     if (wasInContactLastFrame)
                     {
                         if (reEnableAgentCoroutine != null)
@@ -200,7 +209,6 @@ public class AppleEnemy : MonoBehaviour
                         reEnableAgentCoroutine = StartCoroutine(ReEnableAgentAfterDelay());
                     }
                     
-                    // Lost contact - reset biting
                     if (isBiting)
                     {
                         StopBiting();
@@ -209,7 +217,6 @@ public class AppleEnemy : MonoBehaviour
                     contactTimer = 0f;
                     biteTimer = 0f;
 
-                    // Continue tracking (only if agent is enabled)
                     nearestBodyPart = FindNearestBodyPart();
 
                     if (nearestBodyPart != null && agent.enabled && agent.isOnNavMesh)
@@ -237,7 +244,6 @@ public class AppleEnemy : MonoBehaviour
         {
             agent.enabled = true;
             
-            // Set new destination immediately
             nearestBodyPart = FindNearestBodyPart();
             if (nearestBodyPart != null && agent.isOnNavMesh)
             {
@@ -270,10 +276,8 @@ public class AppleEnemy : MonoBehaviour
 
     private void DealDamage()
     {
-        // Random damage within range
-        float damage = Random.Range(minDamage, maxDamage);
+        float damage = UnityEngine.Random.Range(minDamage, maxDamage);
         
-        // Apply damage to snake
         if (snakeHealth != null)
         {
             snakeHealth.TakeDamage(damage);
@@ -292,13 +296,12 @@ public class AppleEnemy : MonoBehaviour
 
     private void Die()
     {
-        Debug.Log("Apple destroyed!");
-        
         if (biteParticles != null)
         {
             biteParticles.Stop();
         }
         
+        OnAppleDied?.Invoke(this);
         Destroy(gameObject);
     }
 

@@ -1,5 +1,7 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
+
 
 [System.Serializable]
 public class SpawnGroup
@@ -9,7 +11,8 @@ public class SpawnGroup
     public int count;
     
     [Header("Where to Spawn")]
-    public BoxCollider spawnZone; // The box collider defining spawn area
+    [Tooltip("Index of the spawn zone in EnemySpawner's zone list")]
+    public int spawnZoneIndex;
     
     [Header("When to Spawn")]
     [Tooltip("Spawn this group when total remaining enemies <= this number")]

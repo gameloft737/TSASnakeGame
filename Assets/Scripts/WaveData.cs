@@ -10,10 +10,6 @@ public class WaveData : ScriptableObject
     [Header("Spawn Configuration")]
     public List<SpawnGroup> spawnGroups = new List<SpawnGroup>();
     
-    [Header("Spawn Zones")]
-    [Tooltip("Reference to the EnemySpawner prefab/scene object that has all spawn zones")]
-    public EnemySpawner spawnerPrefab;
-    
     public int GetTotalEnemies()
     {
         int total = 0;

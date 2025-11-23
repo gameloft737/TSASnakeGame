@@ -4,6 +4,7 @@ public abstract class Attack : MonoBehaviour
 {
     [Header("Attack Stats")]
     [SerializeField] protected float damage = 10f;
+    public string attackName;
 
     [Header("Fuel System")]
     [SerializeField] protected float minFuelToActivate = 50f;

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class AttackManager : MonoBehaviour
 {
     [Header("Attack Settings")]
-    [SerializeField] private List<Attack> attacks = new List<Attack>();
+    public List<Attack> attacks = new List<Attack>(); // Made public for UI access
     [SerializeField] private int currentAttackIndex = 0;
 
     [Header("Animation")]
@@ -14,6 +14,7 @@ public class AttackManager : MonoBehaviour
     private Attack CurrentAttack => attacks.Count > 0 && currentAttackIndex < attacks.Count ? attacks[currentAttackIndex] : null;
     
     private bool isHoldingAttack = false;
+    [SerializeField]private WaveManager waveManager;
 
     private void Start()
     {
@@ -25,10 +26,14 @@ public class AttackManager : MonoBehaviour
                 animator = GetComponentInChildren<Animator>();
             }
         }
+        
     }
 
     private void Update()
     {
+        // Don't process attacks during choice phase
+        if (waveManager != null && waveManager.IsInChoicePhase()) return;
+        
         // Handle continuous attacks while holding
         if (isHoldingAttack && CurrentAttack != null)
         {
@@ -38,6 +43,9 @@ public class AttackManager : MonoBehaviour
 
     public void OnAttack(InputAction.CallbackContext context)
     {
+        // Ignore attack input during choice phase
+        if (waveManager != null && waveManager.IsInChoicePhase()) return;
+        
         if (CurrentAttack == null) return;
 
         // Button pressed
@@ -45,8 +53,6 @@ public class AttackManager : MonoBehaviour
         {
             if (CurrentAttack.TryActivate())
             {
-                // For burst attacks, TryActivate handles everything and immediately deactivates
-                // For continuous attacks, we need to track that we're holding
                 if (CurrentAttack.GetAttackType() == Attack.AttackType.Continuous)
                 {
                     isHoldingAttack = true;
