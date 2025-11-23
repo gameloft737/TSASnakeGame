@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 public class LaserAttack : Attack
@@ -13,15 +12,13 @@ public class LaserAttack : Attack
     [SerializeField] private float laserDistance = 8f;
     [SerializeField] private float laserWidth = 0.1f;
     [SerializeField] private LayerMask ignoreMask;
-
-    [Header("References")]
-    [SerializeField] private Transform leftLaserOrigin;
-    [SerializeField] private Transform rightLaserOrigin;
+    [SerializeField] private Transform aimReference; // The object that aims forward (e.g., head)
 
     private AppleEnemy leftTarget;
     private AppleEnemy rightTarget;
     private bool isDamagingLeft = false;
     private bool isDamagingRight = false;
+    private Vector3 convergencePoint;
 
     private void Awake()
     {
@@ -42,7 +39,7 @@ public class LaserAttack : Attack
             lr.enabled = false;
             lr.startWidth = laserWidth;
             lr.endWidth = laserWidth;
-            lr.useWorldSpace = false;
+            lr.useWorldSpace = true; // Changed to world space for easier calculations
         }
     }
 
@@ -52,13 +49,29 @@ public class LaserAttack : Attack
         if (rightLineRenderer != null) rightLineRenderer.enabled = true;
         if (leftParticles != null) leftParticles.Play();
         if (rightParticles != null) rightParticles.Play();
-
     }
 
     protected override void OnHoldUpdate()
     {
-        UpdateLaser(leftLaserOrigin, leftLineRenderer, leftParticles, ref leftTarget, ref isDamagingLeft);
-        UpdateLaser(rightLaserOrigin, rightLineRenderer, rightParticles, ref rightTarget, ref isDamagingRight);
+        // Calculate convergence point first (straight ahead from aim reference)
+        if (aimReference != null)
+        {
+            Ray forwardRay = new Ray(aimReference.position, aimReference.forward);
+            RaycastHit hit;
+            
+            if (Physics.Raycast(forwardRay, out hit, laserDistance, ~ignoreMask))
+            {
+                convergencePoint = hit.point;
+            }
+            else
+            {
+                convergencePoint = aimReference.position + aimReference.forward * laserDistance;
+            }
+        }
+        
+        // Update both lasers to converge at that point
+        UpdateLaser(leftLineRenderer, leftParticles, ref leftTarget, ref isDamagingLeft);
+        UpdateLaser(rightLineRenderer, rightParticles, ref rightTarget, ref isDamagingRight);
     }
 
     protected override void OnDeactivate()
@@ -71,24 +84,30 @@ public class LaserAttack : Attack
         
         if (leftParticles != null) leftParticles.Stop();
         if (rightParticles != null) rightParticles.Stop();
-
     }
 
-    private void UpdateLaser(Transform origin, LineRenderer lineRenderer, ParticleSystem particles, ref AppleEnemy currentTarget, ref bool isDamaging)
+    private void UpdateLaser(LineRenderer lineRenderer, ParticleSystem particles, ref AppleEnemy currentTarget, ref bool isDamaging)
     {
-        if (origin == null || lineRenderer == null) return;
+        if (lineRenderer == null) return;
 
-        Vector3 localStart = Vector3.zero;
-        Vector3 localEnd = Vector3.forward * laserDistance;
-
-        Ray ray = new Ray(origin.position, origin.forward);
+        // Start point is the line renderer's position
+        Vector3 startPoint = lineRenderer.transform.position;
+        
+        // End point is the convergence point
+        Vector3 endPoint = convergencePoint;
+        
+        // Calculate direction from this laser to convergence point
+        Vector3 direction = (endPoint - startPoint).normalized;
+        float maxDistance = Vector3.Distance(startPoint, endPoint);
+        
+        // Raycast along this laser's path to convergence point
+        Ray ray = new Ray(startPoint, direction);
         RaycastHit hit;
-        bool hitSomething = Physics.Raycast(ray, out hit, laserDistance, ~ignoreMask);
+        bool hitSomething = Physics.Raycast(ray, out hit, maxDistance, ~ignoreMask);
 
         if (hitSomething)
         {
-            Vector3 worldEnd = hit.point;
-            localEnd = origin.InverseTransformPoint(worldEnd);
+            endPoint = hit.point;
 
             AppleEnemy hitApple = hit.collider.GetComponentInParent<AppleEnemy>();
 
@@ -116,12 +135,14 @@ public class LaserAttack : Attack
             StopDamaging(ref currentTarget, ref isDamaging);
         }
 
-        lineRenderer.SetPosition(0, localStart);
-        lineRenderer.SetPosition(1, localEnd);
+        // Set line renderer positions
+        lineRenderer.SetPosition(0, startPoint);
+        lineRenderer.SetPosition(1, endPoint);
 
+        // Position particles at end point
         if (particles != null)
         {
-            particles.transform.position = origin.TransformPoint(localEnd);
+            particles.transform.position = endPoint;
         }
     }
 

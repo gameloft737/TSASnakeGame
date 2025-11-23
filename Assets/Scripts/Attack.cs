@@ -1,5 +1,14 @@
 using UnityEngine;
 
+[System.Serializable]
+public class AttackVariation
+{
+    public string attackName;
+    public Material headMaterial;
+    public Material bodyMaterial;
+    public GameObject attachmentObject; // Can be null if no attachment
+}
+
 public abstract class Attack : MonoBehaviour
 {
     [Header("Attack Stats")]
@@ -14,6 +23,9 @@ public abstract class Attack : MonoBehaviour
     [SerializeField] protected AttackType attackType = AttackType.Burst;
     [SerializeField] protected float burstFuelCost = 15f;
     [SerializeField] protected float continuousDrainRate = 10f;
+    
+    [Header("Visual Variation")]
+    [SerializeField] protected AttackVariation visualVariation;
 
     public enum AttackType
     {
@@ -26,8 +38,6 @@ public abstract class Attack : MonoBehaviour
     protected bool isActive = false;
 
     private static Attack lastUsedAttack = null;
-
-    // New: fast global tracking
     protected static int activeAttackCount = 0;
 
     protected virtual void Update()
@@ -54,7 +64,7 @@ public abstract class Attack : MonoBehaviour
         if (CanActivate())
         {
             isActive = true;
-            activeAttackCount += 1;        // increment
+            activeAttackCount += 1;
             lastUsedAttack = this;
             OnActivate();
 
@@ -91,7 +101,7 @@ public abstract class Attack : MonoBehaviour
         if (isActive)
         {
             isActive = false;
-            activeAttackCount -= 1;         // decrement
+            activeAttackCount -= 1;
             OnDeactivate();
         }
     }
@@ -104,6 +114,7 @@ public abstract class Attack : MonoBehaviour
     public bool IsActive() => isActive;
     public float GetDamage() => damage;
     public AttackType GetAttackType() => attackType;
+    public AttackVariation GetVisualVariation() => visualVariation;
 
     // Override these in child classes
     protected virtual void OnActivate() { }

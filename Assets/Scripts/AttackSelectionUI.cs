@@ -19,7 +19,7 @@ public class AttackSelectionUI : MonoBehaviour
     {
         if (waveManager == null)
         {
-            waveManager = FindObjectOfType<WaveManager>();
+            waveManager = FindFirstObjectByType<WaveManager>();
         }
         
         if (continueButton != null)

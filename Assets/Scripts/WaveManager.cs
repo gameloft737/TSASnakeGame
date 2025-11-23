@@ -40,27 +40,27 @@ public class WaveManager : MonoBehaviour
     {
         if (enemySpawner == null)
         {
-            enemySpawner = FindObjectOfType<EnemySpawner>();
+            enemySpawner = FindFirstObjectByType<EnemySpawner>();
         }
         
         if (waveUI == null)
         {
-            waveUI = FindObjectOfType<WaveUI>();
+            waveUI = FindFirstObjectByType<WaveUI>();
         }
         
         if (attackSelectionUI == null)
         {
-            attackSelectionUI = FindObjectOfType<AttackSelectionUI>();
+            attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
         }
         
         if (playerMovement == null)
         {
-            playerMovement = FindObjectOfType<PlayerMovement>();
+            playerMovement = FindFirstObjectByType<PlayerMovement>();
         }
         
         if (attackManager == null)
         {
-            attackManager = FindObjectOfType<AttackManager>();
+            attackManager = FindFirstObjectByType<AttackManager>();
         }
         
         StartWave();

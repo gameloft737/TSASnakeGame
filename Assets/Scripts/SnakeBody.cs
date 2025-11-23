@@ -8,9 +8,14 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private GameObject bodyPartPrefab;
     [SerializeField] private int bodyLength = 5;
     [SerializeField] private float segmentSpacing = 0.5f;
-    [SerializeField] private float minRecordDistance = 0.05f; // Only record when head moves this far
+    [SerializeField] private float minRecordDistance = 0.05f;
 
     [SerializeField] private float impulseCarryover = 0.9f;
+    
+    // Material system
+    [SerializeField] private Renderer headRenderer;
+    private GameObject currentAttachment;
+    
     public List<BodyPart> bodyParts = new List<BodyPart>();
     private List<PositionData> positionHistory = new List<PositionData>();
     private Vector3 lastRecordedPosition;
@@ -20,14 +25,23 @@ public class SnakeBody : MonoBehaviour
     {
         public Vector3 position;
         public Quaternion rotation;
-        public float distanceFromStart; // Cumulative distance traveled
+        public float distanceFromStart;
     }
 
     void Start()
     {
         lastRecordedPosition = head.position;
         
-        // Initialize history with starting position
+        // Get head renderer if not assigned
+        if (headRenderer == null)
+        {
+            headRenderer = head.GetComponent<Renderer>();
+            if (headRenderer == null)
+            {
+                headRenderer = head.GetComponentInChildren<Renderer>();
+            }
+        }
+        
         positionHistory.Add(new PositionData 
         { 
             position = head.position, 
@@ -35,14 +49,12 @@ public class SnakeBody : MonoBehaviour
             distanceFromStart = 0f
         });
 
-        // Create body segments at correct starting positions
         for (int i = 0; i < bodyLength; i++)
         {
             Vector3 startPos = head.position - head.forward * segmentSpacing * (i + 1);
             GameObject part = Instantiate(bodyPartPrefab, startPos, head.rotation);
             bodyParts.Add(part.GetComponent<BodyPart>());
             
-            // Scale the first 3 parts (tail end) as we create them
             if (i < 3)
             {
                 float[] tailScales = { 0.5f, 0.7f, 0.8f, };
@@ -51,9 +63,11 @@ public class SnakeBody : MonoBehaviour
                 part.transform.localScale = scale;
             }
         }
+        
+        // Note: Initial variation is applied by AttackManager.Start(), 
+        // which runs after this and ensures first attack's attachment is visible
     }
 
-    // Input System callback method
     public void OnAdd(InputAction.CallbackContext context)
     {
         if (context.performed)
@@ -65,7 +79,6 @@ public class SnakeBody : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Only record new position if head has moved significantly
         float distanceMoved = Vector3.Distance(head.position, lastRecordedPosition);
         isHeadMoving = distanceMoved >= minRecordDistance;
         
@@ -85,8 +98,6 @@ public class SnakeBody : MonoBehaviour
             lastRecordedPosition = head.position;
         }
 
-        // Update each body part based on DISTANCE, not time
-        // REVERSED: Count from the end so newest parts (end of list) follow closest to head
         for (int i = 0; i < bodyParts.Count; i++)
         {
             int reverseIndex = bodyParts.Count - 1 - i;
@@ -95,22 +106,20 @@ public class SnakeBody : MonoBehaviour
             bodyParts[i].FollowTarget(targetData.position, targetData.rotation, isHeadMoving);
         }
 
-        // Clean up old history (keep extra buffer for safety)
         float maxDistance = bodyLength * segmentSpacing + segmentSpacing * 2;
         CleanupHistory(maxDistance);
     }
+    
     public void ApplyForceToBody(Vector3 direction, float force)
     {
         Vector3 lungeDirection = direction;
         
-        // Project along surface if grounded
         PlayerMovement pm = GetComponent<PlayerMovement>();
         if (pm != null && pm.IsGrounded())
         {
             lungeDirection = Vector3.ProjectOnPlane(direction, Vector3.up).normalized;
         }
         
-        // Apply scaled force to each body part (80% to keep them tight)
         foreach (BodyPart part in bodyParts)
         {
             Rigidbody partRb = part.GetComponent<Rigidbody>();
@@ -120,18 +129,17 @@ public class SnakeBody : MonoBehaviour
             }
         }
     }
+    
     public void IncreaseSize(int amount = 1)
     {
         for (int i = 0; i < amount; i++)
         {
-            // Spawn new segment right behind the head
             Vector3 spawnPos = head.position - head.forward * segmentSpacing;
             Quaternion spawnRot = head.rotation;
             
             GameObject newPart = Instantiate(bodyPartPrefab, spawnPos, spawnRot);
             BodyPart bodyPartComponent = newPart.GetComponent<BodyPart>();
             
-            // Add to the END of the list (newest parts at end)
             bodyParts.Add(bodyPartComponent);
             bodyLength++;
         }
@@ -142,6 +150,56 @@ public class SnakeBody : MonoBehaviour
         return bodyLength;
     }
 
+    // ===== MATERIAL SYSTEM METHODS =====
+    
+    /// <summary>
+    /// Changes the appearance of the snake based on attack variation
+    /// </summary>
+    public void ApplyAttackVariation(Material headMaterial, Material bodyMaterial, GameObject attachmentObject)
+    {
+        // Change head material
+        if (headRenderer != null && headMaterial != null)
+        {
+            headRenderer.material = headMaterial;
+        }
+        
+        // Change all body part materials
+        if (bodyMaterial != null)
+        {
+            foreach (BodyPart part in bodyParts)
+            {
+                part.SetMaterial(bodyMaterial);
+            }
+        }
+        
+        // Handle attachment - hide all, then show the selected one
+        if (currentAttachment != null)
+        {
+            currentAttachment.SetActive(false);
+            currentAttachment = null;
+        }
+        
+        // If an attachment is specified, activate it
+        if (attachmentObject != null)
+        {
+            currentAttachment = attachmentObject;
+            currentAttachment.SetActive(true);
+            
+        }
+    }
+    
+    /// <summary>
+    /// Hide current attachment
+    /// </summary>
+    public void ClearAttachment()
+    {
+        if (currentAttachment != null)
+        {
+            currentAttachment.SetActive(false);
+            currentAttachment = null;
+        }
+    }
+
     private PositionData GetPositionAtDistance(float targetDistance)
     {
         if (positionHistory.Count == 0)
@@ -150,11 +208,9 @@ public class SnakeBody : MonoBehaviour
         float currentTotalDistance = positionHistory[0].distanceFromStart;
         float distanceFromHead = currentTotalDistance - targetDistance;
 
-        // If target is ahead of all history, return the oldest position
         if (distanceFromHead < 0)
             return positionHistory[positionHistory.Count - 1];
 
-        // Find the two history points that surround our target distance
         for (int i = 0; i < positionHistory.Count - 1; i++)
         {
             float dist1 = positionHistory[i].distanceFromStart;
@@ -162,7 +218,6 @@ public class SnakeBody : MonoBehaviour
 
             if (distanceFromHead >= dist2 && distanceFromHead <= dist1)
             {
-                // Interpolate between these two points
                 float segmentLength = dist1 - dist2;
                 float t = segmentLength > 0 ? (distanceFromHead - dist2) / segmentLength : 0;
 
@@ -175,7 +230,6 @@ public class SnakeBody : MonoBehaviour
             }
         }
 
-        // Fallback to most recent position
         return positionHistory[0];
     }
 
@@ -185,7 +239,6 @@ public class SnakeBody : MonoBehaviour
 
         float currentDistance = positionHistory[0].distanceFromStart;
         
-        // Remove positions that are too far back
         for (int i = positionHistory.Count - 1; i >= 0; i--)
         {
             if (currentDistance - positionHistory[i].distanceFromStart > maxDistance)
@@ -195,7 +248,6 @@ public class SnakeBody : MonoBehaviour
         }
     }
 
-    // Debug visualization
     private void OnDrawGizmos()
     {
         if (positionHistory == null || positionHistory.Count < 2) return;

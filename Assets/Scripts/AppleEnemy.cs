@@ -44,6 +44,7 @@ public class AppleEnemy : MonoBehaviour
     private Vector3 lastValidVelocity;
     private bool isInitialized = false;
 
+    private bool isDead = false;
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -294,8 +295,12 @@ public class AppleEnemy : MonoBehaviour
         }
     }
 
+
     private void Die()
     {
+        if (isDead) return;
+        isDead = true;
+
         if (biteParticles != null)
         {
             biteParticles.Stop();

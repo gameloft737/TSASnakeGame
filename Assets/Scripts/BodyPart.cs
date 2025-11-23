@@ -3,11 +3,15 @@ using UnityEngine;
 public class BodyPart : MonoBehaviour
 {
     private Rigidbody rb;
-    [SerializeField] private float positionStrength = 50f; // Proportional term
-    [SerializeField] private float dampingStrength = 10f;  // Derivative term (anti-bounce)
+    [SerializeField] private float positionStrength = 50f;
+    [SerializeField] private float dampingStrength = 10f;
     [SerializeField] private float rotationSpeed = 10f;
     [SerializeField] private float maxSpeed = 20f;
-    [SerializeField] private float stoppedDamping = 5f;    // Extra damping when head stopped
+    [SerializeField] private float stoppedDamping = 5f;
+    
+    // Material changing support
+    [SerializeField] private Renderer bodyRenderer;
+    private MaterialPropertyBlock propBlock;
 
     private void Awake()
     {
@@ -16,22 +20,30 @@ public class BodyPart : MonoBehaviour
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         
-        // Light drag helps stability
         rb.linearDamping = 1f;
         rb.angularDamping = 0.5f;
+        
+        // Get renderer if not assigned
+        if (bodyRenderer == null)
+        {
+            bodyRenderer = GetComponent<Renderer>();
+            if (bodyRenderer == null)
+            {
+                bodyRenderer = GetComponentInChildren<Renderer>();
+            }
+        }
+        
+        propBlock = new MaterialPropertyBlock();
     }
 
     public void FollowTarget(Vector3 targetPos, Quaternion targetRot, bool headIsMoving)
     {
         Vector3 positionError = targetPos - transform.position;
         
-        // When head stops, heavily dampen the body parts
         if (!headIsMoving)
         {
-            // Apply strong damping force to quickly stop movement
             rb.AddForce(-rb.linearVelocity * stoppedDamping, ForceMode.Acceleration);
             
-            // Only apply weak correction force if error is significant
             if (positionError.magnitude > 0.05f)
             {
                 Vector3 weakForce = positionError * (positionStrength * 0.2f);
@@ -40,7 +52,6 @@ public class BodyPart : MonoBehaviour
         }
         else
         {
-            // Normal PD controller when head is moving
             Vector3 targetVelocity = positionError * positionStrength;
             Vector3 velocityError = targetVelocity - rb.linearVelocity;
             
@@ -48,14 +59,31 @@ public class BodyPart : MonoBehaviour
             rb.AddForce(force, ForceMode.Acceleration);
         }
         
-        // Cap speed to prevent extreme forces
         if (rb.linearVelocity.magnitude > maxSpeed)
         {
             rb.linearVelocity = rb.linearVelocity.normalized * maxSpeed;
         }
         
-        // Smooth rotation towards target
         Quaternion newRot = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime);
         rb.MoveRotation(newRot);
+    }
+    
+    // Change material of this body part
+    public void SetMaterial(Material newMaterial)
+    {
+        if (bodyRenderer != null && newMaterial != null)
+        {
+            bodyRenderer.material = newMaterial;
+        }
+    }
+    
+    // More efficient version using MaterialPropertyBlock (doesn't create material instances)
+    public void SetColor(Color color)
+    {
+        if (bodyRenderer != null)
+        {
+            propBlock.SetColor("_Color", color);
+            bodyRenderer.SetPropertyBlock(propBlock);
+        }
     }
 }

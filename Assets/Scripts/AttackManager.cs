@@ -5,16 +5,19 @@ using System.Collections.Generic;
 public class AttackManager : MonoBehaviour
 {
     [Header("Attack Settings")]
-    public List<Attack> attacks = new List<Attack>(); // Made public for UI access
+    public List<Attack> attacks = new List<Attack>();
     [SerializeField] private int currentAttackIndex = 0;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
+    
+    [Header("References")]
+    [SerializeField] private SnakeBody snakeBody;
 
     private Attack CurrentAttack => attacks.Count > 0 && currentAttackIndex < attacks.Count ? attacks[currentAttackIndex] : null;
     
     private bool isHoldingAttack = false;
-    [SerializeField]private WaveManager waveManager;
+    [SerializeField] private WaveManager waveManager;
 
     private void Start()
     {
@@ -27,14 +30,19 @@ public class AttackManager : MonoBehaviour
             }
         }
         
+        if (snakeBody == null)
+        {
+            snakeBody = GetComponent<SnakeBody>();
+        }
+        
+        // Apply initial variation
+        ApplyCurrentVariation();
     }
 
     private void Update()
     {
-        // Don't process attacks during choice phase
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
         
-        // Handle continuous attacks while holding
         if (isHoldingAttack && CurrentAttack != null)
         {
             CurrentAttack.HoldUpdate();
@@ -43,12 +51,10 @@ public class AttackManager : MonoBehaviour
 
     public void OnAttack(InputAction.CallbackContext context)
     {
-        // Ignore attack input during choice phase
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
         
         if (CurrentAttack == null) return;
 
-        // Button pressed
         if (context.started)
         {
             if (CurrentAttack.TryActivate())
@@ -59,7 +65,6 @@ public class AttackManager : MonoBehaviour
                 }
             }
         }
-        // Button released
         else if (context.canceled)
         {
             if (isHoldingAttack)
@@ -72,7 +77,6 @@ public class AttackManager : MonoBehaviour
 
     public void SetAttackIndex(int index)
     {
-        // Stop current attack if switching
         if (isHoldingAttack && CurrentAttack != null)
         {
             CurrentAttack.StopUsing();
@@ -82,6 +86,7 @@ public class AttackManager : MonoBehaviour
         if (index >= 0 && index < attacks.Count)
         {
             currentAttackIndex = index;
+            ApplyCurrentVariation();
         }
     }
 
@@ -107,6 +112,40 @@ public class AttackManager : MonoBehaviour
         {
             attacks.Add(newAttack);
         }
+    }
+    
+    /// <summary>
+    /// Apply the visual variation for the current attack
+    /// </summary>
+    private void ApplyCurrentVariation()
+    {
+        if (snakeBody == null || CurrentAttack == null) return;
+        
+        AttackVariation variation = CurrentAttack.GetVisualVariation();
+        if (variation == null) return;
+        
+        snakeBody.ApplyAttackVariation(
+            variation.headMaterial,
+            variation.bodyMaterial,
+            variation.attachmentObject
+        );
+    }
+    
+    /// <summary>
+    /// Manually apply a specific variation from an attack
+    /// </summary>
+    public void ApplyVariation(int attackIndex)
+    {
+        if (snakeBody == null || attackIndex < 0 || attackIndex >= attacks.Count) return;
+        
+        AttackVariation variation = attacks[attackIndex].GetVisualVariation();
+        if (variation == null) return;
+        
+        snakeBody.ApplyAttackVariation(
+            variation.headMaterial,
+            variation.bodyMaterial,
+            variation.attachmentObject
+        );
     }
 
     public Attack GetCurrentAttack() => CurrentAttack;
