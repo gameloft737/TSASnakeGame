@@ -1,73 +1,97 @@
-using UnityEngine;
 using System.Collections;
+using UnityEngine;
 
 public class BasicContactAttack : MonoBehaviour
 {
-    [Header("Contact Attack Settings")]
-    [SerializeField] private float damage;
-    [SerializeField] private float damageDelay = 0.2f;
-    [SerializeField] private float cooldown = 1f;
-    [SerializeField] private float damageRadius = 3f;
-    [SerializeField] private LayerMask enemyLayer;
-    
-    [SerializeField] private float lungeForce = 30f;
-    
-    [Header("Animation")]
-    [SerializeField] private string attackTrigger = "bite";
-    
-    [SerializeField] private AttackManager attackManager;
-    [SerializeField] private PlayerMovement playerMovement;
-    [SerializeField] private SnakeBody snakeBody;
+    [Header("Timing")]
+    [SerializeField] private float mouthOpenDelay = 0.2f;
+    [SerializeField] private float mouthCloseDelay = 0.3f;
 
-    private float lastAttackTime = -999f;
+    [Header("Detection")]
+    [SerializeField] private float nearbyRange = 3f;
+    [SerializeField] private LayerMask enemyLayer;
+
+    [Header("Animation")]
+    [SerializeField] private AttackManager attackManager;
+    [SerializeField] private string mouthOpenBool = "mouthOpen";
+
+    private bool mouthOpen;
+    private bool waitingToOpen;
+    private float closeTimer;
 
     private void OnTriggerEnter(Collider other)
     {
-        // Check cooldown
-        if (Time.time < lastAttackTime + cooldown) return;
-
-        Debug.Log(other.transform);
         AppleEnemy enemy = other.GetComponentInParent<AppleEnemy>();
-            
-        if (enemy != null)
+        if (enemy == null || enemy.isMetal) return;
+
+        if (!mouthOpen && !waitingToOpen)
         {
-            lastAttackTime = Time.time;
-            StartCoroutine(DealDamageAfterDelay());
+            waitingToOpen = true;
+            StartCoroutine(OpenAfterDelay(enemy));
         }
     }
 
-    private IEnumerator DealDamageAfterDelay()
+    private IEnumerator OpenAfterDelay(AppleEnemy enemy)
     {
-        yield return new WaitForSeconds(damageDelay);
-        
+        yield return new WaitForSeconds(mouthOpenDelay);
+
+        waitingToOpen = false;
+        mouthOpen = true;
+
         if (attackManager != null)
-        {
-            attackManager.TriggerAnimation(attackTrigger);
-        }
+            attackManager.SetBool(mouthOpenBool, true);
+
+        if (enemy != null)
+            enemy.Die();
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        AppleEnemy enemy = other.GetComponentInParent<AppleEnemy>();
+        if (enemy == null || enemy.isMetal) return;
+
+        if (mouthOpen)
+            enemy.Die();
         
-        // Find all enemies in radius
-        Collider[] hitColliders = Physics.OverlapSphere(transform.position, damageRadius, enemyLayer);
-        
-        foreach (Collider col in hitColliders)
+    }
+
+    private void Update()
+    {
+        if (!mouthOpen) return;
+
+        bool enemyNearby = false;
+
+        Collider[] hits = Physics.OverlapSphere(transform.position, nearbyRange, enemyLayer);
+
+        foreach (var h in hits)
         {
-            AppleEnemy enemy = col.GetComponentInParent<AppleEnemy>();
-            if (enemy != null)
+            AppleEnemy e = h.GetComponentInParent<AppleEnemy>();
+            if (e != null && !e.isMetal)
             {
-                enemy.TakeDamage(damage);
+                enemyNearby = true;
+                break;
             }
         }
-        
-        playerMovement.ApplyLunge(lungeForce);
-        
-        if (snakeBody != null)
+
+        if (enemyNearby)
         {
-            snakeBody.ApplyForceToBody(transform.forward, lungeForce);
+            closeTimer = Time.time + mouthCloseDelay;
+        }
+        else
+        {
+            if (Time.time >= closeTimer)
+            {
+                mouthOpen = false;
+
+                if (attackManager != null)
+                    attackManager.SetBool(mouthOpenBool, false);
+            }
         }
     }
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, damageRadius);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, nearbyRange);
     }
 }

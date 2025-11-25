@@ -37,13 +37,13 @@ public abstract class Attack : MonoBehaviour
     protected static float sharedFuel = MAX_FUEL;
     protected bool isActive = false;
 
-    private static Attack lastUsedAttack = null;
     protected static int activeAttackCount = 0;
+    protected static Attack currentActiveAttack = null;
 
     protected virtual void Update()
     {
-        // Only recharge if no attacks are active and this was the last attack used
-        if (!IsAnyAttackActive() && sharedFuel < MAX_FUEL && lastUsedAttack == this)
+        // Only the current active attack handles recharging
+        if (currentActiveAttack == this && !IsAnyAttackActive() && sharedFuel < MAX_FUEL)
         {
             sharedFuel = Mathf.Min(MAX_FUEL, sharedFuel + fuelRechargeRate * Time.deltaTime);
         }
@@ -65,7 +65,6 @@ public abstract class Attack : MonoBehaviour
         {
             isActive = true;
             activeAttackCount += 1;
-            lastUsedAttack = this;
             OnActivate();
 
             if (attackType == AttackType.Burst)
@@ -101,9 +100,15 @@ public abstract class Attack : MonoBehaviour
         if (isActive)
         {
             isActive = false;
-            activeAttackCount -= 1;
+            activeAttackCount = Mathf.Max(0, activeAttackCount - 1);
             OnDeactivate();
         }
+    }
+
+    // Called by AttackManager when this becomes the active attack
+    public void SetAsCurrentAttack()
+    {
+        currentActiveAttack = this;
     }
 
     // Getters

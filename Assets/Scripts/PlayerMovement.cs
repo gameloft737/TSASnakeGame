@@ -9,7 +9,8 @@ public class PlayerMovement : MonoBehaviour
     public float maxSpeed = 5f;
     public float defaultSpeed = 2f; // Speed when not boosting
     [SerializeField] private float rotationSpeed = 180f;
-    [SerializeField] private float aimRotationSpeed = 30f; // Mouse sensitivity for aim mode
+    [SerializeField] private float mouseSensitivity = 2f; // Mouse sensitivity (not multiplied by deltaTime!)
+    [SerializeField] private float mouseSmoothing = 0.15f; // Lower = smoother, higher = more responsive
     [SerializeField] private float aimInputDelay = 0.5f; // Delay before look input is active
     [SerializeField] private float surfaceAlignSpeed = 10f;
     [SerializeField] private float gravityForce = 20f;
@@ -31,12 +32,14 @@ public class PlayerMovement : MonoBehaviour
     
     [Header("Camera Reference")]
     [SerializeField] private CameraManager cameraManager;
+    [SerializeField] private bool useMouseInAimMode = true; // Toggle which camera mode uses mouse
 
     private Rigidbody rb;
     [SerializeField]private bool isGrounded;
     private bool moveForward;
     private float rotationInput;
     private Vector2 lookInput; // Mouse/look input
+    private Vector2 smoothedLookInput; // Smoothed mouse input
     private Vector3 surfaceNormal = Vector3.up;
     private float aimStartTime; // Track when aiming started
     private bool wasAiming; // Track previous aim state
@@ -52,6 +55,7 @@ public class PlayerMovement : MonoBehaviour
     {
         CheckGround();
         AlignToSurface();
+        SmoothMouseInput();
         HandleRotation();
         UpdateWeaponRotation();
     }
@@ -124,6 +128,12 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    private void SmoothMouseInput()
+    {
+        // Smooth the mouse input using lerp
+        smoothedLookInput = Vector2.Lerp(smoothedLookInput, lookInput, 1f - mouseSmoothing);
+    }
+
     private void HandleRotation()
     {
         if (orientation == null) return;
@@ -137,8 +147,12 @@ public class PlayerMovement : MonoBehaviour
         if (isAiming && !wasAiming)
         {
             aimStartTime = Time.time;
+            smoothedLookInput = Vector2.zero; // Reset smoothing when entering aim mode
         }
         wasAiming = isAiming;
+        
+        // Determine if we should use mouse based on mode and settings
+        bool shouldUseMouse = (isAiming && useMouseInAimMode) || (!isAiming && !useMouseInAimMode);
         
         if (isAiming)
         {
@@ -146,14 +160,34 @@ public class PlayerMovement : MonoBehaviour
             float timeSinceAimStart = Time.time - aimStartTime;
             if (timeSinceAimStart >= aimInputDelay)
             {
-                // Use mouse/look input for rotation when aiming (after delay)
-                rotation = lookInput.x * aimRotationSpeed * Time.deltaTime;
+                if (shouldUseMouse)
+                {
+                    // Use BOTH keyboard AND mouse input
+                    float mouseRotation = smoothedLookInput.x * mouseSensitivity;
+                    float keyboardRotation = rotationInput * rotationSpeed * Time.deltaTime;
+                    rotation = mouseRotation + keyboardRotation;
+                }
+                else
+                {
+                    // Use ONLY keyboard input
+                    rotation = rotationInput * rotationSpeed * Time.deltaTime;
+                }
             }
         }
         else
         {
-            // Use keyboard input for rotation when not aiming
-            rotation = rotationInput * rotationSpeed * Time.deltaTime;
+            if (shouldUseMouse)
+            {
+                // Use BOTH keyboard AND mouse input
+                float mouseRotation = smoothedLookInput.x * mouseSensitivity;
+                float keyboardRotation = rotationInput * rotationSpeed * Time.deltaTime;
+                rotation = mouseRotation + keyboardRotation;
+            }
+            else
+            {
+                // Use ONLY keyboard input
+                rotation = rotationInput * rotationSpeed * Time.deltaTime;
+            }
         }
         
         orientation.Rotate(Vector3.up, rotation, Space.Self);

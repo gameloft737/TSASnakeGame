@@ -13,12 +13,20 @@ public class LaserAttack : Attack
     [SerializeField] private float laserWidth = 0.1f;
     [SerializeField] private LayerMask ignoreMask;
     [SerializeField] private Transform aimReference; // The object that aims forward (e.g., head)
+    [SerializeField] private float mouseSensitivity = 0.5f; // How much mouse movement affects rotation
+    [SerializeField] private float minXRotation = -5f; // Minimum X rotation
+    [SerializeField] private float maxXRotation = 5f; // Maximum X rotation
+    
+    [Header("Mouse Look Reference")]
+    [SerializeField] private MouseLookAt mouseLookAt;
+    [SerializeField] private CameraManager cameraManager;
 
     private AppleEnemy leftTarget;
     private AppleEnemy rightTarget;
     private bool isDamagingLeft = false;
     private bool isDamagingRight = false;
     private Vector3 convergencePoint;
+    private float targetXRotation; // Current X rotation from mouse input
 
     private void Awake()
     {
@@ -39,7 +47,7 @@ public class LaserAttack : Attack
             lr.enabled = false;
             lr.startWidth = laserWidth;
             lr.endWidth = laserWidth;
-            lr.useWorldSpace = true; // Changed to world space for easier calculations
+            lr.useWorldSpace = true;
         }
     }
 
@@ -53,20 +61,41 @@ public class LaserAttack : Attack
 
     protected override void OnHoldUpdate()
     {
-        // Calculate convergence point first (straight ahead from aim reference)
+        // Update X rotation based on mouse input when aiming
+        if (cameraManager != null && cameraManager.IsAiming() && mouseLookAt != null)
+        {
+            Vector2 smoothedInput = mouseLookAt.GetSmoothedLookInput();
+            // Negate the Y input to invert control
+            targetXRotation -= smoothedInput.y * mouseSensitivity;
+            targetXRotation = Mathf.Clamp(targetXRotation, minXRotation, maxXRotation);
+        }
+        else
+        {
+            // Return to neutral when not aiming
+            targetXRotation = Mathf.Lerp(targetXRotation, 0f, 5f * Time.deltaTime);
+        }
+        
+        // Calculate the rotated direction from aimReference
+        Vector3 rotatedDirection = aimReference.forward;
         if (aimReference != null)
         {
-            Ray forwardRay = new Ray(aimReference.position, aimReference.forward);
-            RaycastHit hit;
-            
-            if (Physics.Raycast(forwardRay, out hit, laserDistance, ~ignoreMask))
-            {
-                convergencePoint = hit.point;
-            }
-            else
-            {
-                convergencePoint = aimReference.position + aimReference.forward * laserDistance;
-            }
+            // Apply rotation around the right axis (X-axis rotation)
+            // Negate to invert: looking down makes laser go up
+            Quaternion rotationOffset = Quaternion.AngleAxis(-targetXRotation, aimReference.right);
+            rotatedDirection = rotationOffset * aimReference.forward;
+        }
+        
+        // Calculate convergence point using the rotated direction
+        Ray forwardRay = new Ray(aimReference.position, rotatedDirection);
+        RaycastHit hit;
+        
+        if (Physics.Raycast(forwardRay, out hit, laserDistance, ~ignoreMask))
+        {
+            convergencePoint = hit.point;
+        }
+        else
+        {
+            convergencePoint = aimReference.position + rotatedDirection * laserDistance;
         }
         
         // Update both lasers to converge at that point

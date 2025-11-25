@@ -33,6 +33,7 @@ public class AppleEnemy : MonoBehaviour
     [Header("Apple Health")]
     [SerializeField] private float maxHealth = 100f;
     
+    public bool isMetal = false;
     private Transform nearestBodyPart;
     private float contactTimer = 0f;
     private float biteTimer = 0f;
@@ -296,7 +297,7 @@ public class AppleEnemy : MonoBehaviour
     }
 
 
-    private void Die()
+    public void Die()
     {
         if (isDead) return;
         isDead = true;

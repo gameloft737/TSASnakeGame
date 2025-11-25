@@ -5030,6 +5030,7 @@ MonoBehaviour:
   maxDamage: 15
   agentReEnableDelay: 0.5
   maxHealth: 20
+  isMetal: 1
 --- !u!1001 &8725219316448422186
 PrefabInstance:
   m_ObjectHideFlags: 0

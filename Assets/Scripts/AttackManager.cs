@@ -35,8 +35,12 @@ public class AttackManager : MonoBehaviour
             snakeBody = GetComponent<SnakeBody>();
         }
         
-        // Apply initial variation
+        // Apply initial variation and set as current attack
         ApplyCurrentVariation();
+        if (CurrentAttack != null)
+        {
+            CurrentAttack.SetAsCurrentAttack();
+        }
     }
 
     private void Update()
@@ -87,6 +91,12 @@ public class AttackManager : MonoBehaviour
         {
             currentAttackIndex = index;
             ApplyCurrentVariation();
+            
+            // Set the new attack as the current one for fuel recharging
+            if (CurrentAttack != null)
+            {
+                CurrentAttack.SetAsCurrentAttack();
+            }
         }
     }
 
@@ -173,6 +183,12 @@ public class AttackManager : MonoBehaviour
             animator.SetTrigger(triggerName);
         }
     }
-
+    public void SetBool(string boolName, bool value)
+    {
+        if (animator != null && !string.IsNullOrEmpty(boolName))
+        {
+            animator.SetBool(boolName, value);
+        }
+    }
     public Animator GetAnimator() => animator;
 }
