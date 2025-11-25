@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections;
 using System.Collections.Generic;
 
 public class WaveManager : MonoBehaviour
@@ -81,8 +82,9 @@ public class WaveManager : MonoBehaviour
         inChoicePhase = false;
         spawnedGroups.Clear();
         
-        // Enable player movement
+        // Enable player movement and unpause attacks
         SetPlayerMovement(true);
+        SetAttacksPaused(false);
         
         if (waveUI != null)
         {
@@ -142,18 +144,20 @@ public class WaveManager : MonoBehaviour
     private void EndWave()
     {
         waveActive = false;
+        
+        // Stop player movement and pause attacks immediately
+        SetPlayerMovement(false);
+        SetAttacksPaused(true);
+        
+        OnWaveComplete?.Invoke();
+        
         inChoicePhase = true;
         
-        // Stop player movement
-        SetPlayerMovement(false);
-        
-        // Show attack selection UI
+        // Show attack selection UI with animation
         if (attackSelectionUI != null && attackManager != null)
         {
             attackSelectionUI.ShowAttackSelection(attackManager);
         }
-        
-        OnWaveComplete?.Invoke();
     }
 
     public void OnAttackSelected()
@@ -174,8 +178,9 @@ public class WaveManager : MonoBehaviour
         inChoicePhase = true;
         spawnedGroups.Clear();
         
-        // Stop player and show choices
+        // Stop player and pause attacks
         SetPlayerMovement(false);
+        SetAttacksPaused(true);
         
         if (attackSelectionUI != null && attackManager != null)
         {
@@ -199,6 +204,14 @@ public class WaveManager : MonoBehaviour
                     rb.angularVelocity = Vector3.zero;
                 }
             }
+        }
+    }
+    
+    private void SetAttacksPaused(bool paused)
+    {
+        if (attackManager != null)
+        {
+            attackManager.SetPaused(paused);
         }
     }
 

@@ -125,6 +125,22 @@ public class AttackManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Called when entering/exiting pause state
+    /// </summary>
+    public void SetPaused(bool paused)
+    {
+        // Stop any held attacks when pausing
+        if (paused && isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.StopUsing();
+            isHoldingAttack = false;
+        }
+        
+        // Notify all attacks about pause state
+        Attack.SetPaused(paused);
+    }
+    
+    /// <summary>
     /// Apply the visual variation for the current attack
     /// </summary>
     private void ApplyCurrentVariation()
@@ -183,6 +199,7 @@ public class AttackManager : MonoBehaviour
             animator.SetTrigger(triggerName);
         }
     }
+    
     public void SetBool(string boolName, bool value)
     {
         if (animator != null && !string.IsNullOrEmpty(boolName))
@@ -190,5 +207,6 @@ public class AttackManager : MonoBehaviour
             animator.SetBool(boolName, value);
         }
     }
+    
     public Animator GetAnimator() => animator;
 }

@@ -39,9 +39,15 @@ public abstract class Attack : MonoBehaviour
 
     protected static int activeAttackCount = 0;
     protected static Attack currentActiveAttack = null;
+    
+    // Pause state tracking
+    protected static bool isPaused = false;
 
     protected virtual void Update()
     {
+        // Don't update fuel if paused
+        if (isPaused) return;
+        
         // Only the current active attack handles recharging
         if (currentActiveAttack == this && !IsAnyAttackActive() && sharedFuel < MAX_FUEL)
         {
@@ -56,7 +62,7 @@ public abstract class Attack : MonoBehaviour
 
     public bool CanActivate()
     {
-        return sharedFuel >= minFuelToActivate;
+        return sharedFuel >= minFuelToActivate && !isPaused;
     }
 
     public bool TryActivate()
@@ -80,7 +86,8 @@ public abstract class Attack : MonoBehaviour
 
     public void HoldUpdate()
     {
-        if (!isActive) return;
+        // Don't update fuel if paused
+        if (!isActive || isPaused) return;
 
         OnHoldUpdate();
 
@@ -109,6 +116,24 @@ public abstract class Attack : MonoBehaviour
     public void SetAsCurrentAttack()
     {
         currentActiveAttack = this;
+    }
+    
+    // Called by WaveManager to set pause state
+    public static void SetPaused(bool paused)
+    {
+        isPaused = paused;
+        
+        // Force stop all active attacks when pausing
+        if (paused && currentActiveAttack != null)
+        {
+            currentActiveAttack.StopUsing();
+        }
+        
+        // Refill fuel to max when unpausing
+        if (!paused)
+        {
+            sharedFuel = MAX_FUEL;
+        }
     }
 
     // Getters

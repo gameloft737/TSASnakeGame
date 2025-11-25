@@ -1,97 +1,168 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 public class AttackSelectionUI : MonoBehaviour
 {
+    [Header("Animator")]
+    [SerializeField] private Animator uiAnimator;
+    [SerializeField] private string openTrigger = "OpenUI";
+    [SerializeField] private string closeTrigger = "CloseUI";
+    
     [Header("UI References")]
+    [SerializeField] private Volume postProcessVolume;
     [SerializeField] private GameObject selectionPanel;
     [SerializeField] private Transform attackButtonContainer;
     [SerializeField] private GameObject attackButtonPrefab;
     [SerializeField] private Button continueButton;
-    
-    [SerializeField]private AttackManager attackManager;
-    [SerializeField]private WaveManager waveManager;
+
+    private DepthOfField dof;
+
+    [SerializeField] private AttackManager attackManager;
+    [SerializeField] private WaveManager waveManager;
     private List<GameObject> spawnedButtons = new List<GameObject>();
+
+    [Header("DOF Settings")]
+    [SerializeField] private float blurTime = 0.4f;
+    [SerializeField] private float targetStart = 3f;
+    [SerializeField] private float targetEnd = 10f;
+[Header("Fade Overlay")]
+[SerializeField] private RawImage fadeOverlay;
+[SerializeField] private float overlayMaxOpacity = 0.35f;
+
+    private Coroutine dofRoutine;
 
     private void Start()
     {
-        if (waveManager == null)
-        {
-            waveManager = FindFirstObjectByType<WaveManager>();
-        }
-        
-        if (continueButton != null)
-        {
-            continueButton.onClick.AddListener(OnContinueClicked);
-        }
-        
-        HideAttackSelection();
+        postProcessVolume.profile.TryGet(out dof);
+
+        if (uiAnimator == null) uiAnimator = GetComponent<Animator>();
+        if (waveManager == null) waveManager = FindFirstObjectByType<WaveManager>();
+        if (continueButton != null) continueButton.onClick.AddListener(OnContinueClicked);
+
+        HideInstant();
     }
+
+   private IEnumerator LerpDOF(bool enable)
+    {
+        if (dof == null) yield break;
+
+        dof.active = true;
+
+        float startStart = dof.gaussianStart.value;
+        float startEnd = dof.gaussianEnd.value;
+
+        float endStart = enable ? targetStart : 0f;
+        float endEnd = enable ? targetEnd : 0f;
+
+        float startAlpha = fadeOverlay != null ? fadeOverlay.color.a : 0f;
+        float endAlpha = enable ? overlayMaxOpacity : 0f;
+
+        float t = 0f;
+
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / blurTime;
+
+            float lerp = Mathf.Clamp01(t);
+
+            dof.gaussianStart.value = Mathf.Lerp(startStart, endStart, lerp);
+            dof.gaussianEnd.value = Mathf.Lerp(startEnd, endEnd, lerp);
+
+            if (fadeOverlay != null)
+            {
+                Color c = fadeOverlay.color;
+                c.a = Mathf.Lerp(startAlpha, endAlpha, lerp);
+                fadeOverlay.color = c;
+            }
+
+            yield return null;
+        }
+
+        if (!enable) dof.active = false;
+    }
+
+
+    private Coroutine BlurThenOpenRoutine;
 
     public void ShowAttackSelection(AttackManager manager)
     {
         attackManager = manager;
-        
-        if (selectionPanel != null)
-        {
-            selectionPanel.SetActive(true);
-        }
-        
-        // Clear old buttons
-        foreach (var button in spawnedButtons)
-        {
-            Destroy(button);
-        }
+
+        if (BlurThenOpenRoutine != null) StopCoroutine(BlurThenOpenRoutine);
+        BlurThenOpenRoutine = StartCoroutine(BlurThenOpen());
+    }
+
+    private IEnumerator BlurThenOpen()
+    {
+       
+
+        if (dofRoutine != null) StopCoroutine(dofRoutine);
+        dofRoutine = StartCoroutine(LerpDOF(true));
+
+        yield return dofRoutine;
+         if (selectionPanel != null) selectionPanel.SetActive(true);
+        SpawnButtons();
+
+        if (uiAnimator != null) uiAnimator.SetTrigger(openTrigger);
+
+        Time.timeScale = 0f;
+    }
+
+    private void SpawnButtons()
+    {
+        foreach (var button in spawnedButtons) Destroy(button);
         spawnedButtons.Clear();
-        
-        // Create button for each attack
+
         for (int i = 0; i < attackManager.GetAttackCount(); i++)
         {
             int attackIndex = i;
             Attack attack = attackManager.attacks[i];
-            
+
             GameObject buttonObj = Instantiate(attackButtonPrefab, attackButtonContainer);
             spawnedButtons.Add(buttonObj);
-            
-            // Setup button
+
             Button button = buttonObj.GetComponent<Button>();
             TextMeshProUGUI buttonText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
             Image buttonImage = buttonObj.GetComponent<Image>();
-            
-            if (buttonText != null && attack != null)
-            {
-                buttonText.text = attack.attackName;
-            }
-            
-            // Highlight current attack
+
+            if (buttonText != null && attack != null) buttonText.text = attack.attackName;
+
             if (attackIndex == attackManager.GetCurrentAttackIndex())
             {
-                if (buttonImage != null)
-                {
-                    buttonImage.color = Color.green;
-                }
+                if (buttonImage != null) buttonImage.color = Color.green;
             }
-            
-            if (button != null)
-            {
-                button.onClick.AddListener(() => OnAttackButtonClicked(attackIndex));
-            }
+
+            if (button != null) button.onClick.AddListener(() => OnAttackButtonClicked(attackIndex));
         }
-        
-        // Pause game
-        Time.timeScale = 0f;
     }
 
     public void HideAttackSelection()
     {
-        if (selectionPanel != null)
-        {
-            selectionPanel.SetActive(false);
-        }
-        
-        // Resume game
+        if (dofRoutine != null) StopCoroutine(dofRoutine);
+        dofRoutine = StartCoroutine(LerpDOF(false));
+
+        Time.timeScale = 1f;
+    }
+
+    public void OnCloseAnimationComplete()
+    {
+        if (selectionPanel != null) selectionPanel.SetActive(false);
+
+        if (dofRoutine != null) StopCoroutine(dofRoutine);
+        dofRoutine = StartCoroutine(LerpDOF(false));
+
+        Time.timeScale = 1f;
+    }
+
+    private void HideInstant()
+    {
+        if (selectionPanel != null) selectionPanel.SetActive(false);
+        dof.active = false;
         Time.timeScale = 1f;
     }
 
@@ -100,23 +171,17 @@ public class AttackSelectionUI : MonoBehaviour
         if (attackManager != null)
         {
             attackManager.SetAttackIndex(attackIndex);
-            Debug.Log($"Selected attack: {attackManager.GetCurrentAttack().attackName}");
         }
-        
-        // Refresh UI to show new selection
-        if (attackManager != null)
-        {
-            ShowAttackSelection(attackManager);
-        }
+
+        ShowAttackSelection(attackManager);
     }
 
     private void OnContinueClicked()
     {
+        if (uiAnimator != null) uiAnimator.SetTrigger(closeTrigger);
+
         HideAttackSelection();
-        
-        if (waveManager != null)
-        {
-            waveManager.OnAttackSelected();
-        }
+
+        if (waveManager != null) waveManager.OnAttackSelected();
     }
 }
