@@ -17,7 +17,8 @@ public class BasicContactAttack : MonoBehaviour
 
     private bool mouthOpen;
     private bool waitingToOpen;
-    private float closeTimer;
+    private bool waitingToClose;
+    private float lastEnemySeenTime;
 
     private void OnTriggerEnter(Collider other)
     {
@@ -27,22 +28,20 @@ public class BasicContactAttack : MonoBehaviour
         if (!mouthOpen && !waitingToOpen)
         {
             waitingToOpen = true;
-            StartCoroutine(OpenAfterDelay(enemy));
+            StartCoroutine(OpenAfterDelay());
         }
     }
 
-    private IEnumerator OpenAfterDelay(AppleEnemy enemy)
+    private IEnumerator OpenAfterDelay()
     {
         yield return new WaitForSeconds(mouthOpenDelay);
 
         waitingToOpen = false;
         mouthOpen = true;
+        lastEnemySeenTime = Time.time;
 
         if (attackManager != null)
             attackManager.SetBool(mouthOpenBool, true);
-
-        if (enemy != null)
-            enemy.Die();
     }
 
     private void OnTriggerStay(Collider other)
@@ -52,12 +51,11 @@ public class BasicContactAttack : MonoBehaviour
 
         if (mouthOpen)
             enemy.Die();
-        
     }
 
     private void Update()
     {
-        if (!mouthOpen) return;
+        if (!mouthOpen || waitingToClose) return;
 
         bool enemyNearby = false;
 
@@ -69,24 +67,29 @@ public class BasicContactAttack : MonoBehaviour
             if (e != null && !e.isMetal)
             {
                 enemyNearby = true;
+                lastEnemySeenTime = Time.time;
                 break;
             }
         }
 
-        if (enemyNearby)
+        // Check if enough time has passed since last enemy was seen
+        if (!enemyNearby && Time.time >= lastEnemySeenTime + mouthCloseDelay)
         {
-            closeTimer = Time.time + mouthCloseDelay;
+            waitingToClose = true;
+            StartCoroutine(CloseMouth());
         }
-        else
-        {
-            if (Time.time >= closeTimer)
-            {
-                mouthOpen = false;
+    }
 
-                if (attackManager != null)
-                    attackManager.SetBool(mouthOpenBool, false);
-            }
-        }
+    private IEnumerator CloseMouth()
+    {
+        // Optional: add a small delay here if you want animation time
+        yield return null;
+
+        mouthOpen = false;
+        waitingToClose = false;
+
+        if (attackManager != null)
+            attackManager.SetBool(mouthOpenBool, false);
     }
 
     private void OnDrawGizmosSelected()

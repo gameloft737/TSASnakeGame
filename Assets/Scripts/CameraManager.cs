@@ -7,6 +7,9 @@ public class CameraManager : MonoBehaviour
     [Header("Camera References")]
     public CinemachineCamera normalCam;
     public CinemachineCamera aimCam;
+
+    
+    public CinemachineCamera pauseCam;
     
     private CinemachineCamera currentCam;
     private bool isAiming = false;
@@ -17,6 +20,8 @@ public class CameraManager : MonoBehaviour
         currentCam = normalCam;
         normalCam.Priority = 2;
         aimCam.Priority = 1;
+        
+        pauseCam.Priority = 1;
     }
     
     // Called by Unity Events when aim button is pressed
@@ -34,20 +39,30 @@ public class CameraManager : MonoBehaviour
         }
     }
     
-    private void SwitchToAimCamera()
+    public void SwitchToAimCamera()
     {
         currentCam = aimCam;
         aimCam.Priority = 2;
         normalCam.Priority = 1;
+        pauseCam.Priority = 1;
         isAiming = true;
         
     }
+    public void SwitchToPauseCamera()
+    {
+        currentCam = pauseCam;
+        pauseCam.Priority = 2;
+        normalCam.Priority = 1;
+        aimCam.Priority = 1;
+        isAiming = false;
+    }
     
-    private void SwitchToNormalCamera()
+    public void SwitchToNormalCamera()
     {
         currentCam = normalCam;
         normalCam.Priority = 2;
         aimCam.Priority = 1;
+        pauseCam.Priority = 1;
         isAiming = false;
         
     }

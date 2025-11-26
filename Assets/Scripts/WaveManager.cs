@@ -189,23 +189,29 @@ public class WaveManager : MonoBehaviour
     }
 
     private void SetPlayerMovement(bool enabled)
+{
+    if (playerMovement != null)
     {
-        if (playerMovement != null)
+        playerMovement.enabled = enabled;
+        
+        Rigidbody rb = playerMovement.GetComponent<Rigidbody>();
+        if (rb != null)
         {
-            playerMovement.enabled = enabled;
-            
-            // Stop rigidbody velocity when disabled
             if (!enabled)
             {
-                Rigidbody rb = playerMovement.GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.linearVelocity = Vector3.zero;
-                    rb.angularVelocity = Vector3.zero;
-                }
+                // Stop all motion and make kinematic to prevent physics
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
+            else
+            {
+                // Re-enable physics
+                rb.isKinematic = false;
             }
         }
     }
+}
     
     private void SetAttacksPaused(bool paused)
     {

@@ -10,10 +10,10 @@ public class AttackSelectionUI : MonoBehaviour
 {
     [Header("Animator")]
     [SerializeField] private Animator uiAnimator;
-    [SerializeField] private string openTrigger = "OpenUI";
-    [SerializeField] private string closeTrigger = "CloseUI";
+    [SerializeField] private string openBool = "isOpen";
     
     [Header("UI References")]
+    [SerializeField] private CameraManager cameraManager;
     [SerializeField] private Volume postProcessVolume;
     [SerializeField] private GameObject selectionPanel;
     [SerializeField] private Transform attackButtonContainer;
@@ -30,14 +30,15 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private float blurTime = 0.4f;
     [SerializeField] private float targetStart = 3f;
     [SerializeField] private float targetEnd = 10f;
-[Header("Fade Overlay")]
-[SerializeField] private RawImage fadeOverlay;
-[SerializeField] private float overlayMaxOpacity = 0.35f;
-
+    [Header("Fade Overlay")]
+    [SerializeField] private RawImage fadeOverlay;
+    [SerializeField] private float overlayMaxOpacity = 0.35f;
+    private int attackIdxSelected = 0;
     private Coroutine dofRoutine;
 
     private void Start()
     {
+        attackIdxSelected = attackManager.GetCurrentAttackIndex();
         postProcessVolume.profile.TryGet(out dof);
 
         if (uiAnimator == null) uiAnimator = GetComponent<Animator>();
@@ -92,7 +93,7 @@ public class AttackSelectionUI : MonoBehaviour
     public void ShowAttackSelection(AttackManager manager)
     {
         attackManager = manager;
-
+        cameraManager.SwitchToPauseCamera();
         if (BlurThenOpenRoutine != null) StopCoroutine(BlurThenOpenRoutine);
         BlurThenOpenRoutine = StartCoroutine(BlurThenOpen());
     }
@@ -104,13 +105,12 @@ public class AttackSelectionUI : MonoBehaviour
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(true));
 
-        yield return dofRoutine;
          if (selectionPanel != null) selectionPanel.SetActive(true);
+         
+        if (uiAnimator != null) uiAnimator.SetBool(openBool, true);
+        yield return dofRoutine;
         SpawnButtons();
 
-        if (uiAnimator != null) uiAnimator.SetTrigger(openTrigger);
-
-        Time.timeScale = 0f;
     }
 
     private void SpawnButtons()
@@ -143,10 +143,10 @@ public class AttackSelectionUI : MonoBehaviour
 
     public void HideAttackSelection()
     {
+        
+        cameraManager.SwitchToNormalCamera();
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(false));
-
-        Time.timeScale = 1f;
     }
 
     public void OnCloseAnimationComplete()
@@ -156,32 +156,29 @@ public class AttackSelectionUI : MonoBehaviour
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(false));
 
-        Time.timeScale = 1f;
     }
 
     private void HideInstant()
     {
         if (selectionPanel != null) selectionPanel.SetActive(false);
         dof.active = false;
-        Time.timeScale = 1f;
     }
 
     private void OnAttackButtonClicked(int attackIndex)
     {
-        if (attackManager != null)
-        {
-            attackManager.SetAttackIndex(attackIndex);
-        }
-
-        ShowAttackSelection(attackManager);
+        attackIdxSelected = attackIndex;
     }
 
     private void OnContinueClicked()
     {
-        if (uiAnimator != null) uiAnimator.SetTrigger(closeTrigger);
+        
+        if (uiAnimator != null) uiAnimator.SetBool(openBool, false);
 
         HideAttackSelection();
+        
+        attackManager.SetAttackIndex(attackIdxSelected);
 
         if (waveManager != null) waveManager.OnAttackSelected();
+        
     }
 }
