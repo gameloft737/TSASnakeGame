@@ -13,12 +13,14 @@ public class BasicContactAttack : MonoBehaviour
 
     [Header("Animation")]
     [SerializeField] private AttackManager attackManager;
+    [SerializeField] private SnakeBody snakeBody;
     [SerializeField] private string mouthOpenBool = "mouthOpen";
 
     private bool mouthOpen;
     private bool waitingToOpen;
     private bool waitingToClose;
     private float lastEnemySeenTime;
+    private AppleEnemy trackedEnemy; // Track the enemy that triggered opening
 
     private void OnTriggerEnter(Collider other)
     {
@@ -27,6 +29,7 @@ public class BasicContactAttack : MonoBehaviour
 
         if (!mouthOpen && !waitingToOpen)
         {
+            trackedEnemy = enemy; // Store reference to this enemy
             waitingToOpen = true;
             StartCoroutine(OpenAfterDelay());
         }
@@ -42,6 +45,14 @@ public class BasicContactAttack : MonoBehaviour
 
         if (attackManager != null)
             attackManager.SetBool(mouthOpenBool, true);
+
+        // Kill the tracked enemy even if it left the trigger
+        if (trackedEnemy != null)
+        {
+            snakeBody.TriggerSwallowAnimation();
+            trackedEnemy.Die();
+            trackedEnemy = null; // Clear reference after killing
+        }
     }
 
     private void OnTriggerStay(Collider other)
@@ -50,7 +61,10 @@ public class BasicContactAttack : MonoBehaviour
         if (enemy == null || enemy.isMetal) return;
 
         if (mouthOpen)
+        {
+            snakeBody.TriggerSwallowAnimation();
             enemy.Die();
+        }
     }
 
     private void Update()
@@ -82,7 +96,6 @@ public class BasicContactAttack : MonoBehaviour
 
     private IEnumerator CloseMouth()
     {
-        // Optional: add a small delay here if you want animation time
         yield return null;
 
         mouthOpen = false;

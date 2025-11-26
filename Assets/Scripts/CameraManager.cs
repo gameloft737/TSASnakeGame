@@ -13,7 +13,7 @@ public class CameraManager : MonoBehaviour
     
     private CinemachineCamera currentCam;
     private bool isAiming = false;
-    
+    private bool isPaused = false;
     private void Start()
     {
         // Set initial camera priorities
@@ -27,6 +27,7 @@ public class CameraManager : MonoBehaviour
     // Called by Unity Events when aim button is pressed
     public void OnAim(InputAction.CallbackContext context)
     {
+        if (isPaused) return;
         if (context.performed)
         {
             // Button pressed
@@ -46,6 +47,7 @@ public class CameraManager : MonoBehaviour
         normalCam.Priority = 1;
         pauseCam.Priority = 1;
         isAiming = true;
+        isPaused = false;
         
     }
     public void SwitchToPauseCamera()
@@ -55,6 +57,7 @@ public class CameraManager : MonoBehaviour
         normalCam.Priority = 1;
         aimCam.Priority = 1;
         isAiming = false;
+        isPaused = true;
     }
     
     public void SwitchToNormalCamera()
@@ -64,6 +67,7 @@ public class CameraManager : MonoBehaviour
         aimCam.Priority = 1;
         pauseCam.Priority = 1;
         isAiming = false;
+        isPaused = false;
         
     }
     

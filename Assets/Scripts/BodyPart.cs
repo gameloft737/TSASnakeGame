@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class BodyPart : MonoBehaviour
 {
@@ -12,6 +13,10 @@ public class BodyPart : MonoBehaviour
     // Material changing support
     [SerializeField] private Renderer bodyRenderer;
     private MaterialPropertyBlock propBlock;
+    
+    // Swallow animation
+    private Vector3 originalScale;
+    private Coroutine swallowCoroutine;
 
     private void Awake()
     {
@@ -34,6 +39,7 @@ public class BodyPart : MonoBehaviour
         }
         
         propBlock = new MaterialPropertyBlock();
+        originalScale = transform.localScale;
     }
 
     public void FollowTarget(Vector3 targetPos, Quaternion targetRot, bool headIsMoving)
@@ -85,5 +91,46 @@ public class BodyPart : MonoBehaviour
             propBlock.SetColor("_Color", color);
             bodyRenderer.SetPropertyBlock(propBlock);
         }
+    }
+    
+    /// <summary>
+    /// Animates this body part to bulge out temporarily (swallow effect)
+    /// </summary>
+    public void AnimateBulge(float bulgeScale = 1.3f, float duration = 0.2f)
+    {
+        if (swallowCoroutine != null)
+        {
+            StopCoroutine(swallowCoroutine);
+        }
+        swallowCoroutine = StartCoroutine(BulgeCoroutine(bulgeScale, duration));
+    }
+    
+    private IEnumerator BulgeCoroutine(float bulgeScale, float duration)
+    {
+        float elapsed = 0f;
+        float halfDuration = duration / 2f;
+        
+        // Scale up
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            transform.localScale = Vector3.Lerp(originalScale, originalScale * bulgeScale, t);
+            yield return null;
+        }
+        
+        // Scale back down
+        elapsed = 0f;
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            transform.localScale = Vector3.Lerp(originalScale * bulgeScale, originalScale, t);
+            yield return null;
+        }
+        
+        // Ensure we end at exactly the original scale
+        transform.localScale = originalScale;
+        swallowCoroutine = null;
     }
 }

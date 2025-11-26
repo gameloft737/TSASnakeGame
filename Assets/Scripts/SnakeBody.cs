@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using System.Collections;
 
 public class SnakeBody : MonoBehaviour
 {
@@ -197,6 +198,20 @@ public class SnakeBody : MonoBehaviour
         {
             currentAttachment.SetActive(false);
             currentAttachment = null;
+        }
+    }
+    public void TriggerSwallowAnimation(float bulgeScale = 1.3f, float bulgeSpeed = 0.08f)
+    {
+        StartCoroutine(SwallowAnimationCoroutine(bulgeScale, bulgeSpeed));
+    }
+
+    private IEnumerator SwallowAnimationCoroutine(float bulgeScale, float bulgeSpeed)
+    {
+        // Iterate BACKWARDS through list (last index = neck, index 0 = tail)
+        for (int i = bodyParts.Count - 1; i >= 0; i--)
+        {
+            bodyParts[i].AnimateBulge(bulgeScale, 0.2f);
+            yield return new WaitForSeconds(bulgeSpeed);
         }
     }
 
