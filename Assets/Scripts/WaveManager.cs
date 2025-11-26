@@ -226,4 +226,14 @@ public class WaveManager : MonoBehaviour
     public int GetTotalEnemies() => totalEnemies;
     public bool IsWaveActive() => waveActive;
     public bool IsInChoicePhase() => inChoicePhase;
+    public int GetWaveCount() => waves.Count;
+
+    public WaveData GetWaveData(int index)
+    {
+        if (index >= 0 && index < waves.Count)
+        {
+            return waves[index];
+        }
+        return null;
+    }
 }

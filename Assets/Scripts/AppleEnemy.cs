@@ -260,6 +260,18 @@ public class AppleEnemy : MonoBehaviour
     {
         isBiting = true;
         
+        // Face the nearest body part before biting
+        if (nearestBodyPart != null && agentObj != null)
+        {
+            Vector3 directionToTarget = (nearestBodyPart.position - transform.position).normalized;
+            if (directionToTarget.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(directionToTarget);
+                agentObj.rotation = targetRotation;
+                lastValidVelocity = directionToTarget;
+            }
+        }
+        
         if (biteParticles != null)
         {
             biteParticles.Play();

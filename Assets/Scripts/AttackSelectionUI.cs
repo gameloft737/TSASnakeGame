@@ -20,6 +20,10 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private GameObject attackButtonPrefab;
     [SerializeField] private Button continueButton;
 
+    [SerializeField] private Transform appleCountContainer;
+    [SerializeField] private GameObject appleCountPrefab;
+    [SerializeField] private GameObject nonUI;
+
     private DepthOfField dof;
 
     [SerializeField] private AttackManager attackManager;
@@ -30,12 +34,10 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private float blurTime = 0.4f;
     [SerializeField] private float targetStart = 3f;
     [SerializeField] private float targetEnd = 10f;
-    [Header("Fade Overlay")]
-    [SerializeField] private RawImage fadeOverlay;
-    [SerializeField] private float overlayMaxOpacity = 0.35f;
+    
     private int attackIdxSelected = 0;
     private Coroutine dofRoutine;
-
+    private List<GameObject> spawnedAppleCounts = new List<GameObject>();
     private void Start()
     {
         attackIdxSelected = attackManager.GetCurrentAttackIndex();
@@ -48,7 +50,7 @@ public class AttackSelectionUI : MonoBehaviour
         HideInstant();
     }
 
-   private IEnumerator LerpDOF(bool enable)
+    private IEnumerator LerpDOF(bool enable)
     {
         if (dof == null) yield break;
 
@@ -60,26 +62,15 @@ public class AttackSelectionUI : MonoBehaviour
         float endStart = enable ? targetStart : 0f;
         float endEnd = enable ? targetEnd : 0f;
 
-        float startAlpha = fadeOverlay != null ? fadeOverlay.color.a : 0f;
-        float endAlpha = enable ? overlayMaxOpacity : 0f;
-
         float t = 0f;
 
         while (t < 1f)
         {
             t += Time.unscaledDeltaTime / blurTime;
-
             float lerp = Mathf.Clamp01(t);
 
             dof.gaussianStart.value = Mathf.Lerp(startStart, endStart, lerp);
             dof.gaussianEnd.value = Mathf.Lerp(startEnd, endEnd, lerp);
-
-            if (fadeOverlay != null)
-            {
-                Color c = fadeOverlay.color;
-                c.a = Mathf.Lerp(startAlpha, endAlpha, lerp);
-                fadeOverlay.color = c;
-            }
 
             yield return null;
         }
@@ -87,32 +78,53 @@ public class AttackSelectionUI : MonoBehaviour
         if (!enable) dof.active = false;
     }
 
-
-    private Coroutine BlurThenOpenRoutine;
-
     public void ShowAttackSelection(AttackManager manager)
     {
         attackManager = manager;
         cameraManager.SwitchToPauseCamera();
-        if (BlurThenOpenRoutine != null) StopCoroutine(BlurThenOpenRoutine);
-        BlurThenOpenRoutine = StartCoroutine(BlurThenOpen());
-    }
-
-    private IEnumerator BlurThenOpen()
-    {
-       
+        nonUI.SetActive(false);
+        // Everything happens at the same time on start
+        if (selectionPanel != null) selectionPanel.SetActive(true);
+        if (uiAnimator != null) uiAnimator.SetBool(openBool, true);
+        
+        SpawnButtons();
+        SpawnAppleCounts(); 
 
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(true));
-
-         if (selectionPanel != null) selectionPanel.SetActive(true);
-         
-        if (uiAnimator != null) uiAnimator.SetBool(openBool, true);
-        yield return dofRoutine;
-        SpawnButtons();
-
     }
-
+    private void SpawnAppleCounts()
+    {
+        // Clear existing apple count displays
+        foreach (var display in spawnedAppleCounts) Destroy(display);
+        spawnedAppleCounts.Clear();
+        
+        if (waveManager == null || appleCountContainer == null || appleCountPrefab == null) return;
+        
+        // Get next wave index
+        int nextWaveIndex = waveManager.GetCurrentWaveIndex();
+        
+        // Check if there's a next wave
+        if (nextWaveIndex >= waveManager.GetWaveCount()) return;
+        
+        WaveData nextWave = waveManager.GetWaveData(nextWaveIndex + 1);
+        if (nextWave == null) return;
+        
+        // Spawn apple count displays from WaveData
+        foreach (var spriteCount in nextWave.spriteCounts)
+        {
+            if (spriteCount.sprite == null || spriteCount.count <= 0) continue;
+            
+            GameObject displayObj = Instantiate(appleCountPrefab, appleCountContainer);
+            spawnedAppleCounts.Add(displayObj);
+            
+            AppleCountDisplay display = displayObj.GetComponent<AppleCountDisplay>();
+            if (display != null)
+            {
+                display.Initialize(spriteCount.sprite, spriteCount.count);
+            }
+        }
+    }
     private void SpawnButtons()
     {
         foreach (var button in spawnedButtons) Destroy(button);
@@ -141,23 +153,6 @@ public class AttackSelectionUI : MonoBehaviour
         }
     }
 
-    public void HideAttackSelection()
-    {
-        
-        cameraManager.SwitchToNormalCamera();
-        if (dofRoutine != null) StopCoroutine(dofRoutine);
-        dofRoutine = StartCoroutine(LerpDOF(false));
-    }
-
-    public void OnCloseAnimationComplete()
-    {
-        if (selectionPanel != null) selectionPanel.SetActive(false);
-
-        if (dofRoutine != null) StopCoroutine(dofRoutine);
-        dofRoutine = StartCoroutine(LerpDOF(false));
-
-    }
-
     private void HideInstant()
     {
         if (selectionPanel != null) selectionPanel.SetActive(false);
@@ -171,14 +166,26 @@ public class AttackSelectionUI : MonoBehaviour
 
     private void OnContinueClicked()
     {
-        
+        StartCoroutine(CloseSequence());
+    }
+
+    private IEnumerator CloseSequence()
+    {
+        // Start animation and DOF at the same time
         if (uiAnimator != null) uiAnimator.SetBool(openBool, false);
-
-        HideAttackSelection();
         
+        if (dofRoutine != null) StopCoroutine(dofRoutine);
+        dofRoutine = StartCoroutine(LerpDOF(false));
+        
+        // Wait for both to complete
+        yield return dofRoutine;
+        
+        // Only lift pause after animation and DOF are done
+        if (selectionPanel != null) selectionPanel.SetActive(false);
+        cameraManager.SwitchToNormalCamera();
+        
+        nonUI.SetActive(true);
         attackManager.SetAttackIndex(attackIdxSelected);
-
         if (waveManager != null) waveManager.OnAttackSelected();
-        
     }
 }

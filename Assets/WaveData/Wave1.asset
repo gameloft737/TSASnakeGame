@@ -19,3 +19,6 @@ MonoBehaviour:
     spawnZoneIndex: 0
     spawnThreshold: 100
     spawnDelay: 0.5
+  spriteCounts:
+  - sprite: {fileID: 21300000, guid: 656022f27a0d05348a37be4c84c5a29c, type: 3}
+    count: 5
