@@ -106,28 +106,27 @@ public class PlayerMovement : MonoBehaviour
     }
 
     private void ApplyGroundFriction()
-{
-    if (!isGrounded) return;
+    {
+        if (!isGrounded) return;
 
-    Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, surfaceNormal);
-    float currentSpeed = planarVelocity.magnitude;
-    float targetSpeed = moveForward ? maxSpeed : defaultSpeed;
-    
-    // Use a dead zone to prevent micro-oscillations
-    float speedDifference = Mathf.Abs(currentSpeed - targetSpeed);
-    
-    if (speedDifference < 0.1f)
-    {
-        // Close enough - apply minimal friction
-        rb.AddForce(-planarVelocity * (groundDrag * 0.1f), ForceMode.Acceleration);
+        // Slow down movement along the surface
+        Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, surfaceNormal);
+        float currentSpeed = planarVelocity.magnitude;
+        
+        // Always move forward, use different speed based on input
+        float targetSpeed = moveForward ? maxSpeed : defaultSpeed;
+        
+        // Only apply friction if we're going faster than target speed
+        if (currentSpeed > targetSpeed)
+        {
+            rb.AddForce(-planarVelocity * groundDrag, ForceMode.Acceleration);
+        }
+        else
+        {
+            // Apply minimal friction at slow speeds to reduce jitter
+            rb.AddForce(-planarVelocity * (groundDrag * 0.3f), ForceMode.Acceleration);
+        }
     }
-    else if (currentSpeed > targetSpeed)
-    {
-        // Too fast - apply normal friction
-        rb.AddForce(-planarVelocity * groundDrag, ForceMode.Acceleration);
-    }
-    // If too slow, let HandleMovement() handle acceleration
-}
 
     private void SmoothMouseInput()
     {
