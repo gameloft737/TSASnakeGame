@@ -4903,7 +4903,7 @@ GameObject:
   - component: {fileID: 164171916094693280}
   - component: {fileID: 2213451988125872187}
   m_Layer: 0
-  m_Name: Boom
+  m_Name: RightBoom
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
