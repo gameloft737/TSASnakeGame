@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System.Collections;
+using System;
 
 public class SnakeBody : MonoBehaviour
 {
@@ -28,7 +29,7 @@ public class SnakeBody : MonoBehaviour
         public Quaternion rotation;
         public float distanceFromStart;
     }
-
+    public static event Action OnBodyPartsInitialized;
     void Start()
     {
         lastRecordedPosition = head.position;
@@ -58,13 +59,13 @@ public class SnakeBody : MonoBehaviour
             
             if (i < 3)
             {
-                float[] tailScales = { 0.5f, 0.7f, 0.8f, };
+                float[] tailScales = { 0.5f, 0.7f, 0.8f};
                 Vector3 scale = part.transform.localScale;
                 scale.x = tailScales[i];
                 part.transform.localScale = scale;
             }
         }
-        
+        OnBodyPartsInitialized?.Invoke();
         // Note: Initial variation is applied by AttackManager.Start(), 
         // which runs after this and ensures first attack's attachment is visible
     }
