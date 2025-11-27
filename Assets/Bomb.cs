@@ -11,6 +11,7 @@ public class Bomb : MonoBehaviour
     [SerializeField] private float explosionRadius = 10f;
     [SerializeField] private float minDeathDelay = 0.1f;
     [SerializeField] private float maxDeathDelay = 1.0f;
+    [SerializeField] private GameObject bombObj;
     
     [Header("Particle Effects")]
     [SerializeField] private GameObject leftParticlesPrefab;
@@ -36,7 +37,7 @@ public class Bomb : MonoBehaviour
 {
     if (hasExploded) return;
     hasExploded = true;
-
+    Destroy(bombObj);
     // Instantiate particle effects at specified points
     if (leftParticlesPrefab != null && leftSpawnPoint != null)
     {
