@@ -1,5 +1,70 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3208131953884523551
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5059191721273946479}
+  m_Layer: 7
+  m_Name: Onion
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5059191721273946479
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3208131953884523551}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.99955803, z: -0, w: -0.029729994}
+  m_LocalPosition: {x: 0.007203717, y: 0.737, z: -0.3212758}
+  m_LocalScale: {x: 0.14628838, y: 0.14628838, z: 0.14628838}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 551881752223854809}
+  - {fileID: 448495865513495653}
+  - {fileID: 5484684074968881829}
+  m_Father: {fileID: 1922472877015522329}
+  m_LocalEulerAnglesHint: {x: 0, y: 183.407, z: 0}
+--- !u!1 &4157395470078728794
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5484684074968881829}
+  m_Layer: 7
+  m_Name: BulletSpawn
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5484684074968881829
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4157395470078728794}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0.99955803, z: -0, w: -0.029729994}
+  m_LocalPosition: {x: 0.16448197, y: 1.3924551, z: -3.1072142}
+  m_LocalScale: {x: 6.8358097, y: 6.835813, z: 6.8358097}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5059191721273946479}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5204840513258398809
 GameObject:
   m_ObjectHideFlags: 0
@@ -31,6 +96,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2798585228077644221}
+  - {fileID: 5059191721273946479}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5623488382778484631
@@ -47,8 +113,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shootInterval: 1.5
   detectionRange: 20
-  turretBody: {fileID: 5450407119203341468}
-  originPoint: {fileID: 5746372190687389258}
+  turretBody: {fileID: 3208131953884523551}
+  originPoint: {fileID: 5484684074968881829}
   projectilePrefab: {fileID: 1003997767319658915, guid: b672c3ac99be4634fbfc60d9a9c27463, type: 3}
   projectileSpeed: 15
   projectileDamage: 25
@@ -227,3 +293,195 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1001 &9593217107351346
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5059191721273946479}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.16836971
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.4097931
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.8996292
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7072302
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7069834
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -89.98
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_Name
+      value: Onion Shooter
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8363889966949161333}
+  m_SourcePrefab: {fileID: 100100000, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+--- !u!4 &551881752223854809 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+  m_PrefabInstance: {fileID: 9593217107351346}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &928723572038494819 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 8fa0fa71f30a19f4682a125c211aad91, type: 3}
+  m_PrefabInstance: {fileID: 9593217107351346}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &8363889966949161333
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 928723572038494819}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 73bf053302681d540804dfc3c7195344, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!1001 &122681172937714574
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5059191721273946479}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.1681273
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 2.7568786
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.896648
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7072302
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7069834
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -89.98
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_Name
+      value: Onion Shooter Leaves
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4097791023591504869}
+  m_SourcePrefab: {fileID: 100100000, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+--- !u!4 &448495865513495653 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+  m_PrefabInstance: {fileID: 122681172937714574}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &969030596780725983 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 76318a1c55c8f2143884f22477dbeed6, type: 3}
+  m_PrefabInstance: {fileID: 122681172937714574}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &4097791023591504869
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 969030596780725983}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 064e483337ed6e34f98b5bbf2622a28a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
