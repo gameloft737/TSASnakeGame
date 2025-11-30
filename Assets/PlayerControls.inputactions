@@ -151,6 +151,54 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "Worker",
+            "id": "0296f1ed-f1c2-43f3-b328-048fad501d52",
+            "actions": [
+                {
+                    "name": "Walk",
+                    "type": "Value",
+                    "id": "00e918d6-a9d6-4ef3-8758-1c85d1ca4703",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Interact",
+                    "type": "Button",
+                    "id": "25d44d51-c48f-4944-8245-103ab6c3797c",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "a8f5952c-c590-42f2-aa30-b5ae3eb56c87",
+                    "path": "<Keyboard>/wasd",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Walk",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e4b27a20-9109-4b62-a872-2eac635e26db",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Interact",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": []
