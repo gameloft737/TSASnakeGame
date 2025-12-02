@@ -94,7 +94,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 112000000, guid: 0ef4d45e6d35af941abf35be5c6edaaf, type: 2}
-  m_LightingSettings: {fileID: 4890085278179872738, guid: 6cec7b22169271c499408db3234a478a, type: 2}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: ffa5315eda734664a9bc69e429db184f, type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -272,7 +272,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -311,7 +311,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -378,7 +378,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -417,7 +417,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -1171,7 +1171,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -1210,7 +1210,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -1583,7 +1583,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -1622,7 +1622,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -2624,7 +2624,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -2663,7 +2663,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -2925,7 +2925,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -2964,7 +2964,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -4169,7 +4169,7 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 0, g: 0.7515869, b: 1, a: 1}
-  m_Intensity: 241.8
+  m_Intensity: 103.61
   m_Range: 16.89
   m_SpotAngle: 179
   m_InnerSpotAngle: 179
@@ -4208,7 +4208,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -4535,7 +4535,7 @@ Light:
     serializedVersion: 2
     m_Bits: 2047
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -6127,7 +6127,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 253
-  m_Lightmapping: 2
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
