@@ -30,7 +30,7 @@ public class ObjectiveManager : MonoBehaviour
     {
         if (index >= objectives.Length)
         {
-            objectiveTextUI.text = "All Objectives Complete!";
+            objectiveTextUI.text = "";
             return;
         }
 
