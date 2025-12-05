@@ -9,9 +9,11 @@ public class ObjectiveManager : MonoBehaviour
     public TextMeshProUGUI objectiveTextUI;
 
     [Header("Objectives")]
-    public Objective[] objectives;
+    public ObjectiveTrigger[] objectives; // Drag ObjectiveTrigger objects here
 
     private int currentIndex = 0;
+
+    public int CurrentObjectiveIndex { get { return currentIndex; } }
 
     private void Awake()
     {
@@ -34,21 +36,19 @@ public class ObjectiveManager : MonoBehaviour
 
         currentIndex = index;
 
-        objectiveTextUI.text = "Objective: " + objectives[index].objectiveText;
-
-        // Register this objective's trigger
-        if (objectives[index].trigger != null)
-            objectives[index].trigger.AssignObjective(index);
+        // Update top-left UI with objective name
+        if (objectives[index] != null)
+        {
+            objectiveTextUI.text = "Objective: " + objectives[index].objectiveName;
+            objectives[index].AssignObjective(index);
+        }
     }
 
     public void CompleteObjective(int index)
     {
-        if (index != currentIndex) return; // Only complete active objective
-
-        Debug.Log($"Objective {index} complete!");
+        // Only complete the currently active objective
+        if (index != currentIndex) return;
 
         StartObjective(index + 1);
     }
-
-    
 }

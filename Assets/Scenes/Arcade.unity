@@ -2847,7 +2847,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionMessage: Press E to interact
+  myObjectiveIndex: 1
+  objectiveName: Turn Off Power
+  interactionMessage: Press 'E' to Interact
   animator: {fileID: 1016115378}
   animationTriggerName: LeverPullTrigger
   legacyAnimation: {fileID: 1016115379}
@@ -3520,12 +3522,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objectiveTextUI: {fileID: 1277600209}
   objectives:
-  - objectiveText: 'close door
-
-'
-    trigger: {fileID: 1716513454}
-  - objectiveText: Turn off power
-    trigger: {fileID: 816130716}
+  - {fileID: 1716513454}
+  - {fileID: 816130716}
+  - {fileID: 1706863862}
 --- !u!4 &967191080
 Transform:
   m_ObjectHideFlags: 0
@@ -6049,6 +6048,88 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1683347497}
   m_Mesh: {fileID: -1550514412580984892, guid: 2978647ca51b31a429c678fc87cd0b7f, type: 3}
+--- !u!1 &1706863861
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1706863866}
+  - component: {fileID: 1706863865}
+  - component: {fileID: 1706863864}
+  - component: {fileID: 1706863862}
+  m_Layer: 0
+  m_Name: SignCollider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1706863862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706863861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  myObjectiveIndex: 2
+  objectiveName: Flip Sign
+  interactionMessage: Press 'E' to Interact
+  animator: {fileID: 4276428965492743593}
+  animationTriggerName: SignFlipTrigger
+  legacyAnimation: {fileID: 0}
+  animationClip: {fileID: 7400000, guid: f782457a8d92e3148a620bc00bac10bf, type: 2}
+--- !u!65 &1706863864
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706863861}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!33 &1706863865
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706863861}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1706863866
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706863861}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 18.14, y: 5.98, z: -15.848}
+  m_LocalScale: {x: 1.9656404, y: 2.4645367, z: 4.1296043}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1712562620
 GameObject:
   m_ObjectHideFlags: 0
@@ -6167,7 +6248,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionMessage: Press E to interact
+  myObjectiveIndex: 0
+  objectiveName: Close Door
+  interactionMessage: Press 'E' to Interact
   animator: {fileID: 1683266605}
   animationTriggerName: OpenDoorTrigger
   legacyAnimation: {fileID: 1683266607}
@@ -9090,6 +9173,8 @@ GameObject:
   - component: {fileID: 3104037462192498375}
   - component: {fileID: 2070558745656699234}
   - component: {fileID: 4276428965492743592}
+  - component: {fileID: 4276428965492743593}
+  - component: {fileID: 4276428965492743594}
   m_Layer: 0
   m_Name: Open Sign
   m_TagString: Untagged
@@ -10388,6 +10473,44 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!95 &4276428965492743593
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2330631553183218813}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: d75a3345a2af2cf43bd80f3f7434d2ec, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!111 &4276428965492743594
+Animation:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2330631553183218813}
+  m_Enabled: 1
+  serializedVersion: 4
+  m_Animation: {fileID: 7400000, guid: f782457a8d92e3148a620bc00bac10bf, type: 2}
+  m_Animations: []
+  m_WrapMode: 0
+  m_PlayAutomatically: 1
+  m_AnimatePhysics: 0
+  m_UpdateMode: 0
+  m_CullingType: 0
 --- !u!4 &4293875855740361801
 Transform:
   m_ObjectHideFlags: 0
@@ -14424,6 +14547,7 @@ SceneRoots:
   - {fileID: 1112350630}
   - {fileID: 816130715}
   - {fileID: 1716513457}
+  - {fileID: 1706863866}
   - {fileID: 1483862608}
   - {fileID: 557651450}
   - {fileID: 967191080}
