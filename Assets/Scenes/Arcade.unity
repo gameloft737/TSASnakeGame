@@ -2847,6 +2847,52 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lightsToDisable:
+  - {fileID: 433195955}
+  - {fileID: 867038610}
+  - {fileID: 529597787}
+  - {fileID: 113307093}
+  - {fileID: 55627425}
+  - {fileID: 1309346148}
+  - {fileID: 825611937}
+  emissionRenderers:
+  - {fileID: 1079662026093234450}
+  - {fileID: 8567716999767442002}
+  - {fileID: 4321514658380620213}
+  - {fileID: 6027543246651492548}
+  - {fileID: 2355982398176182376}
+  - {fileID: 327064010028660354}
+  - {fileID: 4432071488274841066}
+  - {fileID: 3251961986169959156}
+  - {fileID: 2549569357080168345}
+  - {fileID: 2927593090906404102}
+  - {fileID: 1512191505704877372}
+  - {fileID: 7358938725697058437}
+  - {fileID: 6286941005575047031}
+  - {fileID: 1243999089476461608}
+  - {fileID: 5003168028096692048}
+  - {fileID: 4081781650672689259}
+  - {fileID: 1061828308133843223}
+  - {fileID: 2948915974006402347}
+  - {fileID: 8643064535086410780}
+  - {fileID: 3675459606049760981}
+  - {fileID: 7950810427382597930}
+  - {fileID: 2043377498547480507}
+  - {fileID: 7647461174008859941}
+  - {fileID: 6482572105605204342}
+  - {fileID: 352412542487095954}
+  - {fileID: 8167179223476130376}
+  - {fileID: 1756950758326208100}
+  - {fileID: 5594143530439818765}
+  - {fileID: 563175415739877102}
+  - {fileID: 6118571739224643346}
+  - {fileID: 2810008575091494733}
+  - {fileID: 6415793314872032878}
+  - {fileID: 8784973785073787118}
+  - {fileID: 8121942228479619439}
+  - {fileID: 2529387858116239155}
+  - {fileID: 4014178581031282648}
+  emissionOffColor: {r: 0, g: 0, b: 0, a: 1}
   myObjectiveIndex: 1
   objectiveName: Turn Off Power
   interactionMessage: Press 'E' to Interact
@@ -3525,6 +3571,7 @@ MonoBehaviour:
   - {fileID: 1716513454}
   - {fileID: 816130716}
   - {fileID: 1706863862}
+  - {fileID: 2046975189}
 --- !u!4 &967191080
 Transform:
   m_ObjectHideFlags: 0
@@ -6079,6 +6126,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lightsToDisable: []
+  emissionRenderers:
+  - {fileID: 7358938725697058437}
+  emissionOffColor: {r: 1, g: 1, b: 1, a: 1}
   myObjectiveIndex: 2
   objectiveName: Flip Sign
   interactionMessage: Press 'E' to Interact
@@ -6248,6 +6299,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lightsToDisable: []
+  emissionRenderers: []
+  emissionOffColor: {r: 0, g: 0, b: 0, a: 1}
   myObjectiveIndex: 0
   objectiveName: Close Door
   interactionMessage: Press 'E' to Interact
@@ -7178,6 +7232,91 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8271162947303160731}
   m_LocalEulerAnglesHint: {x: 90, y: 90, z: -90}
+--- !u!1 &2046975188
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2046975192}
+  - component: {fileID: 2046975191}
+  - component: {fileID: 2046975190}
+  - component: {fileID: 2046975189}
+  m_Layer: 0
+  m_Name: MachineCollider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2046975189
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046975188}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lightsToDisable: []
+  emissionRenderers: []
+  emissionOffColor: {r: 0, g: 0, b: 0, a: 1}
+  myObjectiveIndex: 3
+  objectiveName: Investigate Machine
+  interactionMessage: Press 'E' to Investigate
+  animator: {fileID: 0}
+  animationTriggerName: 
+  legacyAnimation: {fileID: 0}
+  animationClip: {fileID: 0}
+--- !u!65 &2046975190
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046975188}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!33 &2046975191
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046975188}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &2046975192
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046975188}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -5.19, y: 4.66, z: -36.73}
+  m_LocalScale: {x: 3.6810563, y: 8.587409, z: 5.0428205}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2049903732
 GameObject:
   m_ObjectHideFlags: 0
@@ -14546,6 +14685,7 @@ SceneRoots:
   - {fileID: 8271162947303160731}
   - {fileID: 1112350630}
   - {fileID: 816130715}
+  - {fileID: 2046975192}
   - {fileID: 1716513457}
   - {fileID: 1706863866}
   - {fileID: 1483862608}

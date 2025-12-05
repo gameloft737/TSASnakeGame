@@ -2,6 +2,11 @@ using UnityEngine;
 
 public class ObjectiveTrigger : MonoBehaviour
 {
+    [Header("Optional Visual Changes")]
+    public Light[] lightsToDisable;              // Lights to turn off
+    public Renderer[] emissionRenderers;         // Renderers with emission you want to change
+    public Color emissionOffColor = Color.black; // Emission color when off
+
     [Header("Objective Settings")]
     public int myObjectiveIndex;           // Index in ObjectiveManager
     public string objectiveName = "Objective"; // Name shown in top-left UI
@@ -79,5 +84,32 @@ public class ObjectiveTrigger : MonoBehaviour
 
         // Notify ObjectiveManager
         ObjectiveManager.Instance.CompleteObjective(myObjectiveIndex);
+
+        // Turn off lights
+    if (lightsToDisable != null)
+    {
+        foreach (Light l in lightsToDisable)
+        {
+            if (l != null)
+                l.intensity = 0f;
+        }
+    }
+
+    // Change emission color
+    if (emissionRenderers != null)
+    {
+        foreach (Renderer r in emissionRenderers)
+        {
+            if (r != null)
+            {
+                foreach (Material mat in r.materials)
+                {
+                    if (mat.HasProperty("_EmissionColor"))
+                        mat.SetColor("_EmissionColor", emissionOffColor);
+                }
+            }
+        }
+    }
+
     }
 }
