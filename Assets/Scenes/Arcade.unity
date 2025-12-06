@@ -1400,7 +1400,6 @@ GameObject:
   - component: {fileID: 483363808}
   - component: {fileID: 483363807}
   - component: {fileID: 483363806}
-  - component: {fileID: 483363805}
   - component: {fileID: 483363804}
   m_Layer: 0
   m_Name: endingcamera
@@ -1431,26 +1430,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &483363805
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 483363803}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee78592669f0e3c4eab3eb8624b6b111, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mainCamera: {fileID: 1351040522}
-  cutsceneCamera: {fileID: 483363807}
-  cutsceneAnimator: {fileID: 483363804}
-  cutsceneDuration: 9
-  subtitleText: 
-  subtitleDuration: 3
-  snapFPSCameraToCutsceneStart: 0
-  cutsceneStartTransform: {fileID: 0}
 --- !u!114 &483363806
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1554,18 +1533,97 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 483363803}
   serializedVersion: 2
-  m_LocalRotation: {x: -9.346963e-24, y: -0.57268536, z: -2.1374206e-24, w: 0.8197753}
-  m_LocalPosition: {x: -1.53, y: 6.3150787, z: -37.84}
+  m_LocalRotation: {x: 0.12689559, y: -0.7017109, z: 0.12475876, w: 0.6898802}
+  m_LocalPosition: {x: -2.2481434, y: 6.3150787, z: -37.058}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: -69.875, z: 0}
+  m_LocalEulerAnglesHint: {x: 20.498, y: -91.04, z: -0.364}
 --- !u!1 &486063140 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 4ceea761255f45940a6720ce7be31974, type: 3}
   m_PrefabInstance: {fileID: 502786821}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &490341491
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 490341496}
+  - component: {fileID: 490341495}
+  - component: {fileID: 490341493}
+  - component: {fileID: 490341492}
+  m_Layer: 0
+  m_Name: EndCutsceneTrigger
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &490341492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490341491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cdf516d164a4b54ab27d8e7d1cc0358, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fpsController: {fileID: 309940346}
+  cutsceneCamera: {fileID: 483363807}
+  sceneToLoad: Snake
+  delayBeforeScene: 5
+--- !u!65 &490341493
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490341491}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!33 &490341495
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490341491}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &490341496
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 490341491}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -4.941, y: 4.456, z: -36.97}
+  m_LocalScale: {x: 2.3488, y: 6.0723, z: 2.7982132}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &502786821
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3258,6 +3316,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  objectsToUnhide: []
   lightsToDisable:
   - {fileID: 433195955}
   - {fileID: 867038610}
@@ -6943,6 +7002,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  objectsToUnhide:
+  - {fileID: 490341491}
   lightsToDisable: []
   lightsToEnable:
   - {fileID: 583685150}
@@ -7132,6 +7193,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  objectsToUnhide: []
   lightsToDisable: []
   lightsToEnable: []
   enabledLightIntensity: 1
@@ -8111,12 +8173,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95020b6d84abf5a4cbcd55e960ec68aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  objectsToUnhide: []
   lightsToDisable: []
   lightsToEnable: []
   enabledLightIntensity: 1
   emissionRenderers: []
   emissionOffColor: {r: 0, g: 0, b: 0, a: 1}
-  cutsceneToPlay: {fileID: 483363805}
+  cutsceneToPlay: {fileID: 0}
   emissionOffStrength: 1
   completionSubtitle: 
   subtitleDuration: 3
@@ -8130,12 +8193,12 @@ MonoBehaviour:
   audioSource: {fileID: 0}
   soundBefore: {fileID: 0}
   soundAfter: {fileID: 0}
-  loopBeforeSound: 1
+  loopBeforeSound: 0
   loopAfterSound: 0
   completionOneShotSound: {fileID: 0}
   completionOneShotVolume: 1
-  sceneToLoad: Snake
-  sceneLoadDelay: 15
+  sceneToLoad: 
+  sceneLoadDelay: 0
 --- !u!65 &2046975190
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -15905,3 +15968,4 @@ SceneRoots:
   - {fileID: 583685151}
   - {fileID: 543450653456924180}
   - {fileID: 483363808}
+  - {fileID: 490341496}

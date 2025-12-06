@@ -3,6 +3,10 @@ using System.Collections;
 
 public class ObjectiveTrigger : MonoBehaviour
 {
+
+    [Header("Optional Objects to Unhide")]
+    public GameObject[] objectsToUnhide; // Objects that will be made visible on completion
+
     [Header("Optional Visual Changes")]
     public Light[] lightsToDisable;              // Lights to turn off
     public Light[] lightsToEnable;          // Lights to turn ON when completed
@@ -189,6 +193,15 @@ public class ObjectiveTrigger : MonoBehaviour
                     }
                 }
             }
+        }
+    }
+    // Unhide optional objects
+    if (objectsToUnhide != null)
+    {
+        foreach (GameObject obj in objectsToUnhide)
+        {
+            if (obj != null)
+                obj.SetActive(true);
         }
     }
 
