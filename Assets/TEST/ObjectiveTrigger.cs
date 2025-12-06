@@ -14,7 +14,10 @@ public class ObjectiveTrigger : MonoBehaviour
     [Range(0f, 5f)]
     public float emissionOffStrength = 1f; // Multiplier applied to emissionOffColor
 
-
+    [Header("Subtitles")]
+    [TextArea(1, 3)]
+    public string completionSubtitle;
+    public float subtitleDuration = 3f;
 
     [Header("Objective Settings")]
     public int myObjectiveIndex;           // Index in ObjectiveManager
@@ -115,6 +118,14 @@ public class ObjectiveTrigger : MonoBehaviour
 
     private void CompleteObjective()
     {
+
+    // Show subtitle on completion
+    if (!string.IsNullOrEmpty(completionSubtitle))
+    {
+        SubtitleUI.Instance.ShowSubtitle(completionSubtitle, subtitleDuration);
+    }
+
+
         completed = true;
         playerInRange = false;
         InteractionPromptUI.Instance.HideMessage();

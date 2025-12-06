@@ -5,6 +5,11 @@ public class ObjectiveManager : MonoBehaviour
 {
     public static ObjectiveManager Instance;
 
+    [Header("Startup Subtitle")]
+    [TextArea(1, 3)]
+    public string startSubtitle;
+    public float startSubtitleDuration = 3f;
+
     [Header("UI")]
     public TextMeshProUGUI objectiveTextUI;
 
@@ -24,7 +29,13 @@ public class ObjectiveManager : MonoBehaviour
     private void Start()
     {
         StartObjective(0);
+
+        if (SubtitleUI.Instance != null && !string.IsNullOrEmpty(startSubtitle))
+        {
+            SubtitleUI.Instance.ShowSubtitle(startSubtitle, startSubtitleDuration);
+        }
     }
+
 
     public void StartObjective(int index)
     {
