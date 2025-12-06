@@ -285,5 +285,36 @@ namespace EasyPeasyFirstPersonController
             Cursor.lockState = newVisibility ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = newVisibility;
         }
+
+public void SetCameraRotation(Transform targetCamera, bool movePlayer = false)
+    {
+        if (targetCamera == null) return;
+
+        if (movePlayer)
+        {
+            // Move the player object to cutscene camera position
+            Vector3 offset = playerCamera.position - transform.position; // camera offset from player
+            transform.position = targetCamera.position - offset; 
+        }
+
+        // Match rotation
+        transform.rotation = Quaternion.Euler(0f, targetCamera.eulerAngles.y, 0f);
+
+        // Update internal rotation values
+        rotX = targetCamera.eulerAngles.y;
+        rotY = targetCamera.eulerAngles.x;
+        xVelocity = rotX;
+        yVelocity = rotY;
+
+        // Immediately apply rotation to camera
+        playerCamera.localRotation = Quaternion.Euler(rotY, 0f, 0f);
     }
+
+
+
+
+    }
+
+    
+    
 }

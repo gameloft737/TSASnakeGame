@@ -10,6 +10,10 @@ public class ObjectiveTrigger : MonoBehaviour
     public Renderer[] emissionRenderers;         // Renderers with emission you want to change
     public Color emissionOffColor = Color.black; // Emission color when off
 
+    [Header("Cutscene")]
+    public CutsceneController cutsceneToPlay; // Assign in Inspector (optional)
+
+
     [Header("Emission Settings")]
     [Range(0f, 5f)]
     public float emissionOffStrength = 1f; // Multiplier applied to emissionOffColor
@@ -219,6 +223,12 @@ public class ObjectiveTrigger : MonoBehaviour
             }
         }
     }
+        // Play cutscene if assigned
+    if (cutsceneToPlay != null)
+    {
+        cutsceneToPlay.StartCutscene();
+    }
+
 
     // Load scene if assigned
     if (!string.IsNullOrEmpty(sceneToLoad))
