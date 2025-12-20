@@ -16,6 +16,9 @@ public class AppleEnemy : MonoBehaviour
     [SerializeField] private AppleChecker appleChecker;
     [SerializeField] private ParticleSystem biteParticles;
     
+    [Header("Death Settings")]
+    [SerializeField] private GameObject deathObjectPrefab;
+    
     [Header("Tracking Settings")]
     [SerializeField] private float contactDistance = 1.5f;
     
@@ -46,6 +49,7 @@ public class AppleEnemy : MonoBehaviour
     private bool isInitialized = false;
 
     private bool isDead = false;
+    
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -317,6 +321,12 @@ public class AppleEnemy : MonoBehaviour
         if (biteParticles != null)
         {
             biteParticles.Stop();
+        }
+        
+        // Instantiate death object at current position
+        if (deathObjectPrefab != null)
+        {
+            Instantiate(deathObjectPrefab, transform.position, transform.rotation);
         }
         
         OnAppleDied?.Invoke(this);

@@ -8,6 +8,19 @@ public class WaveUI : MonoBehaviour
     [SerializeField] private Slider appleCountSlider;
     [SerializeField] private TextMeshProUGUI appleCountText;
     [SerializeField] private TextMeshProUGUI waveNumberText;
+    
+    [Header("Death Screen")]
+    [SerializeField] private GameObject deathScreenPanel;
+    [SerializeField] private TextMeshProUGUI deathText;
+
+    private void Start()
+    {
+        // Make sure death screen is hidden at start
+        if (deathScreenPanel != null)
+        {
+            deathScreenPanel.SetActive(false);
+        }
+    }
 
     public void UpdateAppleCount(int current, int total)
     {
@@ -28,6 +41,19 @@ public class WaveUI : MonoBehaviour
         if (waveNumberText != null)
         {
             waveNumberText.text = $"Wave {waveNumber}";
+        }
+    }
+    
+    public void ShowDeathScreen(bool show)
+    {
+        if (deathScreenPanel != null)
+        {
+            deathScreenPanel.SetActive(show);
+        }
+        
+        if (show && deathText != null)
+        {
+            deathText.text = "YOU'RE DEAD!";
         }
     }
 }

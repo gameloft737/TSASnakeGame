@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections;
 
 public class SnakeHealth : MonoBehaviour
 {
@@ -7,23 +8,70 @@ public class SnakeHealth : MonoBehaviour
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private float currentHealth;
     
+    [Header("Death Settings")]
+    [SerializeField] private float deathScreenDuration = 5f;
+    
+    [Header("References")]
+    [SerializeField] private WaveManager waveManager;
+    [SerializeField] private AttackSelectionUI attackSelectionUI;
+    [SerializeField] private PlayerMovement playerMovement;
+    [SerializeField] private AttackManager attackManager;
+    [SerializeField] private EnemySpawner enemySpawner;
+    [SerializeField] private CameraManager cameraManager;
+    
     [Header("Events")]
-    public UnityEvent<float> onHealthChanged; // Passes current health percentage
+    public UnityEvent<float> onHealthChanged;
     public UnityEvent onDeath;
+    
+    private bool isDead = false;
     
     private void Start()
     {
         currentHealth = maxHealth;
+        
+        if (waveManager == null)
+        {
+            waveManager = FindFirstObjectByType<WaveManager>();
+        }
+        
+        if (attackSelectionUI == null)
+        {
+            attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
+        }
+        
+        if (playerMovement == null)
+        {
+            playerMovement = FindFirstObjectByType<PlayerMovement>();
+        }
+        
+        if (attackManager == null)
+        {
+            attackManager = FindFirstObjectByType<AttackManager>();
+        }
+        
+        if (enemySpawner == null)
+        {
+            enemySpawner = FindFirstObjectByType<EnemySpawner>();
+        }
+        
+        if (cameraManager == null)
+        {
+            cameraManager = FindFirstObjectByType<CameraManager>();
+        }
     }
     
     public void TakeDamage(float damage)
     {
+        if (isDead) return;
+        
+        // Don't take damage if we're in choice phase or death screen is showing
+        if (waveManager != null && waveManager.IsInChoicePhase()) return;
+        
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
         
         Debug.Log($"Snake took {damage:F1} damage! Health: {currentHealth:F1}/{maxHealth}");
         
-        // Trigger health changed event
         onHealthChanged?.Invoke(GetHealthPercentage());
         
         if (currentHealth <= 0)
@@ -34,6 +82,8 @@ public class SnakeHealth : MonoBehaviour
     
     public void Heal(float amount)
     {
+        if (isDead) return;
+        
         currentHealth += amount;
         currentHealth = Mathf.Min(maxHealth, currentHealth);
         
@@ -44,10 +94,54 @@ public class SnakeHealth : MonoBehaviour
     
     private void Die()
     {
+        if (isDead) return;
+        
+        isDead = true;
         Debug.Log("Snake died!");
+        
+        // Immediately stop player movement and pause attacks
+        StopPlayerAndAttacks();
+        
         onDeath?.Invoke();
         
-        // Add death logic here (game over, restart, etc.)
+        StartCoroutine(HandleDeath());
+    }
+    
+    private IEnumerator HandleDeath()
+    {
+        // Show "YOU'RE DEAD" message
+        if (attackSelectionUI != null)
+        {
+            attackSelectionUI.ShowDeathScreen(true);
+        }
+        
+        // Wait for specified duration
+        yield return new WaitForSeconds(deathScreenDuration);
+        
+        // Hide death screen
+        if (attackSelectionUI != null)
+        {
+            attackSelectionUI.ShowDeathScreen(false);
+        }
+        
+        // Reset the level
+        ResetLevel();
+    }
+    
+    private void ResetLevel()
+    {
+        // Reset health
+        currentHealth = maxHealth;
+        isDead = false;
+        onHealthChanged?.Invoke(GetHealthPercentage());
+        
+        // Reset the current wave
+        if (waveManager != null)
+        {
+            waveManager.ResetCurrentWave();
+        }
+        
+        Debug.Log("Level reset!");
     }
     
     public float GetHealthPercentage()
@@ -67,6 +161,41 @@ public class SnakeHealth : MonoBehaviour
     
     public bool IsAlive()
     {
-        return currentHealth > 0;
+        return currentHealth > 0 && !isDead;
+    }
+    
+    private void StopPlayerAndAttacks()
+    {
+        // Switch to pause camera
+        if (cameraManager != null)
+        {
+            cameraManager.SwitchToPauseCamera();
+        }
+        
+        // Stop player movement completely
+        if (playerMovement != null)
+        {
+            playerMovement.enabled = false;
+            
+            Rigidbody rb = playerMovement.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
+        }
+        
+        // Pause all attacks
+        if (attackManager != null)
+        {
+            attackManager.SetPaused(true);
+        }
+        
+        // Clear all enemies/apples
+        if (enemySpawner != null)
+        {
+            enemySpawner.ClearAllEnemies();
+        }
     }
 }

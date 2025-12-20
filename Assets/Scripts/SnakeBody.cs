@@ -13,6 +13,7 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private float minRecordDistance = 0.05f;
 
     [SerializeField] private float impulseCarryover = 0.9f;
+    [SerializeField] private float rotationBlendAmount = 0.3f; // How much to blend toward looking at next segment (0 = pure historical, 1 = always look at next)
     
     // Material system
     [SerializeField] private Renderer headRenderer;
@@ -105,7 +106,40 @@ public class SnakeBody : MonoBehaviour
             int reverseIndex = bodyParts.Count - 1 - i;
             float targetDistance = (reverseIndex + 1) * segmentSpacing;
             var targetData = GetPositionAtDistance(targetDistance);
-            bodyParts[i].FollowTarget(targetData.position, targetData.rotation, isHeadMoving);
+            
+            // Start with historical rotation
+            Quaternion historicalRotation = targetData.rotation;
+            
+            // Calculate rotation to look at the next body part (or head)
+            Quaternion lookAtRotation;
+            Vector3 lookTarget;
+            
+            if (i == bodyParts.Count - 1)
+            {
+                // Last segment (closest to head) looks at the head
+                lookTarget = head.position;
+            }
+            else
+            {
+                // Look at the next body part in the chain
+                lookTarget = bodyParts[i + 1].transform.position;
+            }
+            
+            Vector3 directionToNext = (lookTarget - bodyParts[i].transform.position).normalized;
+            
+            if (directionToNext != Vector3.zero)
+            {
+                lookAtRotation = Quaternion.LookRotation(directionToNext);
+            }
+            else
+            {
+                lookAtRotation = historicalRotation;
+            }
+            
+            // Blend between historical rotation and look-at rotation
+            Quaternion finalRotation = Quaternion.Slerp(historicalRotation, lookAtRotation, rotationBlendAmount);
+            
+            bodyParts[i].FollowTarget(targetData.position, finalRotation, isHeadMoving);
         }
 
         float maxDistance = bodyLength * segmentSpacing + segmentSpacing * 2;
@@ -274,4 +308,4 @@ public class SnakeBody : MonoBehaviour
             Gizmos.DrawLine(positionHistory[i].position, positionHistory[i + 1].position);
         }
     }
-}
+}   

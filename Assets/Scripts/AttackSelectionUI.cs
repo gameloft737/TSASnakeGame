@@ -11,6 +11,8 @@ public class AttackSelectionUI : MonoBehaviour
     [Header("Animator")]
     [SerializeField] private Animator uiAnimator;
     [SerializeField] private string openBool = "isOpen";
+    [SerializeField] private Animator deathAnimator;
+    [SerializeField] private string deathTrigger = "ShowDeath";
     
     [Header("UI References")]
     [SerializeField] private CameraManager cameraManager;
@@ -23,6 +25,9 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private Transform appleCountContainer;
     [SerializeField] private GameObject appleCountPrefab;
     [SerializeField] private GameObject nonUI;
+    
+    [Header("Death Screen")]
+    [SerializeField] private GameObject deathScreenPanel;
 
     private DepthOfField dof;
 
@@ -38,6 +43,7 @@ public class AttackSelectionUI : MonoBehaviour
     private int attackIdxSelected = 0;
     private Coroutine dofRoutine;
     private List<GameObject> spawnedAppleCounts = new List<GameObject>();
+    
     private void Start()
     {
         attackIdxSelected = attackManager.GetCurrentAttackIndex();
@@ -48,6 +54,12 @@ public class AttackSelectionUI : MonoBehaviour
         if (continueButton != null) continueButton.onClick.AddListener(OnContinueClicked);
 
         HideInstant();
+        
+        // Make sure death screen is hidden at start
+        if (deathScreenPanel != null)
+        {
+            deathScreenPanel.SetActive(false);
+        }
     }
 
     private IEnumerator LerpDOF(bool enable)
@@ -93,6 +105,21 @@ public class AttackSelectionUI : MonoBehaviour
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(true));
     }
+    
+    public void ShowDeathScreen(bool show)
+    {
+        if (deathScreenPanel != null)
+        {
+            deathScreenPanel.SetActive(show);
+        nonUI.SetActive(false);
+            
+            if (show && deathAnimator != null)
+            {
+                deathAnimator.SetTrigger(deathTrigger);
+            }
+        }
+    }
+    
     private void SpawnAppleCounts()
     {
         // Clear existing apple count displays
@@ -125,6 +152,7 @@ public class AttackSelectionUI : MonoBehaviour
             }
         }
     }
+    
     private void SpawnButtons()
     {
         foreach (var button in spawnedButtons) Destroy(button);
