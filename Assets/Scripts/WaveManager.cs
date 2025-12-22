@@ -25,6 +25,7 @@ public class WaveManager : MonoBehaviour
     private int totalEnemies;
     private bool waveActive = false;
     private bool inChoicePhase = false;
+    private bool isRestartingFromDeath = false;
     private HashSet<SpawnGroup> spawnedGroups = new HashSet<SpawnGroup>();
 
     private void OnEnable()
@@ -163,7 +164,16 @@ public class WaveManager : MonoBehaviour
     public void OnAttackSelected()
     {
         inChoicePhase = false;
-        currentWaveIndex++;
+        
+        // Only increment wave index if NOT restarting from death
+        if (!isRestartingFromDeath)
+        {
+            currentWaveIndex++;
+        }
+        
+        // Reset the restart flag
+        isRestartingFromDeath = false;
+        
         StartWave();
     }
 
@@ -178,6 +188,9 @@ public class WaveManager : MonoBehaviour
         inChoicePhase = true;
         spawnedGroups.Clear();
         
+        // Mark that we're restarting from death (don't progress to next wave)
+        isRestartingFromDeath = true;
+        
         // Stop player and pause attacks
         SetPlayerMovement(false);
         SetAttacksPaused(true);
@@ -189,29 +202,29 @@ public class WaveManager : MonoBehaviour
     }
 
     private void SetPlayerMovement(bool enabled)
-{
-    if (playerMovement != null)
     {
-        playerMovement.enabled = enabled;
-        
-        Rigidbody rb = playerMovement.GetComponent<Rigidbody>();
-        if (rb != null)
+        if (playerMovement != null)
         {
-            if (!enabled)
+            playerMovement.enabled = enabled;
+            
+            Rigidbody rb = playerMovement.GetComponent<Rigidbody>();
+            if (rb != null)
             {
-                // Stop all motion and make kinematic to prevent physics
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                rb.isKinematic = true;
-            }
-            else
-            {
-                // Re-enable physics
-                rb.isKinematic = false;
+                if (!enabled)
+                {
+                    // Stop all motion and make kinematic to prevent physics
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                    rb.isKinematic = true;
+                }
+                else
+                {
+                    // Re-enable physics
+                    rb.isKinematic = false;
+                }
             }
         }
     }
-}
     
     private void SetAttacksPaused(bool paused)
     {

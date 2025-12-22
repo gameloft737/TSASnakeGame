@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections;
 
 public class InstantDeathTrigger : MonoBehaviour
 {
@@ -15,13 +14,11 @@ public class InstantDeathTrigger : MonoBehaviour
     [SerializeField] private LayerMask snakeLayer;
     [SerializeField] private float rayDistance = 10f;
     
-    [Header("Reset Settings")]
-    [SerializeField] private bool hasTriggered = false;
-    [SerializeField] private bool canStartCounting = false;
-    [SerializeField] private float resetDelay = 2f;
+    [Header("Immunity Settings")]
+    [SerializeField] private float immunityDuration = 2f;
     
-    private bool isHittingSnake = false;
-    private float noHitTimer = 0f;
+    private bool hasImmunity = false;
+    private float immunityTimer = 0f;
 
     private void Start()
     {
@@ -38,69 +35,46 @@ public class InstantDeathTrigger : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (hasTriggered)
+        // Update immunity timer
+        if (hasImmunity)
         {
-            CheckForReset();
-            return;
+            immunityTimer += Time.fixedDeltaTime;
+            
+            if (immunityTimer >= immunityDuration)
+            {
+                // Check if still hitting snake
+                if (!IsHittingSnake())
+                {
+                    hasImmunity = false;
+                    immunityTimer = 0f;
+                }
+            }
+            
+            return; // Skip damage check while immune
         }
         
+        // Check for collision and trigger death
         if (raycastOrigin != null)
         {
             Ray ray = new Ray(raycastOrigin.position, raycastOrigin.forward);
-            RaycastHit hit;
             
-            if (Physics.Raycast(ray, out hit, rayDistance, snakeLayer))
+            if (Physics.Raycast(ray, out RaycastHit hit, rayDistance, snakeLayer))
             {
                 TriggerDeath(hit.point);
             }
         }
     }
     
-    private void CheckForReset()
+    private bool IsHittingSnake()
     {
-        if (!canStartCounting) return;
+        if (raycastOrigin == null) return false;
         
-        bool currentlyHitting = false;
-        
-        if (raycastOrigin != null)
-        {
-            Ray ray = new Ray(raycastOrigin.position, raycastOrigin.forward);
-            RaycastHit hit;
-            
-            if (Physics.Raycast(ray, out hit, rayDistance, snakeLayer))
-            {
-                currentlyHitting = true;
-            }
-        }
-        
-        if (currentlyHitting)
-        {
-            noHitTimer = 0f;
-            isHittingSnake = true;
-        }
-        else
-        {
-            if (isHittingSnake)
-            {
-                noHitTimer += Time.fixedDeltaTime;
-                
-                if (noHitTimer >= resetDelay)
-                {
-                    hasTriggered = false;
-                    isHittingSnake = false;
-                    noHitTimer = 0f;
-                    canStartCounting = false;
-                }
-            }
-        }
+        Ray ray = new Ray(raycastOrigin.position, raycastOrigin.forward);
+        return Physics.Raycast(ray, rayDistance, snakeLayer);
     }
     
     private void TriggerDeath(Vector3 hitPoint)
     {
-        hasTriggered = true;
-        isHittingSnake = true;
-        noHitTimer = 0f;
-        
         if (particlePrefab != null)
         {
             Vector3 spawnPosition = hitPoint + particleOffset;
@@ -111,13 +85,17 @@ public class InstantDeathTrigger : MonoBehaviour
         {
             snakeHealth.TakeDamage(snakeHealth.GetMaxHealth());
         }
+        
+        // Start immunity after death
+        hasImmunity = true;
+        immunityTimer = 0f;
     }
     
     private void OnDrawGizmos()
     {
         if (raycastOrigin == null) return;
         
-        Gizmos.color = hasTriggered ? Color.red : Color.yellow;
+        Gizmos.color = hasImmunity ? Color.green : Color.yellow;
         Vector3 start = raycastOrigin.position;
         Vector3 end = start + raycastOrigin.forward * rayDistance;
         
@@ -128,6 +106,8 @@ public class InstantDeathTrigger : MonoBehaviour
     
     public void OnNewRound()
     {
-        canStartCounting = true;
+        // Grant immunity at the start of a new round
+        hasImmunity = true;
+        immunityTimer = 0f;
     }
 }

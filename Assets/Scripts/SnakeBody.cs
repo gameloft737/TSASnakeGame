@@ -13,7 +13,7 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private float minRecordDistance = 0.05f;
 
     [SerializeField] private float impulseCarryover = 0.9f;
-    [SerializeField] private float rotationBlendAmount = 0.3f; // How much to blend toward looking at next segment (0 = pure historical, 1 = always look at next)
+    [SerializeField] private float rotationBlendAmount = 0.3f;
     
     // Material system
     [SerializeField] private Renderer headRenderer;
@@ -30,7 +30,9 @@ public class SnakeBody : MonoBehaviour
         public Quaternion rotation;
         public float distanceFromStart;
     }
+    
     public static event Action OnBodyPartsInitialized;
+    
     void Start()
     {
         lastRecordedPosition = head.position;
@@ -56,7 +58,8 @@ public class SnakeBody : MonoBehaviour
         {
             Vector3 startPos = head.position - head.forward * segmentSpacing * (i + 1);
             GameObject part = Instantiate(bodyPartPrefab, startPos, head.rotation);
-            bodyParts.Add(part.GetComponent<BodyPart>());
+            BodyPart bodyPartComponent = part.GetComponent<BodyPart>();
+            bodyParts.Add(bodyPartComponent);
             
             if (i < 3)
             {
@@ -65,10 +68,12 @@ public class SnakeBody : MonoBehaviour
                 scale.x = tailScales[i];
                 part.transform.localScale = scale;
             }
+            
+            // Capture the final scale after all modifications
+            bodyPartComponent.CaptureBaseScale();
         }
+        
         OnBodyPartsInitialized?.Invoke();
-        // Note: Initial variation is applied by AttackManager.Start(), 
-        // which runs after this and ensures first attack's attachment is visible
     }
 
     public void OnAdd(InputAction.CallbackContext context)
@@ -107,21 +112,16 @@ public class SnakeBody : MonoBehaviour
             float targetDistance = (reverseIndex + 1) * segmentSpacing;
             var targetData = GetPositionAtDistance(targetDistance);
             
-            // Start with historical rotation
             Quaternion historicalRotation = targetData.rotation;
-            
-            // Calculate rotation to look at the next body part (or head)
             Quaternion lookAtRotation;
             Vector3 lookTarget;
             
             if (i == bodyParts.Count - 1)
             {
-                // Last segment (closest to head) looks at the head
                 lookTarget = head.position;
             }
             else
             {
-                // Look at the next body part in the chain
                 lookTarget = bodyParts[i + 1].transform.position;
             }
             
@@ -136,7 +136,6 @@ public class SnakeBody : MonoBehaviour
                 lookAtRotation = historicalRotation;
             }
             
-            // Blend between historical rotation and look-at rotation
             Quaternion finalRotation = Quaternion.Slerp(historicalRotation, lookAtRotation, rotationBlendAmount);
             
             bodyParts[i].FollowTarget(targetData.position, finalRotation, isHeadMoving);
@@ -176,6 +175,9 @@ public class SnakeBody : MonoBehaviour
             GameObject newPart = Instantiate(bodyPartPrefab, spawnPos, spawnRot);
             BodyPart bodyPartComponent = newPart.GetComponent<BodyPart>();
             
+            // Capture scale before adding to list
+            bodyPartComponent.CaptureBaseScale();
+            
             bodyParts.Add(bodyPartComponent);
             bodyLength++;
         }
@@ -186,20 +188,13 @@ public class SnakeBody : MonoBehaviour
         return bodyLength;
     }
 
-    // ===== MATERIAL SYSTEM METHODS =====
-    
-    /// <summary>
-    /// Changes the appearance of the snake based on attack variation
-    /// </summary>
     public void ApplyAttackVariation(Material headMaterial, Material bodyMaterial, GameObject attachmentObject)
     {
-        // Change head material
         if (headRenderer != null && headMaterial != null)
         {
             headRenderer.material = headMaterial;
         }
         
-        // Change all body part materials
         if (bodyMaterial != null)
         {
             foreach (BodyPart part in bodyParts)
@@ -208,25 +203,19 @@ public class SnakeBody : MonoBehaviour
             }
         }
         
-        // Handle attachment - hide all, then show the selected one
         if (currentAttachment != null)
         {
             currentAttachment.SetActive(false);
             currentAttachment = null;
         }
         
-        // If an attachment is specified, activate it
         if (attachmentObject != null)
         {
             currentAttachment = attachmentObject;
             currentAttachment.SetActive(true);
-            
         }
     }
     
-    /// <summary>
-    /// Hide current attachment
-    /// </summary>
     public void ClearAttachment()
     {
         if (currentAttachment != null)
@@ -235,6 +224,7 @@ public class SnakeBody : MonoBehaviour
             currentAttachment = null;
         }
     }
+    
     public void TriggerSwallowAnimation(float bulgeScale = 1.3f, float bulgeSpeed = 0.08f)
     {
         StartCoroutine(SwallowAnimationCoroutine(bulgeScale, bulgeSpeed));
@@ -242,7 +232,6 @@ public class SnakeBody : MonoBehaviour
 
     private IEnumerator SwallowAnimationCoroutine(float bulgeScale, float bulgeSpeed)
     {
-        // Iterate BACKWARDS through list (last index = neck, index 0 = tail)
         for (int i = bodyParts.Count - 1; i >= 0; i--)
         {
             bodyParts[i].AnimateBulge(bulgeScale, 0.2f);
@@ -308,4 +297,4 @@ public class SnakeBody : MonoBehaviour
             Gizmos.DrawLine(positionHistory[i].position, positionHistory[i + 1].position);
         }
     }
-}   
+}

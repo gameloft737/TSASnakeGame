@@ -124,24 +124,18 @@ public class SnakeHealth : MonoBehaviour
             attackSelectionUI.ShowDeathScreen(false);
         }
         
-        // Reset the level
-        ResetLevel();
-    }
-    
-    private void ResetLevel()
-    {
-        // Reset health
+        // Reset health first
         currentHealth = maxHealth;
         isDead = false;
         onHealthChanged?.Invoke(GetHealthPercentage());
         
-        // Reset the current wave
+        // Trigger wave reset (which shows attack selection)
         if (waveManager != null)
         {
             waveManager.ResetCurrentWave();
         }
         
-        Debug.Log("Level reset!");
+        Debug.Log("Level reset - wave will restart after attack selection!");
     }
     
     public float GetHealthPercentage()

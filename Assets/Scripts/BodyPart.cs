@@ -15,7 +15,7 @@ public class BodyPart : MonoBehaviour
     private MaterialPropertyBlock propBlock;
     
     // Swallow animation
-    private Vector3 originalScale;
+    private Vector3 baseScale;
     private Coroutine swallowCoroutine;
 
     private void Awake()
@@ -39,7 +39,6 @@ public class BodyPart : MonoBehaviour
         }
         
         propBlock = new MaterialPropertyBlock();
-        originalScale = transform.localScale;
     }
 
     public void FollowTarget(Vector3 targetPos, Quaternion targetRot, bool headIsMoving)
@@ -74,7 +73,6 @@ public class BodyPart : MonoBehaviour
         rb.MoveRotation(newRot);
     }
     
-    // Change material of this body part
     public void SetMaterial(Material newMaterial)
     {
         if (bodyRenderer != null && newMaterial != null)
@@ -83,7 +81,6 @@ public class BodyPart : MonoBehaviour
         }
     }
     
-    // More efficient version using MaterialPropertyBlock (doesn't create material instances)
     public void SetColor(Color color)
     {
         if (bodyRenderer != null)
@@ -94,8 +91,13 @@ public class BodyPart : MonoBehaviour
     }
     
     /// <summary>
-    /// Animates this body part to bulge out temporarily (swallow effect)
+    /// Call this immediately after instantiation and scale changes
     /// </summary>
+    public void CaptureBaseScale()
+    {
+        baseScale = transform.localScale;
+    }
+    
     public void AnimateBulge(float bulgeScale = 1.3f, float duration = 0.2f)
     {
         if (swallowCoroutine != null)
@@ -109,13 +111,14 @@ public class BodyPart : MonoBehaviour
     {
         float elapsed = 0f;
         float halfDuration = duration / 2f;
+        Vector3 targetScale = baseScale * bulgeScale;
         
         // Scale up
         while (elapsed < halfDuration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / halfDuration;
-            transform.localScale = Vector3.Lerp(originalScale, originalScale * bulgeScale, t);
+            transform.localScale = Vector3.Lerp(baseScale, targetScale, t);
             yield return null;
         }
         
@@ -125,12 +128,11 @@ public class BodyPart : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = elapsed / halfDuration;
-            transform.localScale = Vector3.Lerp(originalScale * bulgeScale, originalScale, t);
+            transform.localScale = Vector3.Lerp(targetScale, baseScale, t);
             yield return null;
         }
         
-        // Ensure we end at exactly the original scale
-        transform.localScale = originalScale;
+        transform.localScale = baseScale;
         swallowCoroutine = null;
     }
 }
