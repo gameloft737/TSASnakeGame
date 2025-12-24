@@ -16,17 +16,17 @@ MonoBehaviour:
   spawnGroups:
   - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
     count: 10
-    spawnZoneIndex: 0
+    spawnZoneIndex: 13
     spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 57176229489227899, guid: 75cb68e2fae50764d8740f8adf5f9030, type: 3}
     count: 5
-    spawnZoneIndex: 1
+    spawnZoneIndex: 11
     spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 1924989329093748297, guid: 91749118754f7514582cfc8325adf2e2, type: 3}
     count: 5
-    spawnZoneIndex: 2
+    spawnZoneIndex: 7
     spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}

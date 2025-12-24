@@ -15,8 +15,23 @@ MonoBehaviour:
   waveName: Wave 1
   spawnGroups:
   - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
+    count: 2
+    spawnZoneIndex: 1
+    spawnThreshold: 100
+    spawnDelay: 0.5
+  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
+    count: 1
+    spawnZoneIndex: 2
+    spawnThreshold: 100
+    spawnDelay: 0.5
+  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
+    count: 3
+    spawnZoneIndex: 3
+    spawnThreshold: 100
+    spawnDelay: 0.5
+  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
     count: 5
-    spawnZoneIndex: 0
+    spawnZoneIndex: 4
     spawnThreshold: 100
     spawnDelay: 0.5
   spriteCounts:
