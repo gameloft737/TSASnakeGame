@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 584144fdafafa604daf977401cded0f9
+guid: f27b3d000bedb1a41bf1604b63ff858c
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -21,7 +21,7 @@ TextureImporter:
     heightScale: 0.25
     normalMapFilter: 0
     flipGreenChannel: 0
-  isReadable: 0
+  isReadable: 1
   streamingMipmaps: 0
   streamingMipmapsPriority: 0
   vTOnly: 0
@@ -123,13 +123,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: circle_0
+      name: DropSpawn_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 100
-        height: 100
+        width: 1000
+        height: 1000
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -138,8 +138,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b0daecc336594df4e845aefc2aee7c94
-      internalID: 2033955816
+      spriteID: 5dc9a2393686af742a9073684d3161fd
+      internalID: -1990949924
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: bdea2d6e9c3264a42bcea411380be225
+    spriteID: 5a2f8bc06998ac94ca9c29ee9dc5ebcc
     internalID: 0
     vertices: []
     indices: 
@@ -158,7 +158,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      circle_0: 2033955816
+      DropSpawn_0: -1990949924
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -15,6 +15,7 @@ public class BombPlacementAbility : BaseAbility
     public float damage;
     
     private List<GameObject> activeBombs = new List<GameObject>();
+    private bool hasPlacedBombs = false;
 
     private void OnEnable()
     {
@@ -35,17 +36,37 @@ public class BombPlacementAbility : BaseAbility
         {
             snakeBody = GetComponentInParent<SnakeBody>();
         }
+        
+        // Check if body parts already exist and place bombs immediately
+        if (snakeBody != null && snakeBody.bodyParts != null && snakeBody.bodyParts.Count > 0)
+        {
+            PlaceBombs();
+        }
     }
 
     private void PlaceBombs()
     {
+        // Prevent placing bombs multiple times
+        if (hasPlacedBombs) return;
+        
         if (snakeBody == null)
         {
-            Debug.LogWarning("BombPlacementAbility: SnakeBody not found!");
-            return;
+            snakeBody = GetComponentInParent<SnakeBody>();
+            if (snakeBody == null)
+            {
+                Debug.LogWarning("BombPlacementAbility: SnakeBody not found!");
+                return;
+            }
         }
 
         List<BodyPart> bodyParts = snakeBody.bodyParts;
+        
+        if (bodyParts == null || bodyParts.Count == 0)
+        {
+            Debug.LogWarning("BombPlacementAbility: Body parts list is empty!");
+            return;
+        }
+        
         int totalParts = bodyParts.Count;
 
         // Need at least 7 parts (3 + 1 + 3) to place any bombs
@@ -75,6 +96,7 @@ public class BombPlacementAbility : BaseAbility
             activeBombs.Add(bomb);
         }
 
+        hasPlacedBombs = true;
         Debug.Log($"BombPlacementAbility: Placed {activeBombs.Count} bombs!");
     }
 
@@ -91,6 +113,7 @@ public class BombPlacementAbility : BaseAbility
             }
         }
         activeBombs.Clear();
+        hasPlacedBombs = false;
     }
 
     private void OnDestroy()
