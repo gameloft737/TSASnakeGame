@@ -3,7 +3,7 @@ using UnityEngine;
 public class TurretAbility : BaseAbility
 {
     [Header("Turret Settings")]
-    [SerializeField] private float shootInterval = 1.5f;
+    [SerializeField] private float baseShootInterval = 1.5f;
     [SerializeField] private float detectionRange = 20f;
     [SerializeField] private GameObject turretBody;
     [SerializeField] private Transform originPoint;
@@ -11,16 +11,32 @@ public class TurretAbility : BaseAbility
     [Header("Projectile Settings")]
     [SerializeField] private GameObject projectilePrefab;
     [SerializeField] private float projectileSpeed = 15f;
-    [SerializeField] private float projectileDamage = 25f;
+    [SerializeField] private float baseProjectileDamage = 25f;
     [SerializeField] private float projectileLifetime = 5f;
     
     [Header("Spawn Settings")]
     [SerializeField] private Vector3 spawnOffset = new Vector3(0, 1f, 0);
     
+    [Header("Level Progression")]
+    [SerializeField] private float damageIncreasePerLevel = 10f;
+    [SerializeField] private float intervalDecreasePerLevel = 0.2f;
+    
     private float shootTimer = 0f;
     private Transform playerTransform;
     private AppleEnemy cachedNearestApple;
     private float targetSearchTimer = 0f;
+    
+    // Dynamic values that scale with level
+    private float currentShootInterval;
+    private float currentProjectileDamage;
+
+    protected override void Awake()
+    {
+        base.Awake(); // Initialize duration system
+        
+        // Set initial values based on level
+        UpdateStatsForLevel();
+    }
 
     private void Start()
     {
@@ -31,13 +47,19 @@ public class TurretAbility : BaseAbility
         {
             projectilePrefab = CreateDefaultProjectile();
         }
+        
+        Debug.Log($"TurretAbility: Started at level {currentLevel} - Damage: {currentProjectileDamage}, Fire Rate: {currentShootInterval:F2}s");
     }
 
-    private void Update()
+    protected override void Update()
     {
+        base.Update(); // Handle duration countdown
+        
+        if (!isActive) return;
+        
         // Periodically search for nearest apple (performance optimization)
         targetSearchTimer += Time.deltaTime;
-        if (targetSearchTimer >= (shootInterval/4))
+        if (targetSearchTimer >= (currentShootInterval / 4))
         {
             cachedNearestApple = FindNearestApple();
             targetSearchTimer = 0f;
@@ -58,11 +80,57 @@ public class TurretAbility : BaseAbility
         
         shootTimer += Time.deltaTime;
         
-        if (shootTimer >= shootInterval)
+        if (shootTimer >= currentShootInterval)
         {
             TryShoot();
             shootTimer = 0f;
         }
+    }
+
+    protected override void ActivateAbility()
+    {
+        base.ActivateAbility();
+        
+        if (turretBody != null)
+        {
+            turretBody.SetActive(true);
+        }
+        
+        Debug.Log($"TurretAbility: Activated at level {currentLevel}");
+    }
+    
+    protected override void DeactivateAbility()
+    {
+        base.DeactivateAbility();
+        
+        if (turretBody != null)
+        {
+            turretBody.SetActive(false);
+        }
+        
+        Debug.Log("TurretAbility: Deactivated - destroying turret");
+        Destroy(gameObject);
+    }
+    
+    protected override void OnLevelUp()
+    {
+        base.OnLevelUp();
+        
+        UpdateStatsForLevel();
+        
+        Debug.Log($"TurretAbility: Level {currentLevel} - Damage: {currentProjectileDamage}, Fire Rate: {currentShootInterval:F2}s");
+    }
+    
+    private void UpdateStatsForLevel()
+    {
+        // Increase damage with each level
+        currentProjectileDamage = baseProjectileDamage + (damageIncreasePerLevel * (currentLevel - 1));
+        
+        // Decrease interval (faster firing) with each level
+        currentShootInterval = baseShootInterval - (intervalDecreasePerLevel * (currentLevel - 1));
+        
+        // Clamp to reasonable minimum (don't go below 0.5s interval)
+        currentShootInterval = Mathf.Max(currentShootInterval, 0.5f);
     }
 
     private void TryShoot()
@@ -81,7 +149,6 @@ public class TurretAbility : BaseAbility
         float height = agent != null ? agent.height * 0.5f : 0.5f;
         
         return apple.transform.position + Vector3.up * height;
-        
     }
 
     private AppleEnemy FindNearestApple()
@@ -129,7 +196,8 @@ public class TurretAbility : BaseAbility
             projectileScript = projectile.AddComponent<TurretProjectile>();
         }
         
-        projectileScript.Initialize(direction, projectileSpeed, projectileDamage, projectileLifetime);
+        // Use current level-scaled damage
+        projectileScript.Initialize(direction, projectileSpeed, currentProjectileDamage, projectileLifetime);
     }
 
     private GameObject CreateDefaultProjectile()

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 public class GoopSlowEffect : MonoBehaviour
 {
     [Header("Slow Settings")]
-    [SerializeField] private float speedMultiplier = 0.5f; // 50% speed
+    public float speedMultiplier = 0.5f; // 50% speed
     [SerializeField] private float effectDuration = 3f; // Lasts 3 seconds after leaving goop
     [SerializeField] private float contactRefreshRate = 0.2f; // How often to refresh while in contact
     

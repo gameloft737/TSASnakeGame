@@ -62,26 +62,11 @@ public class DropManager : MonoBehaviour
     {
         if (dropPrefab == null) return;
         
-        GameObject selectedAbility = abilityPrefab != null ? abilityPrefab : GetRandomAbility();
         
-        if (selectedAbility == null)
-        {
-            Debug.LogWarning("No ability available to spawn!");
-            return;
-        }
         
         GameObject drop = Instantiate(dropPrefab, position, Quaternion.identity);
         AbilityDrop dropScript = drop.GetComponent<AbilityDrop>();
         
-        if (dropScript != null)
-        {
-            dropScript.SetAbility(selectedAbility);
-        }
-        else
-        {
-            Debug.LogError("Drop prefab is missing AbilityDrop component!");
-            Destroy(drop);
-        }
     }
 
     /// <summary>

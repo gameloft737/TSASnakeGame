@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
+  m_Name: Turret
+  m_EditorClassIdentifier: 
+  abilityName: Turrent
+  icon: {fileID: 21300000, guid: 37036e23c776a844dbfea68714bbbdac, type: 3}
+  abilityPrefab: {fileID: 8346413092723725895, guid: 7db5d825dce573647a660962b3a69cfd, type: 3}
