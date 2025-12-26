@@ -32,62 +32,62 @@ MonoBehaviour:
   - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}
     count: 2
     spawnZoneIndex: 4
-    spawnThreshold: 38
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}
     count: 3
     spawnZoneIndex: 5
-    spawnThreshold: 15
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 1033166858978132019, guid: 30d0d7d6aa8cb4b4999e6755b1b19f68, type: 3}
     count: 4
     spawnZoneIndex: 6
-    spawnThreshold: 38
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 1033166858978132019, guid: 30d0d7d6aa8cb4b4999e6755b1b19f68, type: 3}
     count: 2
     spawnZoneIndex: 7
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 1924989329093748297, guid: 91749118754f7514582cfc8325adf2e2, type: 3}
     count: 3
     spawnZoneIndex: 8
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
     count: 3
     spawnZoneIndex: 9
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
     count: 4
     spawnZoneIndex: 10
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}
     count: 1
     spawnZoneIndex: 11
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}
     count: 2
     spawnZoneIndex: 12
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
     count: 2
     spawnZoneIndex: 13
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
     count: 3
     spawnZoneIndex: 14
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
     count: 2
     spawnZoneIndex: 15
-    spawnThreshold: 24
+    spawnThreshold: 100
     spawnDelay: 0.5
   spriteCounts:
   - sprite: {fileID: 21300000, guid: 656022f27a0d05348a37be4c84c5a29c, type: 3}
