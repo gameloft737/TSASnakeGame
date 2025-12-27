@@ -51,6 +51,15 @@ public class PlayerMovement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         rb.useGravity = false;
+        
+        // Set static player reference for XP drops (optimization)
+        XPDrop.SetPlayerReference(transform);
+    }
+    
+    private void OnDestroy()
+    {
+        // Clear cached references when player is destroyed
+        XPDrop.ClearCachedReferences();
     }
 
     void Update()

@@ -35,15 +35,37 @@ public class EnemySpawner : MonoBehaviour
     
     private void Start()
     {
-        // Auto-find snake references if not assigned
+        // Subscribe to SnakeBody initialization to get references
+        SnakeBody.OnBodyPartsInitialized += OnSnakeInitialized;
+        
+        // Try to find immediately if snake already exists
         if (snakeBody == null)
         {
             snakeBody = FindFirstObjectByType<SnakeBody>();
         }
         
-        if (snakeHealth == null)
+        if (snakeHealth == null && snakeBody != null)
         {
-            snakeHealth = FindFirstObjectByType<SnakeHealth>();
+            snakeHealth = snakeBody.GetComponent<SnakeHealth>();
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        SnakeBody.OnBodyPartsInitialized -= OnSnakeInitialized;
+    }
+    
+    private void OnSnakeInitialized()
+    {
+        // Get references when snake is initialized
+        if (snakeBody == null)
+        {
+            snakeBody = FindFirstObjectByType<SnakeBody>();
+        }
+        
+        if (snakeHealth == null && snakeBody != null)
+        {
+            snakeHealth = snakeBody.GetComponent<SnakeHealth>();
         }
     }
     

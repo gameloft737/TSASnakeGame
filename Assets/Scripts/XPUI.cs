@@ -24,9 +24,11 @@ public class XPUI : MonoBehaviour
     [SerializeField] private Color waveXPBarColor = new Color(1f, 0.8f, 0.2f);
     [SerializeField] private bool animateXPGain = true;
     [SerializeField] private float animationSpeed = 5f;
+    [SerializeField] private float animationThreshold = 0.001f; // Stop animating when close enough
     
     private float targetXPValue = 0f;
     private float currentDisplayXP = 0f;
+    private bool isAnimating = false;
     
     private void Start()
     {
@@ -59,11 +61,18 @@ public class XPUI : MonoBehaviour
     
     private void Update()
     {
-        // Animate XP bar
-        if (animateXPGain && xpSlider != null)
+        // Only animate when needed
+        if (!isAnimating || !animateXPGain || xpSlider == null) return;
+        
+        currentDisplayXP = Mathf.Lerp(currentDisplayXP, targetXPValue, animationSpeed * Time.deltaTime);
+        xpSlider.value = currentDisplayXP;
+        
+        // Stop animating when close enough to target
+        if (Mathf.Abs(currentDisplayXP - targetXPValue) < animationThreshold)
         {
-            currentDisplayXP = Mathf.Lerp(currentDisplayXP, targetXPValue, animationSpeed * Time.deltaTime);
+            currentDisplayXP = targetXPValue;
             xpSlider.value = currentDisplayXP;
+            isAnimating = false;
         }
     }
     
@@ -81,6 +90,11 @@ public class XPUI : MonoBehaviour
             if (!animateXPGain)
             {
                 xpSlider.value = targetXPValue;
+            }
+            else
+            {
+                // Start animating
+                isAnimating = true;
             }
         }
         
@@ -110,6 +124,7 @@ public class XPUI : MonoBehaviour
         
         // Reset animation for smooth transition
         currentDisplayXP = 0f;
+        isAnimating = true;
         
         // TODO: Play level up effect
     }

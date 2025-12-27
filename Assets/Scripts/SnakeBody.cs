@@ -37,6 +37,10 @@ public class SnakeBody : MonoBehaviour
     {
         lastRecordedPosition = head.position;
         
+        // Set static references for AppleEnemy optimization
+        SnakeHealth health = GetComponent<SnakeHealth>();
+        AppleEnemy.SetSnakeReferences(this, health);
+        
         // Get head renderer if not assigned
         if (headRenderer == null)
         {

@@ -2,6 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// XP drop that can be collected by the player
+/// Optimized to use static player reference and reduced Update frequency
 /// </summary>
 public class XPDrop : MonoBehaviour
 {
@@ -23,13 +24,26 @@ public class XPDrop : MonoBehaviour
     [Header("Lifetime")]
     [SerializeField] private float lifetime = 30f;
     
-    private Transform player;
+    // Static cached player reference - shared across all XP drops
+    private static Transform s_cachedPlayer;
+    private static bool s_playerSearched = false;
+    
     private Rigidbody rb;
-    private bool isBeingAttracted = false;
     private float spawnTime;
     private Vector3 startPosition;
     private bool hasScattered = false;
     private float scatterEndTime;
+    
+    // Cached squared distances for optimization
+    private float attractRangeSqr;
+    private float collectRangeSqr;
+    
+    private void Awake()
+    {
+        // Cache squared distances to avoid sqrt in distance checks
+        attractRangeSqr = attractRange * attractRange;
+        collectRangeSqr = collectRange * collectRange;
+    }
     
     private void Start()
     {
@@ -37,11 +51,15 @@ public class XPDrop : MonoBehaviour
         spawnTime = Time.time;
         startPosition = transform.position;
         
-        // Find player (snake head)
-        PlayerMovement playerMovement = FindFirstObjectByType<PlayerMovement>();
-        if (playerMovement != null)
+        // Use static cached player - only search once across all XP drops
+        if (!s_playerSearched)
         {
-            player = playerMovement.transform;
+            PlayerMovement playerMovement = FindFirstObjectByType<PlayerMovement>();
+            if (playerMovement != null)
+            {
+                s_cachedPlayer = playerMovement.transform;
+            }
+            s_playerSearched = true;
         }
         
         // Apply initial scatter force
@@ -63,7 +81,7 @@ public class XPDrop : MonoBehaviour
     
     private void Update()
     {
-        if (player == null) return;
+        if (s_cachedPlayer == null) return;
         
         // Wait for scatter to finish
         if (Time.time < scatterEndTime) return;
@@ -80,29 +98,28 @@ public class XPDrop : MonoBehaviour
             startPosition = transform.position;
         }
         
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+        // Use sqrMagnitude instead of Distance to avoid sqrt
+        Vector3 toPlayer = s_cachedPlayer.position - transform.position;
+        float distanceSqr = toPlayer.sqrMagnitude;
         
         // Check for collection
-        if (distanceToPlayer <= collectRange)
+        if (distanceSqr <= collectRangeSqr)
         {
             Collect();
             return;
         }
         
         // Attract to player if in range
-        if (distanceToPlayer <= attractRange)
+        if (distanceSqr <= attractRangeSqr)
         {
-            isBeingAttracted = true;
-            
-            // Move towards player
-            Vector3 direction = (player.position - transform.position).normalized;
-            float speed = attractSpeed * (1f - (distanceToPlayer / attractRange) * 0.5f); // Faster when closer
+            // Move towards player - normalize only when needed
+            float distance = Mathf.Sqrt(distanceSqr);
+            Vector3 direction = toPlayer / distance; // Faster than .normalized
+            float speed = attractSpeed * (1f - (distance / attractRange) * 0.5f);
             transform.position += direction * speed * Time.deltaTime;
         }
         else
         {
-            isBeingAttracted = false;
-            
             // Bob up and down when not being attracted
             float bobOffset = Mathf.Sin((Time.time - spawnTime) * bobSpeed) * bobHeight;
             transform.position = new Vector3(
@@ -114,6 +131,24 @@ public class XPDrop : MonoBehaviour
         
         // Always rotate
         transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
+    }
+    
+    /// <summary>
+    /// Static method to set the player reference directly (call from PlayerMovement.Start)
+    /// </summary>
+    public static void SetPlayerReference(Transform player)
+    {
+        s_cachedPlayer = player;
+        s_playerSearched = true;
+    }
+    
+    /// <summary>
+    /// Clear cached references (call when player is destroyed or scene changes)
+    /// </summary>
+    public static void ClearCachedReferences()
+    {
+        s_cachedPlayer = null;
+        s_playerSearched = false;
     }
     
     /// <summary>

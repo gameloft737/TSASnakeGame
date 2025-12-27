@@ -7,6 +7,11 @@ public class AppleEnemy : MonoBehaviour
 {
     public static event Action<AppleEnemy> OnAppleDied;
     
+    // Static cached references - shared across all enemies
+    private static SnakeBody s_cachedSnakeBody;
+    private static SnakeHealth s_cachedSnakeHealth;
+    private static bool s_referencesSearched = false;
+    
     private NavMeshAgent agent;
 
     [Header("References")]
@@ -27,6 +32,7 @@ public class AppleEnemy : MonoBehaviour
     
     [Header("Tracking Settings")]
     [SerializeField] private float contactDistance = 1.5f;
+    [SerializeField] private float trackingUpdateInterval = 0.1f; // How often to update tracking (optimization)
     
     [Header("Rotation Settings")]
     [SerializeField] private float rotationSpeed = 10f;
@@ -59,6 +65,10 @@ public class AppleEnemy : MonoBehaviour
     private Vector3 frozenVelocity; // Store velocity when frozen
     private bool wasAgentEnabled; // Store agent state when frozen
     
+    // Cached for optimization
+    private float contactDistanceSqr;
+    private WaitForSeconds trackingWait;
+    
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
@@ -66,29 +76,55 @@ public class AppleEnemy : MonoBehaviour
         
         currentHealth = maxHealth;
         
+        // Cache squared distance for optimization
+        contactDistanceSqr = contactDistance * contactDistance;
+        trackingWait = new WaitForSeconds(trackingUpdateInterval);
+        
         if (biteParticles != null)
         {
             biteParticles.Stop();
         }
         
-        // Auto-find if not already initialized by spawner
+        // Auto-find if not already initialized by spawner - use static cache
         if (!isInitialized)
         {
-            Debug.Log("ayyyy");
             if (snakeBody == null)
             {
-                snakeBody = FindFirstObjectByType<SnakeBody>();
-            }
-            
-            if (snakeHealth == null)
-            {
-                snakeHealth = FindFirstObjectByType<SnakeHealth>();
+                // Use static cached reference
+                if (!s_referencesSearched)
+                {
+                    s_cachedSnakeBody = FindFirstObjectByType<SnakeBody>();
+                    s_cachedSnakeHealth = FindFirstObjectByType<SnakeHealth>();
+                    s_referencesSearched = true;
+                }
+                snakeBody = s_cachedSnakeBody;
+                snakeHealth = s_cachedSnakeHealth;
             }
         }
         
         lastValidVelocity = agentObj != null ? agentObj.forward : transform.forward;
         
         StartCoroutine(TrackAndMonitorContact());
+    }
+    
+    /// <summary>
+    /// Static method to set snake references directly (call from SnakeBody.Start)
+    /// </summary>
+    public static void SetSnakeReferences(SnakeBody body, SnakeHealth health)
+    {
+        s_cachedSnakeBody = body;
+        s_cachedSnakeHealth = health;
+        s_referencesSearched = true;
+    }
+    
+    /// <summary>
+    /// Clear cached references (call when snake is destroyed or scene changes)
+    /// </summary>
+    public static void ClearCachedReferences()
+    {
+        s_cachedSnakeBody = null;
+        s_cachedSnakeHealth = null;
+        s_referencesSearched = false;
     }
 
     public void Initialize(SnakeBody body, SnakeHealth health)
@@ -125,17 +161,23 @@ public class AppleEnemy : MonoBehaviour
         if (snakeBody == null || snakeBody.bodyParts == null || snakeBody.bodyParts.Count == 0)
             return null;
 
-        float nearestDistance = Mathf.Infinity;
+        float nearestDistanceSqr = float.MaxValue;
         Transform nearest = null;
+        Vector3 myPos = transform.position;
 
-        foreach (var bodyPart in snakeBody.bodyParts)
+        // Use for loop instead of foreach to avoid allocations
+        var bodyParts = snakeBody.bodyParts;
+        int count = bodyParts.Count;
+        for (int i = 0; i < count; i++)
         {
+            var bodyPart = bodyParts[i];
             if (bodyPart != null)
             {
-                float distance = Vector3.Distance(transform.position, bodyPart.transform.position);
-                if (distance < nearestDistance)
+                // Use sqrMagnitude instead of Distance to avoid sqrt
+                float distanceSqr = (bodyPart.transform.position - myPos).sqrMagnitude;
+                if (distanceSqr < nearestDistanceSqr)
                 {
-                    nearestDistance = distance;
+                    nearestDistanceSqr = distanceSqr;
                     nearest = bodyPart.transform;
                 }
             }
@@ -151,16 +193,22 @@ public class AppleEnemy : MonoBehaviour
         if (snakeBody == null || snakeBody.bodyParts == null || snakeBody.bodyParts.Count == 0)
             return false;
 
-        float closestDistance = Mathf.Infinity;
+        float closestDistanceSqr = float.MaxValue;
+        Vector3 myPos = transform.position;
 
-        foreach (var bodyPart in snakeBody.bodyParts)
+        // Use for loop instead of foreach to avoid allocations
+        var bodyParts = snakeBody.bodyParts;
+        int count = bodyParts.Count;
+        for (int i = 0; i < count; i++)
         {
+            var bodyPart = bodyParts[i];
             if (bodyPart != null)
             {
-                float distance = Vector3.Distance(transform.position, bodyPart.transform.position);
-                if (distance <= contactDistance && distance < closestDistance)
+                // Use sqrMagnitude instead of Distance to avoid sqrt
+                float distanceSqr = (bodyPart.transform.position - myPos).sqrMagnitude;
+                if (distanceSqr <= contactDistanceSqr && distanceSqr < closestDistanceSqr)
                 {
-                    closestDistance = distance;
+                    closestDistanceSqr = distanceSqr;
                     closestPart = bodyPart.transform;
                 }
             }
@@ -172,15 +220,23 @@ public class AppleEnemy : MonoBehaviour
     private IEnumerator TrackAndMonitorContact()
     {
         nearestBodyPart = FindNearestBodyPart();
+        
+        // Track time for proper deltaTime calculation with interval-based updates
+        float lastUpdateTime = Time.time;
 
         while (true)
         {
             // Skip processing when frozen
             if (isFrozen)
             {
-                yield return null;
+                yield return trackingWait;
+                lastUpdateTime = Time.time;
                 continue;
             }
+            
+            // Calculate actual delta time since last update
+            float deltaTime = Time.time - lastUpdateTime;
+            lastUpdateTime = Time.time;
             
             if (nearestBodyPart != null)
             {
@@ -205,7 +261,7 @@ public class AppleEnemy : MonoBehaviour
                         }
                     }
 
-                    contactTimer += Time.deltaTime;
+                    contactTimer += deltaTime;
 
                     if (contactTimer >= contactTimeBeforeBiting)
                     {
@@ -214,7 +270,7 @@ public class AppleEnemy : MonoBehaviour
                             StartBiting();
                         }
                         
-                        biteTimer += Time.deltaTime;
+                        biteTimer += deltaTime;
                         if (biteTimer >= biteDamageInterval)
                         {
                             DealDamage();
@@ -256,7 +312,8 @@ public class AppleEnemy : MonoBehaviour
                 nearestBodyPart = FindNearestBodyPart();
             }
 
-            yield return null;
+            // Use interval-based wait instead of every frame
+            yield return trackingWait;
         }
     }
 

@@ -43,9 +43,16 @@ public class AttackSelectionUI : MonoBehaviour
 
     [SerializeField] private AttackManager attackManager;
     [SerializeField] private WaveManager waveManager;
+    
+    [Header("Freeze References")]
+    [SerializeField] private PlayerMovement playerMovement;
+    [SerializeField] private MouseLookAt mouseLookAt;
+    
     private List<GameObject> spawnedButtons = new List<GameObject>();
     private List<GameObject> spawnedCurrentAbilityDisplays = new List<GameObject>(); // Track current ability displays
     private GameObject spawnedCurrentAttackDisplay; // Track current attack display
+    private List<AppleEnemy> frozenEnemies = new List<AppleEnemy>(); // Track frozen enemies
+    private List<BaseAbility> frozenAbilities = new List<BaseAbility>(); // Track frozen abilities
 
     [Header("DOF Settings")]
     [SerializeField] private float blurTime = 0.4f;
@@ -118,6 +125,9 @@ public class AttackSelectionUI : MonoBehaviour
 
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(true));
+        
+        // Freeze all entities
+        FreezeAllEntities();
     }
     
     public void ShowDeathScreen(bool show)
@@ -257,6 +267,9 @@ public class AttackSelectionUI : MonoBehaviour
 
     private IEnumerator CloseSequence()
     {
+        // Unfreeze all entities before closing
+        UnfreezeAllEntities();
+        
         // Upgrade the selected attack before closing
         UpgradeSelectedAttack();
         
@@ -538,5 +551,134 @@ public class AttackSelectionUI : MonoBehaviour
             Destroy(spawnedCurrentAttackDisplay);
             spawnedCurrentAttackDisplay = null;
         }
+    }
+    
+    /// <summary>
+    /// Freezes the player, mouse look, camera, abilities, and all enemies in the scene
+    /// </summary>
+    private void FreezeAllEntities()
+    {
+        // Freeze the player movement
+        if (playerMovement != null)
+        {
+            playerMovement.SetFrozen(true);
+        }
+        else
+        {
+            // Try to find player movement if not assigned
+            playerMovement = FindFirstObjectByType<PlayerMovement>();
+            if (playerMovement != null)
+            {
+                playerMovement.SetFrozen(true);
+            }
+        }
+
+        // Freeze the mouse look
+        if (mouseLookAt != null)
+        {
+            mouseLookAt.SetFrozen(true);
+        }
+        else
+        {
+            // Try to find mouse look if not assigned
+            mouseLookAt = FindFirstObjectByType<MouseLookAt>();
+            if (mouseLookAt != null)
+            {
+                mouseLookAt.SetFrozen(true);
+            }
+        }
+
+        // Freeze the camera manager
+        if (cameraManager != null)
+        {
+            cameraManager.SetFrozen(true);
+        }
+
+        // Freeze the attack manager (blocks mouse clicks/attacks)
+        if (attackManager != null)
+        {
+            attackManager.SetFrozen(true);
+        }
+
+        // Freeze all enemies
+        frozenEnemies.Clear();
+        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        foreach (AppleEnemy enemy in enemies)
+        {
+            if (enemy != null)
+            {
+                enemy.SetFrozen(true);
+                frozenEnemies.Add(enemy);
+            }
+        }
+
+        // Freeze all active abilities
+        frozenAbilities.Clear();
+        if (abilityManager != null)
+        {
+            List<BaseAbility> activeAbilities = abilityManager.GetActiveAbilities();
+            foreach (BaseAbility ability in activeAbilities)
+            {
+                if (ability != null)
+                {
+                    ability.SetFrozen(true);
+                    frozenAbilities.Add(ability);
+                }
+            }
+        }
+
+        Debug.Log($"Attack Selection: Frozen {frozenEnemies.Count} enemies, {frozenAbilities.Count} abilities, player, mouse look, and camera.");
+    }
+
+    /// <summary>
+    /// Unfreezes the player, mouse look, camera, abilities, and all previously frozen enemies
+    /// </summary>
+    private void UnfreezeAllEntities()
+    {
+        // Unfreeze the player
+        if (playerMovement != null)
+        {
+            playerMovement.SetFrozen(false);
+        }
+
+        // Unfreeze the mouse look
+        if (mouseLookAt != null)
+        {
+            mouseLookAt.SetFrozen(false);
+        }
+
+        // Unfreeze the camera manager
+        if (cameraManager != null)
+        {
+            cameraManager.SetFrozen(false);
+        }
+
+        // Unfreeze the attack manager
+        if (attackManager != null)
+        {
+            attackManager.SetFrozen(false);
+        }
+
+        // Unfreeze all enemies that were frozen
+        foreach (AppleEnemy enemy in frozenEnemies)
+        {
+            if (enemy != null)
+            {
+                enemy.SetFrozen(false);
+            }
+        }
+        frozenEnemies.Clear();
+
+        // Unfreeze all abilities that were frozen
+        foreach (BaseAbility ability in frozenAbilities)
+        {
+            if (ability != null)
+            {
+                ability.SetFrozen(false);
+            }
+        }
+        frozenAbilities.Clear();
+
+        Debug.Log("Attack Selection: All entities unfrozen.");
     }
 }
