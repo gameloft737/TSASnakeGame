@@ -1,12 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(AbilityManager))]
 public class AbilityCollector : MonoBehaviour
 {
     [Header("Collection Settings")]
     [SerializeField] private bool autoCollect = true;
+
+    [Header("Available Abilities")]
+    [SerializeField] private List<AbilitySO> availableAbilities = new List<AbilitySO>(); // List of abilities player can choose from
 
     [Header("Audio")]
     [SerializeField] private AudioClip collectSound;
@@ -24,11 +28,19 @@ public class AbilityCollector : MonoBehaviour
     [SerializeField] private Button closeButton; // Drag and drop the close button here
     [SerializeField] private GameObject uiContainer; // The UI container to show/hide before animation
 
+    [Header("Ability Selection UI")]
+    [SerializeField] private Transform abilityButtonContainer; // Container to hold ability buttons
+    [SerializeField] private GameObject abilityButtonPrefab; // Prefab for ability buttons
+
     // Reference to CursorLock script
     [SerializeField] private CursorLock cursorLock; // Drag and drop the CursorLock script here
 
+    // New delay variable for stopping time after the menu opens
+    [Header("Time Control Settings")]
+    [SerializeField] private float timeStopDelay = 0.5f; // Delay in seconds before stopping time
 
     private AbilityManager abilityManager;
+    private List<GameObject> spawnedButtons = new List<GameObject>(); // Track spawned buttons for cleanup
 
     private void Start()
     {
@@ -51,8 +63,77 @@ public class AbilityCollector : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Populates the ability button container with buttons for each available ability
+    /// </summary>
+    private void PopulateAbilityButtons()
+    {
+        // Clear existing buttons
+        ClearAbilityButtons();
+
+        if (abilityButtonContainer == null || abilityButtonPrefab == null)
+        {
+            Debug.LogWarning("AbilityCollector: Button container or prefab not assigned!");
+            return;
+        }
+
+        // Create a button for each available ability
+        foreach (AbilitySO ability in availableAbilities)
+        {
+            if (ability == null) continue;
+
+            GameObject buttonObj = Instantiate(abilityButtonPrefab, abilityButtonContainer);
+            spawnedButtons.Add(buttonObj);
+
+            // Initialize the button with the ability data
+            AbilityButton abilityButton = buttonObj.GetComponent<AbilityButton>();
+            if (abilityButton != null)
+            {
+                abilityButton.Initialize(ability, this);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clears all spawned ability buttons
+    /// </summary>
+    private void ClearAbilityButtons()
+    {
+        foreach (GameObject button in spawnedButtons)
+        {
+            if (button != null)
+            {
+                Destroy(button);
+            }
+        }
+        spawnedButtons.Clear();
+    }
+
+    /// <summary>
+    /// Called by AbilityButton when player selects an ability
+    /// </summary>
+    public void SelectAbility(AbilitySO abilitySO)
+    {
+        if (abilitySO == null || abilitySO.abilityPrefab == null) return;
+
+        // Add the ability to the player
+        BaseAbility newAbility = abilityManager.AddAbility(abilitySO.abilityPrefab);
+        
+        if (newAbility != null)
+        {
+            Debug.Log("Ability selected and added: " + abilitySO.abilityName);
+            PlayEffect(transform.position, false);
+        }
+
+        // Close the UI after selection
+        CloseCanvas();
+    }
+
     private void CloseCanvas()
     {
+        // Resume the game time right before the closing animation starts
+        Time.timeScale = 1;
+
         if (uiAnimator != null)
         {
             uiAnimator.SetBool(openTrigger, false); // Trigger the "close" animation
@@ -76,17 +157,13 @@ public class AbilityCollector : MonoBehaviour
             stateInfo = uiAnimator.GetCurrentAnimatorStateInfo(0);
         }
 
-        // After animation finishes, hide the UI container and restore game time and cursor
+        // After animation finishes, hide the UI container
         if (uiContainer != null)
         {
             uiContainer.SetActive(false); // Hide the UI container
         }
 
-        Time.timeScale = 1; // Resume time
-        Cursor.visible = false; // Hide the cursor
-        Cursor.lockState = CursorLockMode.Locked; // Lock the cursor back in the center of the screen
-
-        // Lock the cursor again after closing the ability selection UI
+        // Lock the cursor back in the center of the screen after the UI is closed
         if (cursorLock != null)
         {
             cursorLock.StopAbilitySelection();
@@ -121,65 +198,41 @@ public class AbilityCollector : MonoBehaviour
             return false;
         }
 
-        AbilitySO abilitySO = drop.GetAbilitySO();
-        if (abilitySO == null || abilitySO.abilityPrefab == null)
+        // Collect the drop (remove it from the world)
+        drop.Collect();
+
+        // Show the ability selection UI - don't add any ability yet
+        ShowAbilitySelectionUI();
+
+        return true;
+    }
+
+    /// <summary>
+    /// Shows the ability selection UI for the player to choose an ability
+    /// </summary>
+    private void ShowAbilitySelectionUI()
+    {
+        if (uiAnimator == null) return;
+
+        // Show the UI container before the animation starts
+        if (uiContainer != null)
         {
-            drop.Collect();
-            return false;
+            uiContainer.SetActive(true); // Unhide the UI container
         }
 
-        AbilityDrop.DropType dropType = drop.GetDropType();
-        BaseAbility existingAbility = abilityManager.GetAbility(abilitySO.abilityPrefab);
+        // Populate the ability buttons before showing the UI
+        PopulateAbilityButtons();
 
-        bool abilityCollected = false;
+        uiAnimator.SetBool(openTrigger, true); // Trigger the "open" animation
 
-        if (dropType == AbilityDrop.DropType.New)
+        // Unlock the cursor and start the ability selection phase
+        if (cursorLock != null)
         {
-            BaseAbility newAbility = abilityManager.AddAbility(abilitySO.abilityPrefab);
-            if (newAbility != null)
-            {
-                PlayEffect(drop.transform.position, false);
-                drop.Collect();
-                abilityCollected = true;
-            }
-        }
-        else if (dropType == AbilityDrop.DropType.Upgrade && existingAbility != null)
-        {
-            existingAbility.LevelUp();
-            PlayEffect(drop.transform.position, true);
-            drop.Collect();
-            abilityCollected = true;
-        }
-        else if (dropType == AbilityDrop.DropType.Duration && existingAbility != null)
-        {
-            existingAbility.LevelUp(); // This extends duration even at max level
-            PlayEffect(drop.transform.position, false);
-            drop.Collect();
-            abilityCollected = true;
+            cursorLock.StartAbilitySelection();
         }
 
-        // If an ability is collected, trigger the open animation and start the coroutine
-        if (abilityCollected && uiAnimator != null)
-        {
-            // Show the UI container before the animation starts
-            if (uiContainer != null)
-            {
-                uiContainer.SetActive(true); // Unhide the UI container
-            }
-
-            uiAnimator.SetBool(openTrigger, true); // Trigger the "open" animation
-
-            // Unlock the cursor and start the ability selection phase
-            if (cursorLock != null)
-            {
-                cursorLock.StartAbilitySelection();
-            }
-
-            StartCoroutine(WaitForAnimationToFinish()); // Start coroutine to monitor animation and stop time
-        }
-
-        drop.Collect(); // In case we don’t exit early
-        return abilityCollected;
+        // Start the coroutine to stop time after a delay
+        StartCoroutine(WaitForAnimationToFinish());
     }
 
     private IEnumerator WaitForAnimationToFinish()
@@ -187,27 +240,14 @@ public class AbilityCollector : MonoBehaviour
         // Log to confirm coroutine is being started
         Debug.Log("Coroutine started.");
 
-        // Wait until the current animation finishes
-        AnimatorStateInfo stateInfo = uiAnimator.GetCurrentAnimatorStateInfo(0);
+        // Wait for the specified delay before stopping time
+        yield return new WaitForSeconds(timeStopDelay); // Wait for the user-defined delay
 
-        // Loop until the animation reaches the end (normalizedTime reaches 1)
-        while (stateInfo.normalizedTime < 1f)
-        {
-            yield return null;
-
-            // Update the stateInfo in case the animation has advanced
-            stateInfo = uiAnimator.GetCurrentAnimatorStateInfo(0);
-        }
+        // Stop the game time
+        Time.timeScale = 0;
 
         // Log to check if animation is finished
-        Debug.Log("Animation finished, stopping time and showing cursor.");
-
-        // Once the animation finishes, stop time and unhide the cursor
-        Cursor.visible = true; // Ensure cursor is visible
-        Cursor.lockState = CursorLockMode.None; // Unlock the cursor
-
-        // Optionally, for debugging, you can add a log to confirm the steps
-        Debug.Log("Cursor visibility: " + Cursor.visible + ", Cursor lock state: " + Cursor.lockState);
+        Debug.Log("Time stopped after delay.");
     }
 
     private void PlayEffect(Vector3 position, bool isUpgrade)
@@ -223,6 +263,46 @@ public class AbilityCollector : MonoBehaviour
         {
             GameObject effect = Instantiate(effectPrefab, position, Quaternion.identity);
             Destroy(effect, 2f);
+        }
+    }
+
+    // Add the ability to player (kept for backwards compatibility)
+    public void AddAbilityToPlayer(AbilitySO abilitySO)
+    {
+        if (abilitySO == null || abilitySO.abilityPrefab == null) return;
+
+        // Add the ability to the AbilityManager
+        abilityManager.AddAbility(abilitySO.abilityPrefab);
+        Debug.Log("Ability added: " + abilitySO.abilityPrefab.name);
+    }
+
+    /// <summary>
+    /// Gets the list of available abilities
+    /// </summary>
+    public List<AbilitySO> GetAvailableAbilities()
+    {
+        return availableAbilities;
+    }
+
+    /// <summary>
+    /// Adds an ability to the available abilities list
+    /// </summary>
+    public void AddAvailableAbility(AbilitySO ability)
+    {
+        if (ability != null && !availableAbilities.Contains(ability))
+        {
+            availableAbilities.Add(ability);
+        }
+    }
+
+    /// <summary>
+    /// Removes an ability from the available abilities list
+    /// </summary>
+    public void RemoveAvailableAbility(AbilitySO ability)
+    {
+        if (ability != null && availableAbilities.Contains(ability))
+        {
+            availableAbilities.Remove(ability);
         }
     }
 }
