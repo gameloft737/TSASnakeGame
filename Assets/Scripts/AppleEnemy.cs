@@ -19,6 +19,12 @@ public class AppleEnemy : MonoBehaviour
     [Header("Death Settings")]
     [SerializeField] private GameObject deathObjectPrefab;
     
+    [Header("XP Drop Settings")]
+    [SerializeField] private GameObject xpDropPrefab;
+    [SerializeField] private int minXPDrop = 5;
+    [SerializeField] private int maxXPDrop = 15;
+    [SerializeField] private int xpDropCount = 3;
+    
     [Header("Tracking Settings")]
     [SerializeField] private float contactDistance = 1.5f;
     
@@ -341,8 +347,42 @@ public class AppleEnemy : MonoBehaviour
             Instantiate(deathObjectPrefab, transform.position, transform.rotation);
         }
         
+        // Spawn XP drops
+        SpawnXPDrops();
+        
         OnAppleDied?.Invoke(this);
         Destroy(gameObject);
+    }
+    
+    /// <summary>
+    /// Spawns XP drops at the enemy's position
+    /// </summary>
+    private void SpawnXPDrops()
+    {
+        if (xpDropPrefab == null)
+        {
+            Debug.LogWarning("XP Drop Prefab not assigned on " + gameObject.name);
+            return;
+        }
+        
+        for (int i = 0; i < xpDropCount; i++)
+        {
+            // Spawn slightly offset from center
+            Vector3 spawnOffset = new Vector3(
+                UnityEngine.Random.Range(-0.5f, 0.5f),
+                0.5f,
+                UnityEngine.Random.Range(-0.5f, 0.5f)
+            );
+            
+            GameObject xpDrop = Instantiate(xpDropPrefab, transform.position + spawnOffset, Quaternion.identity);
+            
+            XPDrop xpDropScript = xpDrop.GetComponent<XPDrop>();
+            if (xpDropScript != null)
+            {
+                int xpValue = UnityEngine.Random.Range(minXPDrop, maxXPDrop + 1);
+                xpDropScript.Initialize(xpValue);
+            }
+        }
     }
 
     public float GetHealthPercentage()

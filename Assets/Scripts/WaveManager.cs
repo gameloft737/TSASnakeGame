@@ -21,21 +21,20 @@ public class WaveManager : MonoBehaviour
     public UnityEvent OnAllWavesComplete;
     
     private WaveData currentWave;
-    private int remainingEnemies;
-    private int totalEnemies;
     private bool waveActive = false;
     private bool inChoicePhase = false;
     private bool isRestartingFromDeath = false;
-    private HashSet<SpawnGroup> spawnedGroups = new HashSet<SpawnGroup>();
 
     private void OnEnable()
     {
         AppleEnemy.OnAppleDied += OnEnemyDied;
+        XPManager.OnXPCollected += OnXPCollected;
     }
 
     private void OnDisable()
     {
         AppleEnemy.OnAppleDied -= OnEnemyDied;
+        XPManager.OnXPCollected -= OnXPCollected;
     }
 
     private void Start()
@@ -77,11 +76,12 @@ public class WaveManager : MonoBehaviour
         }
 
         currentWave = waves[currentWaveIndex];
-        totalEnemies = currentWave.GetTotalEnemies();
-        remainingEnemies = totalEnemies;
+        
+        // Reset wave data
+        currentWave.ResetConfigs();
+        
         waveActive = true;
         inChoicePhase = false;
-        spawnedGroups.Clear();
         
         // Enable player movement and unpause attacks
         SetPlayerMovement(true);
@@ -90,20 +90,35 @@ public class WaveManager : MonoBehaviour
         if (waveUI != null)
         {
             waveUI.UpdateWaveNumber(currentWaveIndex + 1);
-            waveUI.UpdateAppleCount(remainingEnemies, totalEnemies);
+            waveUI.UpdateAppleCount(0, currentWave.xpToComplete); // Show XP progress
         }
         
-        // Spawn initial groups
         if (enemySpawner != null)
         {
-            foreach (var group in currentWave.spawnGroups)
-            {
-                if (group.spawnThreshold >= totalEnemies)
-                {
-                    enemySpawner.SpawnGroup(group);
-                    spawnedGroups.Add(group);
-                }
-            }
+            enemySpawner.StartWaveSpawning(currentWave);
+        }
+    }
+
+    /// <summary>
+    /// Called when XP is collected
+    /// </summary>
+    private void OnXPCollected(int amount)
+    {
+        if (!waveActive || currentWave == null) return;
+        
+        // Add XP to current wave tracking
+        currentWave.AddXP(amount);
+        
+        // Update UI
+        if (waveUI != null)
+        {
+            waveUI.UpdateAppleCount(currentWave.xpCollectedThisWave, currentWave.xpToComplete);
+        }
+        
+        // Check if wave is complete
+        if (currentWave.IsWaveComplete())
+        {
+            EndWave();
         }
     }
 
@@ -111,40 +126,22 @@ public class WaveManager : MonoBehaviour
     {
         if (!waveActive) return;
         
-        remainingEnemies--;
-        
-        if (waveUI != null)
+        // Notify spawner about the death for tracking
+        if (enemySpawner != null)
         {
-            waveUI.UpdateAppleCount(remainingEnemies, totalEnemies);
-        }
-        
-        // Check if any spawn groups should trigger
-        CheckSpawnThresholds();
-        
-        // Check if wave is complete
-        if (remainingEnemies <= 0)
-        {
-            EndWave();
-        }
-    }
-
-    private void CheckSpawnThresholds()
-    {
-        if (enemySpawner == null || currentWave == null) return;
-        
-        foreach (var group in currentWave.spawnGroups)
-        {
-            if (!spawnedGroups.Contains(group) && remainingEnemies <= group.spawnThreshold)
-            {
-                enemySpawner.SpawnGroup(group);
-                spawnedGroups.Add(group);
-            }
+            enemySpawner.OnEnemyDied(enemy.gameObject);
         }
     }
 
     private void EndWave()
     {
         waveActive = false;
+        
+        // Stop spawning
+        if (enemySpawner != null)
+        {
+            enemySpawner.StopSpawning();
+        }
         
         // Stop player movement and pause attacks immediately
         SetPlayerMovement(false);
@@ -186,7 +183,6 @@ public class WaveManager : MonoBehaviour
         
         waveActive = false;
         inChoicePhase = true;
-        spawnedGroups.Clear();
         
         // Mark that we're restarting from death (don't progress to next wave)
         isRestartingFromDeath = true;
@@ -235,11 +231,19 @@ public class WaveManager : MonoBehaviour
     }
 
     public int GetCurrentWaveIndex() => currentWaveIndex;
-    public int GetRemainingEnemies() => remainingEnemies;
-    public int GetTotalEnemies() => totalEnemies;
     public bool IsWaveActive() => waveActive;
     public bool IsInChoicePhase() => inChoicePhase;
     public int GetWaveCount() => waves.Count;
+    
+    /// <summary>
+    /// Get current wave's XP progress
+    /// </summary>
+    public int GetCurrentXP() => currentWave != null ? currentWave.xpCollectedThisWave : 0;
+    
+    /// <summary>
+    /// Get current wave's XP requirement
+    /// </summary>
+    public int GetXPRequired() => currentWave != null ? currentWave.xpToComplete : 0;
 
     public WaveData GetWaveData(int index)
     {

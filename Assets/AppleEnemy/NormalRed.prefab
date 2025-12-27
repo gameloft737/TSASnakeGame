@@ -5053,6 +5053,10 @@ MonoBehaviour:
   appleChecker: {fileID: 2089060202791006976}
   biteParticles: {fileID: 2996263239006267123}
   deathObjectPrefab: {fileID: 5765286572377160127, guid: 5f49a5d867577db46b45378b2adc3bf6, type: 3}
+  xpDropPrefab: {fileID: 3545274359015261959, guid: 7ab65752e3c974f4282737319262a4f5, type: 3}
+  minXPDrop: 5
+  maxXPDrop: 5
+  xpDropCount: 1
   contactDistance: 1.5
   rotationSpeed: 20
   minVelocityForRotation: 0.1

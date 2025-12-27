@@ -1,7 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
+#if UNITY_EDITOR
 using UnityEditor;
-using System.Linq;
+#endif
 
 [System.Serializable]
 public class SpriteCount
@@ -10,26 +11,107 @@ public class SpriteCount
     public int count;
 }
 
+/// <summary>
+/// Configuration for a single enemy type in a wave.
+/// Defines how many can be on screen at once.
+/// </summary>
+[System.Serializable]
+public class EnemySpawnConfig
+{
+    [Header("Enemy Type")]
+    [Tooltip("The enemy prefab to spawn")]
+    public GameObject enemyPrefab;
+    
+    [Header("Spawn Limits")]
+    [Tooltip("Maximum number of this enemy type that can be on screen at once")]
+    [Min(1)]
+    public int maxOnScreen = 3;
+    
+    [Header("Spawn Settings")]
+    [Tooltip("Which spawn zones this enemy can spawn from (indices into EnemySpawner's zone list). Leave empty to use all zones.")]
+    public List<int> allowedSpawnZones = new List<int>();
+    
+    [Tooltip("Minimum delay between spawning enemies of this type")]
+    public float spawnCooldown = 0.5f;
+    
+    // Runtime tracking (not serialized)
+    [System.NonSerialized] public int currentOnScreen = 0;
+    [System.NonSerialized] public float lastSpawnTime = 0f;
+    
+    /// <summary>
+    /// Returns true if more enemies of this type can be spawned
+    /// </summary>
+    public bool CanSpawn()
+    {
+        return currentOnScreen < maxOnScreen && 
+               Time.time >= lastSpawnTime + spawnCooldown;
+    }
+    
+    /// <summary>
+    /// Reset runtime tracking for a new wave
+    /// </summary>
+    public void Reset()
+    {
+        currentOnScreen = 0;
+        lastSpawnTime = 0f;
+    }
+}
+
 [CreateAssetMenu(fileName = "WaveData", menuName = "Wave System/Wave Data")]
 public class WaveData : ScriptableObject
 {
     [Header("Wave Info")]
     public string waveName;
     
-    [Header("Spawn Configuration")]
-    public List<SpawnGroup> spawnGroups = new List<SpawnGroup>();
+    [Header("Wave Completion")]
+    [Tooltip("XP required to complete this wave and move to the next")]
+    public int xpToComplete = 100;
+    
+    [Header("Enemy Configuration")]
+    [Tooltip("Configure each enemy type for this wave")]
+    public List<EnemySpawnConfig> enemyConfigs = new List<EnemySpawnConfig>();
     
     [Header("Sprite Configuration")]
     public List<SpriteCount> spriteCounts = new List<SpriteCount>();
     
-    public int GetTotalEnemies()
+    // Runtime tracking for XP collected this wave
+    [System.NonSerialized] public int xpCollectedThisWave = 0;
+    
+    /// <summary>
+    /// Check if wave is complete (XP threshold reached)
+    /// </summary>
+    public bool IsWaveComplete()
     {
-        int total = 0;
-        foreach (var group in spawnGroups)
+        return xpCollectedThisWave >= xpToComplete;
+    }
+    
+    /// <summary>
+    /// Get XP progress as percentage (0-1)
+    /// </summary>
+    public float GetXPProgress()
+    {
+        if (xpToComplete <= 0) return 1f;
+        return Mathf.Clamp01((float)xpCollectedThisWave / xpToComplete);
+    }
+    
+    /// <summary>
+    /// Reset all enemy configs for a new wave attempt
+    /// </summary>
+    public void ResetConfigs()
+    {
+        xpCollectedThisWave = 0;
+        foreach (var config in enemyConfigs)
         {
-            total += group.count;
+            config.Reset();
         }
-        return total;
+    }
+    
+    /// <summary>
+    /// Add XP collected during this wave
+    /// </summary>
+    public void AddXP(int amount)
+    {
+        xpCollectedThisWave += amount;
     }
 }
 
@@ -38,7 +120,7 @@ public class WaveData : ScriptableObject
 [CustomEditor(typeof(WaveData))]
 public class WaveDataEditor : Editor
 {
-    private bool showPrefabSummary = true;
+    private bool showEnemySummary = true;
     
     public override void OnInspectorGUI()
     {
@@ -50,68 +132,69 @@ public class WaveDataEditor : Editor
         // Add spacing
         EditorGUILayout.Space(10);
         
-        // Prefab Summary Section
-        showPrefabSummary = EditorGUILayout.Foldout(showPrefabSummary, "Prefab Summary", true);
+        // Enemy Config Summary Section
+        showEnemySummary = EditorGUILayout.Foldout(showEnemySummary, "Enemy Configuration Summary", true);
         
-        if (showPrefabSummary)
+        if (showEnemySummary)
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             
-            // Calculate prefab counts
-            Dictionary<GameObject, int> prefabCounts = new Dictionary<GameObject, int>();
-            
-            foreach (var group in waveData.spawnGroups)
+            if (waveData.enemyConfigs != null && waveData.enemyConfigs.Count > 0)
             {
-                if (group.enemyPrefab != null)
+                int totalMaxOnScreen = 0;
+                
+                foreach (var config in waveData.enemyConfigs)
                 {
-                    if (prefabCounts.ContainsKey(group.enemyPrefab))
+                    if (config.enemyPrefab != null)
                     {
-                        prefabCounts[group.enemyPrefab] += group.count;
+                        EditorGUILayout.BeginHorizontal();
+                        
+                        // Get prefab preview texture
+                        Texture2D preview = AssetPreview.GetAssetPreview(config.enemyPrefab);
+                        if (preview != null)
+                        {
+                            GUILayout.Label(preview, GUILayout.Width(50), GUILayout.Height(50));
+                        }
+                        else
+                        {
+                            GUILayout.Label("No Preview", GUILayout.Width(50), GUILayout.Height(50));
+                        }
+                        
+                        // Display config info
+                        EditorGUILayout.BeginVertical();
+                        GUILayout.FlexibleSpace();
+                        EditorGUILayout.LabelField(config.enemyPrefab.name, EditorStyles.boldLabel);
+                        EditorGUILayout.LabelField($"Max On Screen: {config.maxOnScreen}");
+                        if (config.allowedSpawnZones.Count > 0)
+                        {
+                            EditorGUILayout.LabelField($"Zones: {string.Join(", ", config.allowedSpawnZones)}");
+                        }
+                        else
+                        {
+                            EditorGUILayout.LabelField("Zones: All", EditorStyles.miniLabel);
+                        }
+                        GUILayout.FlexibleSpace();
+                        EditorGUILayout.EndVertical();
+                        
+                        EditorGUILayout.EndHorizontal();
+                        EditorGUILayout.Space(5);
+                        
+                        totalMaxOnScreen += config.maxOnScreen;
                     }
-                    else
-                    {
-                        prefabCounts[group.enemyPrefab] = group.count;
-                    }
-                }
-            }
-            
-            // Display each prefab with icon and count
-            if (prefabCounts.Count > 0)
-            {
-                foreach (var kvp in prefabCounts.OrderByDescending(x => x.Value))
-                {
-                    EditorGUILayout.BeginHorizontal();
-                    
-                    // Get prefab preview texture
-                    Texture2D preview = AssetPreview.GetAssetPreview(kvp.Key);
-                    if (preview != null)
-                    {
-                        GUILayout.Label(preview, GUILayout.Width(50), GUILayout.Height(50));
-                    }
-                    else
-                    {
-                        GUILayout.Label("No Preview", GUILayout.Width(50), GUILayout.Height(50));
-                    }
-                    
-                    // Display prefab name and count
-                    EditorGUILayout.BeginVertical();
-                    GUILayout.FlexibleSpace();
-                    EditorGUILayout.LabelField(kvp.Key.name, EditorStyles.boldLabel);
-                    EditorGUILayout.LabelField($"Count: {kvp.Value}");
-                    GUILayout.FlexibleSpace();
-                    EditorGUILayout.EndVertical();
-                    
-                    EditorGUILayout.EndHorizontal();
-                    EditorGUILayout.Space(5);
                 }
                 
-                // Total count
+                // Totals and XP info
                 EditorGUILayout.Space(5);
-                EditorGUILayout.LabelField($"Total Enemies: {waveData.GetTotalEnemies()}", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("Wave Summary", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField($"XP Required to Complete: {waveData.xpToComplete}", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField($"Max Enemies On Screen: {totalMaxOnScreen}");
+                EditorGUILayout.Space(3);
+                EditorGUILayout.HelpBox($"Enemies will continuously spawn until the player collects {waveData.xpToComplete} XP from killing them.", MessageType.Info);
             }
             else
             {
-                EditorGUILayout.LabelField("No spawn groups configured", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField("No enemy configurations set up", EditorStyles.miniLabel);
+                EditorGUILayout.HelpBox("Add enemy configurations above to define which enemies spawn in this wave.", MessageType.Info);
             }
             
             EditorGUILayout.EndVertical();
