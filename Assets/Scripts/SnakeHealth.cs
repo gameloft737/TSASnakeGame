@@ -5,8 +5,11 @@ using System.Collections;
 public class SnakeHealth : MonoBehaviour
 {
     [Header("Health Settings")]
-    [SerializeField] private float maxHealth = 100f;
+    [SerializeField] private float baseMaxHealth = 100f;
     [SerializeField] private float currentHealth;
+    
+    // Cached max health (base + bonuses)
+    private float maxHealth;
     
     [Header("Death Settings")]
     [SerializeField] private float deathScreenDuration = 5f;
@@ -27,7 +30,14 @@ public class SnakeHealth : MonoBehaviour
     
     private void Start()
     {
+        UpdateMaxHealth();
         currentHealth = maxHealth;
+        
+        // Subscribe to stat changes
+        if (PlayerStats.Instance != null)
+        {
+            PlayerStats.Instance.onStatsChanged.AddListener(OnStatsChanged);
+        }
         
         if (waveManager == null)
         {
@@ -84,12 +94,42 @@ public class SnakeHealth : MonoBehaviour
     {
         if (isDead) return;
         
+        // Update max health in case bonuses changed
+        UpdateMaxHealth();
+        
         currentHealth += amount;
         currentHealth = Mathf.Min(maxHealth, currentHealth);
         
         Debug.Log($"Snake healed {amount:F1}! Health: {currentHealth:F1}/{maxHealth}");
         
         onHealthChanged?.Invoke(GetHealthPercentage());
+    }
+    
+    private void UpdateMaxHealth()
+    {
+        float bonus = PlayerStats.Instance != null ? PlayerStats.Instance.GetMaxHealthBonus() : 0f;
+        maxHealth = baseMaxHealth + bonus;
+    }
+    
+    private void OnStatsChanged()
+    {
+        float oldMaxHealth = maxHealth;
+        UpdateMaxHealth();
+        
+        // If max health increased, heal by the difference
+        if (maxHealth > oldMaxHealth)
+        {
+            currentHealth += (maxHealth - oldMaxHealth);
+            onHealthChanged?.Invoke(GetHealthPercentage());
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        if (PlayerStats.Instance != null)
+        {
+            PlayerStats.Instance.onStatsChanged.RemoveListener(OnStatsChanged);
+        }
     }
     
     private void Die()
@@ -125,6 +165,7 @@ public class SnakeHealth : MonoBehaviour
         }
         
         // Reset health first
+        UpdateMaxHealth();
         currentHealth = maxHealth;
         isDead = false;
         onHealthChanged?.Invoke(GetHealthPercentage());

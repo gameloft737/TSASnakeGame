@@ -14,6 +14,8 @@ public class CameraManager : MonoBehaviour
     private CinemachineCamera currentCam;
     private bool isAiming = false;
     private bool isPaused = false;
+    private bool isFrozen = false; // Whether camera input is frozen
+    
     private void Start()
     {
         // Set initial camera priorities
@@ -27,7 +29,7 @@ public class CameraManager : MonoBehaviour
     // Called by Unity Events when aim button is pressed
     public void OnAim(InputAction.CallbackContext context)
     {
-        if (isPaused) return;
+        if (isPaused || isFrozen) return; // Don't process aim input when frozen
         if (context.performed)
         {
             // Button pressed
@@ -72,4 +74,17 @@ public class CameraManager : MonoBehaviour
     }
     
     public bool IsAiming() => isAiming;
+
+    /// <summary>
+    /// Freezes or unfreezes camera input
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        isFrozen = frozen;
+    }
+
+    /// <summary>
+    /// Returns whether camera input is frozen
+    /// </summary>
+    public bool IsFrozen() => isFrozen;
 }

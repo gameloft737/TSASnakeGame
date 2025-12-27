@@ -53,9 +53,9 @@ public class TurretAbility : BaseAbility
 
     protected override void Update()
     {
-        base.Update(); // Handle duration countdown
+        base.Update(); // Check for freeze state
         
-        if (!isActive) return;
+        if (!isActive || isFrozen) return; // Don't update when frozen
         
         // Periodically search for nearest apple (performance optimization)
         targetSearchTimer += Time.deltaTime;
@@ -108,8 +108,8 @@ public class TurretAbility : BaseAbility
             turretBody.SetActive(false);
         }
         
-        Debug.Log("TurretAbility: Deactivated - destroying turret");
-        Destroy(gameObject);
+        Debug.Log("TurretAbility: Deactivated");
+        // No longer destroy - abilities are permanent
     }
     
     protected override void OnLevelUp()

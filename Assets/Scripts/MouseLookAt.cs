@@ -15,9 +15,12 @@ public class MouseLookAt : MonoBehaviour
     private Vector2 lookInput; // Mouse input
     private Vector2 smoothedLookInput; // Smoothed mouse input
     private float targetXRotation; // Target rotation value
+    private bool isFrozen = false; // Whether look input is frozen
 
     void Update()
     {
+        if (isFrozen) return; // Skip updates when frozen
+        
         SmoothMouseInput();
         ApplyRotation();
     }
@@ -52,6 +55,7 @@ public class MouseLookAt : MonoBehaviour
     // Input callback - connect this to your Input Action for Look
     public void OnLook(InputAction.CallbackContext context)
     {
+        if (isFrozen) return; // Block input when frozen
         lookInput = context.ReadValue<Vector2>();
     }
 
@@ -68,4 +72,24 @@ public class MouseLookAt : MonoBehaviour
     {
         return smoothedLookInput;
     }
+
+    /// <summary>
+    /// Freezes or unfreezes the mouse look
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        isFrozen = frozen;
+        
+        if (frozen)
+        {
+            // Clear input when freezing
+            lookInput = Vector2.zero;
+            smoothedLookInput = Vector2.zero;
+        }
+    }
+
+    /// <summary>
+    /// Returns whether the mouse look is currently frozen
+    /// </summary>
+    public bool IsFrozen() => isFrozen;
 }

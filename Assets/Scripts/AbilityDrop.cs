@@ -85,7 +85,7 @@ public class AbilityDrop : MonoBehaviour
 
     private void Update()
     {
-        if (isCollected) return;
+        if (isCollected || isDying) return;
         
         if (!isGrounded && rb != null)
         {
@@ -156,11 +156,14 @@ public class AbilityDrop : MonoBehaviour
 
     private void OnGrounded()
     {
+        if (isGrounded) return; // Prevent multiple calls
         isGrounded = true;
         
         if (rb != null)
         {
             rb.isKinematic = true;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
         }
         
         // Trigger open animation
@@ -169,10 +172,10 @@ public class AbilityDrop : MonoBehaviour
             animator.SetTrigger(openTrigger);
         }
         
-        if (dropShower != null && selectedAbility != null)
+        if (dropShower != null && selectedAbility != null && uiContainer != null)
         {
             int level = 1;
-            if (playerAbilityManager != null)
+            if (playerAbilityManager != null && selectedAbility.abilityPrefab != null)
             {
                 BaseAbility existing = playerAbilityManager.GetAbility(selectedAbility.abilityPrefab);
                 if (existing != null)
@@ -188,7 +191,7 @@ public class AbilityDrop : MonoBehaviour
     
     private void StartDeathAnimation()
     {
-        if (isDying) return;
+        if (isDying || isCollected) return;
         isDying = true;
         
         // Trigger close animation
@@ -214,8 +217,13 @@ public class AbilityDrop : MonoBehaviour
     
     public void Collect()
     {
-        if (isCollected) return;
+        if (isCollected || isDying) return;
         isCollected = true;
+        isDying = true; // Prevent death animation from triggering
+        
+        // Cancel any pending destruction
+        CancelInvoke();
+        StopAllCoroutines();
         
         // Trigger close animation on collection too
         if (animator != null)
@@ -231,5 +239,12 @@ public class AbilityDrop : MonoBehaviour
         
         // Destroy after brief delay for animation
         Destroy(gameObject, 0.3f);
+    }
+    
+    private void OnDestroy()
+    {
+        // Clean up any remaining references
+        CancelInvoke();
+        StopAllCoroutines();
     }
 }

@@ -49,6 +49,9 @@ public class AppleEnemy : MonoBehaviour
     private bool isInitialized = false;
 
     private bool isDead = false;
+    private bool isFrozen = false; // Whether the enemy is frozen (for ability selection)
+    private Vector3 frozenVelocity; // Store velocity when frozen
+    private bool wasAgentEnabled; // Store agent state when frozen
     
     void Start()
     {
@@ -91,6 +94,8 @@ public class AppleEnemy : MonoBehaviour
 
     void LateUpdate()
     {
+        if (isFrozen) return; // Skip updates when frozen
+        
         // Smooth rotation based on movement direction
         if (agentObj != null && agent.enabled)
         {
@@ -164,6 +169,13 @@ public class AppleEnemy : MonoBehaviour
 
         while (true)
         {
+            // Skip processing when frozen
+            if (isFrozen)
+            {
+                yield return null;
+                continue;
+            }
+            
             if (nearestBodyPart != null)
             {
                 bool touchingSnake = appleChecker != null && appleChecker.isTouching;
@@ -337,6 +349,52 @@ public class AppleEnemy : MonoBehaviour
     {
         return currentHealth / maxHealth;
     }
+
+    /// <summary>
+    /// Freezes or unfreezes the enemy
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        if (frozen && !isFrozen)
+        {
+            // Store current state and freeze
+            wasAgentEnabled = agent.enabled;
+            if (agent.enabled && agent.isOnNavMesh)
+            {
+                frozenVelocity = agent.velocity;
+                agent.velocity = Vector3.zero;
+                agent.isStopped = true;
+            }
+            
+            // Stop bite particles
+            if (biteParticles != null && biteParticles.isPlaying)
+            {
+                biteParticles.Pause();
+            }
+        }
+        else if (!frozen && isFrozen)
+        {
+            // Restore state and unfreeze
+            if (agent.enabled && agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+                agent.velocity = frozenVelocity;
+            }
+            
+            // Resume bite particles if was biting
+            if (biteParticles != null && isBiting)
+            {
+                biteParticles.Play();
+            }
+        }
+        
+        isFrozen = frozen;
+    }
+
+    /// <summary>
+    /// Returns whether the enemy is currently frozen
+    /// </summary>
+    public bool IsFrozen() => isFrozen;
 
     private void OnDrawGizmosSelected()
     {

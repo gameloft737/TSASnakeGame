@@ -8,7 +8,7 @@ public class LaserAttack : Attack
     [SerializeField] private ParticleSystem leftParticles;
     [SerializeField] private ParticleSystem rightParticles;
 
-    [Header("Laser Settings")]
+    [Header("Laser Settings (Base - overridden by upgrade data if assigned)")]
     [SerializeField] private float laserDistance = 8f;
     [SerializeField] private float laserWidth = 0.1f;
     [SerializeField] private LayerMask ignoreMask;
@@ -20,6 +20,10 @@ public class LaserAttack : Attack
     [Header("Mouse Look Reference")]
     [SerializeField] private MouseLookAt mouseLookAt;
     [SerializeField] private CameraManager cameraManager;
+    
+    // Custom stat names for upgrade data
+    private const string STAT_LASER_DISTANCE = "laserDistance";
+    private const string STAT_LASER_WIDTH = "laserWidth";
 
     private AppleEnemy leftTarget;
     private AppleEnemy rightTarget;
@@ -37,6 +41,42 @@ public class LaserAttack : Attack
 
         if (leftParticles != null) leftParticles.Stop();
         if (rightParticles != null) rightParticles.Stop();
+    }
+    
+    /// <summary>
+    /// Apply custom stats from upgrade data
+    /// </summary>
+    protected override void ApplyCustomStats(AttackLevelStats stats)
+    {
+        // Apply laser-specific stats from upgrade data
+        laserDistance = GetCustomStat(STAT_LASER_DISTANCE, laserDistance);
+        laserWidth = GetCustomStat(STAT_LASER_WIDTH, laserWidth);
+        
+        // Update line renderer widths
+        UpdateLineRendererWidth();
+    }
+    
+    /// <summary>
+    /// Called when the attack is upgraded
+    /// </summary>
+    protected override void OnUpgrade()
+    {
+        // Visual feedback for upgrade could go here
+        Debug.Log($"Laser upgraded! Distance: {laserDistance}, Width: {laserWidth}");
+    }
+    
+    private void UpdateLineRendererWidth()
+    {
+        if (leftLineRenderer != null)
+        {
+            leftLineRenderer.startWidth = laserWidth;
+            leftLineRenderer.endWidth = laserWidth;
+        }
+        if (rightLineRenderer != null)
+        {
+            rightLineRenderer.startWidth = laserWidth;
+            rightLineRenderer.endWidth = laserWidth;
+        }
     }
 
     private void SetupLineRenderer(LineRenderer lr)

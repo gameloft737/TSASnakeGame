@@ -11,9 +11,15 @@ public class AttackVariation
 
 public abstract class Attack : MonoBehaviour
 {
-    [Header("Attack Stats")]
+    [Header("Upgrade System")]
+    [SerializeField] protected AttackUpgradeData upgradeData;
+    [SerializeField] protected int currentLevel = 1;
+    
+    [Header("Attack Stats (Base - overridden by upgrade data if assigned)")]
     [SerializeField] protected float damage = 10f;
+    [SerializeField] protected float range = 10f;
     public string attackName;
+    public Sprite attackIcon; // Icon for the attack (can be set directly or from upgrade data)
 
     [Header("Fuel System")]
     [SerializeField] protected float minFuelToActivate = 50f;
@@ -42,6 +48,12 @@ public abstract class Attack : MonoBehaviour
     
     // Pause state tracking
     protected static bool isPaused = false;
+    
+    protected virtual void Start()
+    {
+        // Apply initial level stats
+        ApplyLevelStats();
+    }
 
     protected virtual void Update()
     {
@@ -142,9 +154,121 @@ public abstract class Attack : MonoBehaviour
     public float GetMaxFuel() => MAX_FUEL;
     public float GetMinFuelToActivate() => minFuelToActivate;
     public bool IsActive() => isActive;
-    public float GetDamage() => damage;
+    
+    /// <summary>
+    /// Gets the final damage value (base damage * damage multiplier from PlayerStats)
+    /// </summary>
+    public float GetDamage()
+    {
+        float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetDamageMultiplier() : 1f;
+        return damage * multiplier;
+    }
+    
+    /// <summary>
+    /// Gets the final range value (base range * range multiplier from PlayerStats)
+    /// </summary>
+    public float GetRange()
+    {
+        float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetRangeMultiplier() : 1f;
+        return range * multiplier;
+    }
+    
+    /// <summary>
+    /// Gets the base damage without multipliers (for UI display)
+    /// </summary>
+    public float GetBaseDamage() => damage;
+    
+    /// <summary>
+    /// Gets the base range without multipliers (for UI display)
+    /// </summary>
+    public float GetBaseRange() => range;
+    
     public AttackType GetAttackType() => attackType;
     public AttackVariation GetVisualVariation() => visualVariation;
+    public int GetCurrentLevel() => currentLevel;
+    public int GetMaxLevel() => upgradeData != null ? upgradeData.maxLevel : 1;
+    public AttackUpgradeData GetUpgradeData() => upgradeData;
+    
+    /// <summary>
+    /// Checks if this attack can be upgraded
+    /// </summary>
+    public bool CanUpgrade()
+    {
+        if (upgradeData == null) return false;
+        return upgradeData.CanUpgrade(currentLevel);
+    }
+    
+    /// <summary>
+    /// Upgrades the attack to the next level
+    /// </summary>
+    public bool TryUpgrade()
+    {
+        if (!CanUpgrade()) return false;
+        
+        currentLevel++;
+        ApplyLevelStats();
+        OnUpgrade();
+        
+        Debug.Log($"{attackName} upgraded to level {currentLevel}!");
+        return true;
+    }
+    
+    /// <summary>
+    /// Sets the attack to a specific level
+    /// </summary>
+    public void SetLevel(int level)
+    {
+        if (upgradeData == null) return;
+        
+        currentLevel = Mathf.Clamp(level, 1, upgradeData.maxLevel);
+        ApplyLevelStats();
+    }
+    
+    /// <summary>
+    /// Applies the stats from the current level
+    /// </summary>
+    protected virtual void ApplyLevelStats()
+    {
+        if (upgradeData == null) return;
+        
+        AttackLevelStats stats = upgradeData.GetStatsForLevel(currentLevel);
+        
+        // Apply base stats
+        damage = stats.damage;
+        range = stats.range;
+        minFuelToActivate = stats.minFuelToActivate;
+        fuelRechargeRate = stats.fuelRechargeRate;
+        burstFuelCost = stats.burstFuelCost;
+        continuousDrainRate = stats.continuousDrainRate;
+        
+        // Apply icon from upgrade data if not set directly
+        if (attackIcon == null && upgradeData.attackIcon != null)
+        {
+            attackIcon = upgradeData.attackIcon;
+        }
+        
+        // Let child classes apply their custom stats
+        ApplyCustomStats(stats);
+    }
+    
+    /// <summary>
+    /// Gets a custom stat value from the current level
+    /// </summary>
+    protected float GetCustomStat(string statName, float defaultValue = 0f)
+    {
+        if (upgradeData == null) return defaultValue;
+        return upgradeData.GetCustomStat(currentLevel, statName, defaultValue);
+    }
+    
+    /// <summary>
+    /// Override in child classes to apply attack-specific custom stats
+    /// </summary>
+    protected virtual void ApplyCustomStats(AttackLevelStats stats) { }
+    
+    /// <summary>
+    /// Called when the attack is upgraded - override for custom upgrade effects
+    /// </summary>
+    protected virtual void OnUpgrade() { }
 
     // Override these in child classes
     protected virtual void OnActivate() { }

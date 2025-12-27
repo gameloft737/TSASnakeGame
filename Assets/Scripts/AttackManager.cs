@@ -17,6 +17,7 @@ public class AttackManager : MonoBehaviour
     private Attack CurrentAttack => attacks.Count > 0 && currentAttackIndex < attacks.Count ? attacks[currentAttackIndex] : null;
     
     private bool isHoldingAttack = false;
+    private bool isFrozen = false; // Whether attacks are frozen (for ability selection)
     [SerializeField] private WaveManager waveManager;
 
     private void Start()
@@ -45,6 +46,7 @@ public class AttackManager : MonoBehaviour
 
     private void Update()
     {
+        if (isFrozen) return; // Skip updates when frozen
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
         
         if (isHoldingAttack && CurrentAttack != null)
@@ -55,6 +57,7 @@ public class AttackManager : MonoBehaviour
 
     public void OnAttack(InputAction.CallbackContext context)
     {
+        if (isFrozen) return; // Block attack input when frozen
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
         
         if (CurrentAttack == null) return;
@@ -139,6 +142,26 @@ public class AttackManager : MonoBehaviour
         // Notify all attacks about pause state
         Attack.SetPaused(paused);
     }
+    
+    /// <summary>
+    /// Freezes or unfreezes attacks (for ability selection)
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        // Stop any held attacks when freezing
+        if (frozen && isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.StopUsing();
+            isHoldingAttack = false;
+        }
+        
+        isFrozen = frozen;
+    }
+    
+    /// <summary>
+    /// Returns whether attacks are currently frozen
+    /// </summary>
+    public bool IsFrozen() => isFrozen;
     
     /// <summary>
     /// Apply the visual variation for the current attack

@@ -43,6 +43,8 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 surfaceNormal = Vector3.up;
     private float aimStartTime; // Track when aiming started
     private bool wasAiming; // Track previous aim state
+    private bool isFrozen = false; // Whether the player is frozen (for ability selection)
+    private Vector3 frozenVelocity; // Store velocity when frozen
 
     void Start()
     {
@@ -53,6 +55,8 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        if (isFrozen) return; // Skip all updates when frozen
+        
         CheckGround();
         AlignToSurface();
         SmoothMouseInput();
@@ -62,6 +66,8 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (isFrozen) return; // Skip physics when frozen
+        
         ApplyGravity();
         HandleMovement();
         ApplyGroundFriction();
@@ -248,9 +254,23 @@ public class PlayerMovement : MonoBehaviour
     }
 
     // Input callbacks
-    public void OnForward(InputAction.CallbackContext context) => moveForward = context.ReadValueAsButton();
-    public void OnMove(InputAction.CallbackContext context) => rotationInput = context.ReadValue<Vector2>().x;
-    public void OnLook(InputAction.CallbackContext context) => lookInput = context.ReadValue<Vector2>();
+    public void OnForward(InputAction.CallbackContext context)
+    {
+        if (isFrozen) return; // Block all input when frozen
+        moveForward = context.ReadValueAsButton();
+    }
+    
+    public void OnMove(InputAction.CallbackContext context)
+    {
+        if (isFrozen) return; // Block all input when frozen
+        rotationInput = context.ReadValue<Vector2>().x;
+    }
+    
+    public void OnLook(InputAction.CallbackContext context)
+    {
+        if (isFrozen) return; // Block all input when frozen
+        lookInput = context.ReadValue<Vector2>();
+    }
 
     private void OnDrawGizmos()
     {
@@ -276,4 +296,37 @@ public class PlayerMovement : MonoBehaviour
     }
 
     public bool IsGrounded() => isGrounded;
+
+    /// <summary>
+    /// Freezes or unfreezes the player movement
+    /// </summary>
+    public void SetFrozen(bool frozen)
+    {
+        if (frozen && !isFrozen)
+        {
+            // Store current velocity and freeze
+            frozenVelocity = rb.linearVelocity;
+            rb.linearVelocity = Vector3.zero;
+            rb.isKinematic = true;
+            
+            // Clear all input to prevent any movement/rotation
+            lookInput = Vector2.zero;
+            smoothedLookInput = Vector2.zero;
+            rotationInput = 0f;
+            moveForward = false;
+        }
+        else if (!frozen && isFrozen)
+        {
+            // Restore velocity and unfreeze
+            rb.isKinematic = false;
+            rb.linearVelocity = frozenVelocity;
+        }
+        
+        isFrozen = frozen;
+    }
+
+    /// <summary>
+    /// Returns whether the player is currently frozen
+    /// </summary>
+    public bool IsFrozen() => isFrozen;
 }

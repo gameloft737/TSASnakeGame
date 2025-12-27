@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
+  m_Name: Health
+  m_EditorClassIdentifier: 
+  abilityName: Health Boost
+  icon: {fileID: 0}
+  abilityPrefab: {fileID: 8371761886178093558, guid: 00f646ccfa20c85418e8b8a95f602511, type: 3}
