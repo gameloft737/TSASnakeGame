@@ -3,11 +3,14 @@ using UnityEngine;
 public class CursorLock : MonoBehaviour
 {
     [SerializeField] private bool lockOnStart = true;
-    [SerializeField]private WaveManager waveManager;
+    [SerializeField] private WaveManager waveManager; // Reference to the WaveManager (or any other system managing selection phases)
+    
+    // New variables for ability selection
+    [SerializeField] private bool isAbilitySelection = false; // A flag to track if the player is in the ability selection phase
 
     void Start()
     {
-        
+        // Lock the cursor on start if needed
         if (lockOnStart)
         {
             LockCursor();
@@ -16,14 +19,19 @@ public class CursorLock : MonoBehaviour
 
     void Update()
     {
-        // Automatically unlock cursor during choice phase
-        if (waveManager != null && waveManager.IsInChoicePhase())
+        // Check if in ability selection phase (if you have a phase manager or similar system)
+        if (isAbilitySelection)
         {
             UnlockCursor();
+            lockOnStart = false;
+        }
+        else if (waveManager != null && waveManager.IsInChoicePhase()) // Assuming this is a similar system for attack/ability selection
+        {
+            UnlockCursor(); // Unlock cursor during attack/ability selection
         }
         else if (lockOnStart)
         {
-            LockCursor();
+            LockCursor(); // Lock the cursor again after selection phase
         }
     }
 
@@ -37,6 +45,21 @@ public class CursorLock : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+    }
+
+    // Call this method to start ability selection phase externally
+    public void StartAbilitySelection()
+    {
+        isAbilitySelection = true; // Set the flag to true
+        UnlockCursor(); // Immediately unlock the cursor for ability selection
+        Debug.Log("locked");
+    }
+
+    // Call this method to stop ability selection and lock cursor again
+    public void StopAbilitySelection()
+    {
+        isAbilitySelection = false; // Set the flag to false
+        LockCursor(); // Lock the cursor again after ability selection ends
     }
 
     // Lock cursor when window gains focus (only if not in choice phase)

@@ -215,5 +215,8 @@ public class AttackSelectionUI : MonoBehaviour
         nonUI.SetActive(true);
         attackManager.SetAttackIndex(attackIdxSelected);
         if (waveManager != null) waveManager.OnAttackSelected();
+
+            Cursor.visible = false; // Hide the cursor
+    Cursor.lockState = CursorLockMode.Locked;
     }
 }
