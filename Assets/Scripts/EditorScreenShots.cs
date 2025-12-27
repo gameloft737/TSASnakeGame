@@ -1,10 +1,11 @@
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 
-public class EditorScreenShots : MonoBehaviour 
+public class EditorScreenShots : MonoBehaviour
 {
     [HideInInspector] public Camera targetCamera;
     [HideInInspector] public Transform startPosition;
@@ -595,3 +596,4 @@ public class EditorScreenShotsEditor : Editor
         }
     }
 }
+#endif
