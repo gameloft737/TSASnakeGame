@@ -439,10 +439,10 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
+  m_fontSize: 30.85
   m_fontSizeBase: 30
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
@@ -783,3 +783,5 @@ MonoBehaviour:
   selectedColor: {r: 0, g: 1, b: 0, a: 1}
   maxLevelColor: {r: 1, g: 1, b: 1, a: 1}
   newColor: {r: 1, g: 1, b: 1, a: 1}
+  passiveAbilityColor: {r: 0.5, g: 0.8, b: 1, a: 1}
+  activeAbilityColor: {r: 1, g: 0.6, b: 0.6, a: 1}

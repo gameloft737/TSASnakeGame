@@ -2,78 +2,78 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Defines the stats for a single level of an attack
+/// Defines the stats for a single level of an ability
 /// </summary>
 [System.Serializable]
-public class AttackLevelStats
+public class AbilityLevelStats
 {
     [Header("Level Info")]
     public string levelName = "Level 1";
     [TextArea(2, 4)]
-    public string description = "Base attack";
+    public string description = "Base ability";
     
-    [Header("Damage")]
+    [Header("Core Stats")]
+    [Tooltip("Damage dealt by this ability (for turret projectiles, bombs, etc.)")]
     public float damage = 10f;
     
-    [Header("Range")]
-    [Tooltip("The range/distance of the attack")]
-    public float range = 10f;
+    [Tooltip("Cooldown time in seconds between uses (for turret shoot interval, bomb cooldown, etc.)")]
+    public float cooldown = 1f;
     
-    [Header("Fuel System")]
-    public float minFuelToActivate = 50f;
-    public float fuelRechargeRate = 20f;
-    public float burstFuelCost = 15f;
-    public float continuousDrainRate = 10f;
+    [Tooltip("Duration of the effect in seconds (for goop puddles, buffs, etc.)")]
+    public float duration = 5f;
     
-    [Header("Attack-Specific Stats")]
-    [Tooltip("Custom float values that specific attacks can use (e.g., laser width, fire spread, etc.)")]
-    public List<CustomStat> customStats = new List<CustomStat>();
+    [Header("Ability-Specific Stats")]
+    [Tooltip("Custom float values that specific abilities can use (e.g., projectileCount, explosionRadius)")]
+    public List<AbilityCustomStat> customStats = new List<AbilityCustomStat>();
 }
 
 /// <summary>
-/// A custom stat that can be defined per attack type
+/// A custom stat that can be defined per ability type
 /// </summary>
 [System.Serializable]
-public class CustomStat
+public class AbilityCustomStat
 {
     public string statName;
     public float value;
 }
 
 /// <summary>
-/// ScriptableObject that holds all level data for an attack
+/// ScriptableObject that holds all level data for an ability
 /// </summary>
-[CreateAssetMenu(fileName = "NewAttackUpgradeData", menuName = "Attacks/Attack Upgrade Data")]
-public class AttackUpgradeData : ScriptableObject
+[CreateAssetMenu(fileName = "NewAbilityUpgradeData", menuName = "Abilities/Ability Upgrade Data")]
+public class AbilityUpgradeData : ScriptableObject
 {
-    [Header("Attack Info")]
-    public string attackName;
+    [Header("Ability Info")]
+    public string abilityName;
     [TextArea(2, 4)]
-    public string attackDescription;
-    public Sprite attackIcon;
+    public string abilityDescription;
+    public Sprite abilityIcon;
+    
+    [Header("Ability Classification")]
+    public AbilityType abilityType = AbilityType.Passive;
     
     [Header("Level Stats")]
     [Tooltip("Define stats for each level. Index 0 = Level 1, Index 1 = Level 2, etc. Include evolution levels here too!")]
-    public List<AttackLevelStats> levels = new List<AttackLevelStats>();
+    public List<AbilityLevelStats> levels = new List<AbilityLevelStats>();
     
     [Header("Max Level")]
     [Tooltip("Base max level without evolutions")]
     public int maxLevel = 5;
     
     [Header("Evolution System")]
-    [Tooltip("Optional: Evolution data that unlocks additional levels when paired with passives")]
+    [Tooltip("Optional: Evolution data that unlocks additional levels when paired with passives (for active abilities)")]
     public EvolutionData evolutionData;
     
     /// <summary>
     /// Gets the stats for a specific level (1-indexed)
     /// </summary>
-    public AttackLevelStats GetStatsForLevel(int level)
+    public AbilityLevelStats GetStatsForLevel(int level)
     {
         int index = Mathf.Clamp(level - 1, 0, levels.Count - 1);
         if (levels.Count == 0)
         {
-            Debug.LogWarning($"AttackUpgradeData '{attackName}' has no levels defined!");
-            return new AttackLevelStats();
+            Debug.LogWarning($"AbilityUpgradeData '{abilityName}' has no levels defined!");
+            return new AbilityLevelStats();
         }
         return levels[index];
     }
@@ -83,8 +83,8 @@ public class AttackUpgradeData : ScriptableObject
     /// </summary>
     public float GetCustomStat(int level, string statName, float defaultValue = 0f)
     {
-        AttackLevelStats stats = GetStatsForLevel(level);
-        foreach (CustomStat stat in stats.customStats)
+        AbilityLevelStats stats = GetStatsForLevel(level);
+        foreach (AbilityCustomStat stat in stats.customStats)
         {
             if (stat.statName == statName)
             {
@@ -95,7 +95,39 @@ public class AttackUpgradeData : ScriptableObject
     }
     
     /// <summary>
-    /// Checks if the attack can be upgraded further (without considering evolutions)
+    /// Gets the damage for a specific level
+    /// </summary>
+    public float GetDamage(int level)
+    {
+        return GetStatsForLevel(level).damage;
+    }
+    
+    /// <summary>
+    /// Gets the cooldown for a specific level
+    /// </summary>
+    public float GetCooldown(int level)
+    {
+        return GetStatsForLevel(level).cooldown;
+    }
+    
+    /// <summary>
+    /// Gets the duration for a specific level
+    /// </summary>
+    public float GetDuration(int level)
+    {
+        return GetStatsForLevel(level).duration;
+    }
+    
+    /// <summary>
+    /// Gets the description for a specific level
+    /// </summary>
+    public string GetDescription(int level)
+    {
+        return GetStatsForLevel(level).description;
+    }
+    
+    /// <summary>
+    /// Checks if the ability can be upgraded further (without considering evolutions)
     /// </summary>
     public bool CanUpgrade(int currentLevel)
     {
@@ -103,7 +135,7 @@ public class AttackUpgradeData : ScriptableObject
     }
     
     /// <summary>
-    /// Checks if the attack can be upgraded further (considering evolutions)
+    /// Checks if the ability can be upgraded further (considering evolutions)
     /// </summary>
     public bool CanUpgradeWithEvolutions(int currentLevel, AbilityManager abilityManager)
     {
@@ -123,7 +155,7 @@ public class AttackUpgradeData : ScriptableObject
     }
     
     /// <summary>
-    /// Gets all unlocked evolutions for this attack
+    /// Gets all unlocked evolutions for this ability
     /// </summary>
     public List<EvolutionRequirement> GetUnlockedEvolutions(AbilityManager abilityManager)
     {
@@ -134,7 +166,7 @@ public class AttackUpgradeData : ScriptableObject
     }
     
     /// <summary>
-    /// Gets all locked evolutions for this attack (for UI hints)
+    /// Gets all locked evolutions for this ability (for UI hints)
     /// </summary>
     public List<EvolutionRequirement> GetLockedEvolutions(AbilityManager abilityManager)
     {

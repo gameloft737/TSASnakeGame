@@ -341,78 +341,86 @@ public class AttackSelectionUI : MonoBehaviour
         GameObject buttonObj = Instantiate(attackButtonPrefab, attackButtonContainer);
         spawnedButtons.Add(buttonObj);
         buttonToAbility[buttonObj] = abilitySO;
-        SetupAbilityButton(buttonObj, abilitySO);
+        
+        int currentLevel = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0;
+        
+        AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
+        if (attackButton != null)
+        {
+            // Use the new ability initialization method
+            attackButton.InitializeWithAbility(abilitySO, currentLevel, this, false);
+        }
+        else
+        {
+            // Fallback to manual setup if no AttackButton component
+            SetupAbilityButtonManual(buttonObj, abilitySO, currentLevel);
+        }
     }
     
-    private void SetupAbilityButton(GameObject buttonObj, AbilitySO abilitySO)
+    private void SetupAbilityButtonManual(GameObject buttonObj, AbilitySO abilitySO, int currentLevel)
     {
-        AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
-        if (attackButton != null) attackButton.enabled = false;
-        
         TextMeshProUGUI nameText = buttonObj.transform.Find("AttackName")?.GetComponent<TextMeshProUGUI>();
         TextMeshProUGUI levelText = buttonObj.transform.Find("LevelText")?.GetComponent<TextMeshProUGUI>();
         TextMeshProUGUI descriptionText = buttonObj.transform.Find("Description")?.GetComponent<TextMeshProUGUI>();
         Image iconImage = buttonObj.transform.Find("Icon")?.GetComponent<Image>();
         Image backgroundImage = buttonObj.GetComponent<Image>();
         
-        // Find new and upgrade indicators - try multiple possible names
-        GameObject newIndicator = buttonObj.transform.Find("NewIndicator")?.gameObject;
-        if (newIndicator == null) newIndicator = buttonObj.transform.Find("New")?.gameObject;
-        if (newIndicator == null) newIndicator = buttonObj.transform.Find("NewIcon")?.gameObject;
-        
-        GameObject upgradeIndicator = buttonObj.transform.Find("UpgradeIndicator")?.gameObject;
-        if (upgradeIndicator == null) upgradeIndicator = buttonObj.transform.Find("Upgrade")?.gameObject;
-        if (upgradeIndicator == null) upgradeIndicator = buttonObj.transform.Find("UpgradeIcon")?.gameObject;
-        
-        // Also check the AttackButton component for references
-        if (attackButton != null)
-        {
-            // Use reflection or serialized fields if available
-            var newIndicatorField = attackButton.GetType().GetField("newIndicator", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var upgradeIndicatorField = attackButton.GetType().GetField("upgradeIndicator", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
-            if (newIndicatorField != null && newIndicator == null)
-            {
-                newIndicator = newIndicatorField.GetValue(attackButton) as GameObject;
-            }
-            if (upgradeIndicatorField != null && upgradeIndicator == null)
-            {
-                upgradeIndicator = upgradeIndicatorField.GetValue(attackButton) as GameObject;
-            }
-        }
-        
-        // IMPORTANT: First hide BOTH indicators to ensure clean state
-        if (newIndicator != null) newIndicator.SetActive(false);
-        if (upgradeIndicator != null) upgradeIndicator.SetActive(false);
-        
-        int currentLevel = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0;
         bool isNew = currentLevel == 0;
-        bool canUpgrade = !isNew && currentLevel < abilitySO.maxLevel;
-        
-        Debug.Log($"[SetupAbilityButton] {abilitySO.abilityName}: currentLevel={currentLevel}, isNew={isNew}, canUpgrade={canUpgrade}, newIndicator found={newIndicator != null}, upgradeIndicator found={upgradeIndicator != null}");
+        int nextLevel = isNew ? 1 : currentLevel + 1;
         
         if (nameText != null) nameText.text = abilitySO.abilityName;
-        if (levelText != null) levelText.text = isNew ? "(NEW) " : $"(Lvl {currentLevel + 1}) ";
-        if (descriptionText != null) descriptionText.text = !string.IsNullOrEmpty(abilitySO.description) ? abilitySO.description : (isNew ? "Gain this ability" : $"Level up to Lvl {currentLevel + 1}");
-        if (iconImage != null) { if (abilitySO.icon != null) { iconImage.sprite = abilitySO.icon; iconImage.enabled = true; } else iconImage.enabled = false; }
-        if (backgroundImage != null) backgroundImage.color = abilitySO.abilityType == AbilityType.Passive ? (isNew ? new Color(0.5f, 0.8f, 1f) : new Color(0.7f, 0.9f, 1f)) : (isNew ? new Color(1f, 0.6f, 0.6f) : new Color(1f, 0.8f, 0.8f));
+        if (levelText != null) levelText.text = isNew ? "(NEW) " : $"(Lvl {nextLevel}) ";
         
-        // Now show the appropriate indicator based on state
-        // Only ONE should be active at a time
-        if (isNew)
+        // Get description from upgrade data if available
+        if (descriptionText != null)
         {
-            if (newIndicator != null) newIndicator.SetActive(true);
-            // upgradeIndicator stays false
+            string levelDescription = abilitySO.GetDescriptionForLevel(nextLevel);
+            if (!string.IsNullOrEmpty(levelDescription))
+            {
+                descriptionText.text = levelDescription;
+            }
+            else if (!string.IsNullOrEmpty(abilitySO.description))
+            {
+                descriptionText.text = abilitySO.description;
+            }
+            else
+            {
+                descriptionText.text = isNew ? "Gain this ability" : $"Level up to Lvl {nextLevel}";
+            }
         }
-        else if (canUpgrade)
+        
+        // Set icon from AbilitySO or its upgrade data
+        if (iconImage != null)
         {
-            // newIndicator stays false
-            if (upgradeIndicator != null) upgradeIndicator.SetActive(true);
+            if (abilitySO.icon != null)
+            {
+                iconImage.sprite = abilitySO.icon;
+                iconImage.enabled = true;
+            }
+            else if (abilitySO.upgradeData != null && abilitySO.upgradeData.abilityIcon != null)
+            {
+                iconImage.sprite = abilitySO.upgradeData.abilityIcon;
+                iconImage.enabled = true;
+            }
+            else
+            {
+                iconImage.enabled = false;
+            }
         }
-        // If neither isNew nor canUpgrade, both stay hidden (already set to false above)
+        
+        if (backgroundImage != null)
+        {
+            backgroundImage.color = abilitySO.abilityType == AbilityType.Passive
+                ? (isNew ? new Color(0.5f, 0.8f, 1f) : new Color(0.7f, 0.9f, 1f))
+                : (isNew ? new Color(1f, 0.6f, 0.6f) : new Color(1f, 0.8f, 0.8f));
+        }
         
         Button button = buttonObj.GetComponent<Button>();
-        if (button != null) { button.onClick.RemoveAllListeners(); button.onClick.AddListener(() => OnAbilitySelected(abilitySO)); }
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => OnAbilitySelected(abilitySO));
+        }
     }
 
     private void HideUI() { if (selectionPanel) selectionPanel.SetActive(false); if (dof) dof.active = false; }

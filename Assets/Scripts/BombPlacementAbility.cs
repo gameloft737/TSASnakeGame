@@ -4,11 +4,13 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Places bombs on every other body part (excluding first and last 3)
+/// Bombs respawn after a cooldown period when all bombs have exploded
 /// </summary>
 public class BombPlacementAbility : BaseAbility
 {
     [Header("Bomb Settings")]
     [SerializeField] private GameObject bombPrefab;
+    [SerializeField] private float defaultRespawnCooldown = 10f; // Default cooldown if no upgrade data
     
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
@@ -17,6 +19,8 @@ public class BombPlacementAbility : BaseAbility
     private List<GameObject> activeBombs = new List<GameObject>();
     private bool hasPlacedBombs = false;
     private int bombsExploded = 0;
+    private float respawnTimer = 0f;
+    private bool isWaitingToRespawn = false;
 
     private void OnEnable()
     {
@@ -38,7 +42,20 @@ public class BombPlacementAbility : BaseAbility
 
     protected override void Update()
     {
-        // Override to prevent duration countdown - bombs control lifetime
+        // Skip updates when frozen
+        if (isFrozen) return;
+        
+        // Handle respawn timer
+        if (isWaitingToRespawn)
+        {
+            respawnTimer -= Time.deltaTime;
+            if (respawnTimer <= 0f)
+            {
+                isWaitingToRespawn = false;
+                hasPlacedBombs = false;
+                PlaceBombs();
+            }
+        }
     }
 
     private void Start()
@@ -128,13 +145,53 @@ public class BombPlacementAbility : BaseAbility
         bombsExploded++;
         Debug.Log($"Bomb exploded! Total exploded: {bombsExploded}/{activeBombs.Count}");
         
-        // If all bombs have exploded, remove the ability
+        // If all bombs have exploded, start respawn timer
         if (bombsExploded >= activeBombs.Count)
         {
-            Debug.Log("All bombs exploded! Removing ability.");
-            RemoveAbility();
+            StartRespawnTimer();
         }
     }
+    
+    /// <summary>
+    /// Starts the respawn timer using cooldown from upgrade data
+    /// </summary>
+    private void StartRespawnTimer()
+    {
+        // Get cooldown from upgrade data, or use default
+        float cooldown = GetRespawnCooldown();
+        
+        Debug.Log($"All bombs exploded! Respawning in {cooldown} seconds.");
+        
+        // Clear the exploded bombs list
+        activeBombs.Clear();
+        bombsExploded = 0;
+        
+        // Start the respawn timer
+        respawnTimer = cooldown;
+        isWaitingToRespawn = true;
+    }
+    
+    /// <summary>
+    /// Gets the respawn cooldown from upgrade data or returns default
+    /// </summary>
+    public float GetRespawnCooldown()
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetCooldown(currentLevel);
+        }
+        return defaultRespawnCooldown;
+    }
+    
+    /// <summary>
+    /// Gets the current respawn timer value (for UI display)
+    /// </summary>
+    public float GetRespawnTimer() => respawnTimer;
+    
+    /// <summary>
+    /// Returns true if bombs are waiting to respawn
+    /// </summary>
+    public bool IsWaitingToRespawn() => isWaitingToRespawn;
 
     /// <summary>
     /// Levels up the ability and repositions bombs closer to head
@@ -179,18 +236,18 @@ public class BombPlacementAbility : BaseAbility
         activeBombs.Clear();
     }
 
-    /// <summary>
-    /// Removes the ability from the game
-    /// </summary>
-    private void RemoveAbility()
-    {
-        ClearBombs();
-        Destroy(this.gameObject);
-    }
-
     private void OnDestroy()
     {
         ClearBombs();
+    }
+    
+    /// <summary>
+    /// Override SetFrozen to also pause the respawn timer
+    /// </summary>
+    public override void SetFrozen(bool frozen)
+    {
+        base.SetFrozen(frozen);
+        // Timer is handled in Update which already checks isFrozen
     }
 }
 

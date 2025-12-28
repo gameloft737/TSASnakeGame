@@ -41,7 +41,7 @@ MonoBehaviour:
     minFuelToActivate: 50
     fuelRechargeRate: 20
     burstFuelCost: 18
-    continuousDrainRate: 27
+    continuousDrainRate: 15
     customStats: []
   - levelName: Level 4
     description: Increased range by 50%
@@ -61,4 +61,5 @@ MonoBehaviour:
     burstFuelCost: 20
     continuousDrainRate: 30
     customStats: []
-  maxLevel: 5
+  maxLevel: 7
+  evolutionData: {fileID: 0}

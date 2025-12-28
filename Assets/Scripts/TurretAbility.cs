@@ -1,5 +1,9 @@
 using UnityEngine;
 
+/// <summary>
+/// Active ability that spawns a turret that automatically shoots at enemies.
+/// Uses AbilityUpgradeData for level-based stats if assigned.
+/// </summary>
 public class TurretAbility : BaseAbility
 {
     [Header("Turret Settings")]
@@ -17,9 +21,13 @@ public class TurretAbility : BaseAbility
     [Header("Spawn Settings")]
     [SerializeField] private Vector3 spawnOffset = new Vector3(0, 1f, 0);
     
-    [Header("Level Progression")]
+    [Header("Level Progression (Fallback if no UpgradeData)")]
     [SerializeField] private float damageIncreasePerLevel = 10f;
     [SerializeField] private float intervalDecreasePerLevel = 0.2f;
+    
+    [Header("Multi-Shot Settings (Fallback if no UpgradeData)")]
+    [SerializeField] private int baseProjectileCount = 1;
+    [SerializeField] private float spreadAngle = 15f; // Angle between projectiles when shooting multiple
     
     private float shootTimer = 0f;
     private Transform playerTransform;
@@ -29,6 +37,7 @@ public class TurretAbility : BaseAbility
     // Dynamic values that scale with level
     private float currentShootInterval;
     private float currentProjectileDamage;
+    private int currentProjectileCount;
 
     protected override void Awake()
     {
@@ -118,19 +127,63 @@ public class TurretAbility : BaseAbility
         
         UpdateStatsForLevel();
         
-        Debug.Log($"TurretAbility: Level {currentLevel} - Damage: {currentProjectileDamage}, Fire Rate: {currentShootInterval:F2}s");
+        Debug.Log($"TurretAbility: Level {currentLevel} - Damage: {currentProjectileDamage}, Fire Rate: {currentShootInterval:F2}s, Projectiles: {currentProjectileCount}");
+    }
+    
+    /// <summary>
+    /// Applies custom stats from the upgrade data
+    /// </summary>
+    protected override void ApplyCustomStats(AbilityLevelStats stats)
+    {
+        // Custom stats can include "shootInterval" and "damage"
+        // We'll apply them in UpdateStatsForLevel() which is called after this
     }
     
     private void UpdateStatsForLevel()
     {
-        // Increase damage with each level
-        currentProjectileDamage = baseProjectileDamage + (damageIncreasePerLevel * (currentLevel - 1));
+        // Use upgrade data if available
+        if (upgradeData != null)
+        {
+            // Get damage from upgrade data (core stat)
+            currentProjectileDamage = GetDamage();
+            if (currentProjectileDamage <= 0) currentProjectileDamage = baseProjectileDamage;
+            
+            // Get cooldown (shoot interval) from upgrade data (core stat)
+            currentShootInterval = GetCooldown();
+            if (currentShootInterval <= 0)
+            {
+                // Fall back to calculated interval
+                currentShootInterval = baseShootInterval - (intervalDecreasePerLevel * (currentLevel - 1));
+            }
+            
+            // Get projectile count from custom stats (how many darts to shoot at once)
+            int customProjectileCount = Mathf.RoundToInt(GetCustomStat("projectileCount", 0f));
+            if (customProjectileCount > 0)
+            {
+                currentProjectileCount = customProjectileCount;
+            }
+            else
+            {
+                currentProjectileCount = baseProjectileCount;
+            }
+        }
+        else
+        {
+            // Fallback: Increase damage with each level
+            currentProjectileDamage = baseProjectileDamage + (damageIncreasePerLevel * (currentLevel - 1));
+            
+            // Decrease interval (faster firing) with each level
+            currentShootInterval = baseShootInterval - (intervalDecreasePerLevel * (currentLevel - 1));
+            
+            // Use base projectile count
+            currentProjectileCount = baseProjectileCount;
+        }
         
-        // Decrease interval (faster firing) with each level
-        currentShootInterval = baseShootInterval - (intervalDecreasePerLevel * (currentLevel - 1));
+        // Clamp to reasonable minimum (don't go below 0.3s interval)
+        currentShootInterval = Mathf.Max(currentShootInterval, 0.3f);
         
-        // Clamp to reasonable minimum (don't go below 0.5s interval)
-        currentShootInterval = Mathf.Max(currentShootInterval, 0.5f);
+        // Ensure at least 1 projectile
+        currentProjectileCount = Mathf.Max(currentProjectileCount, 1);
     }
 
     private void TryShoot()
@@ -186,8 +239,31 @@ public class TurretAbility : BaseAbility
         AppleEnemy apple = target.GetComponentInParent<AppleEnemy>();
         Vector3 targetPosition = apple != null ? GetAppleCenterPosition(apple) : target.position + Vector3.up * 0.5f;
         
-        Vector3 direction = (targetPosition - spawnPosition).normalized;
+        Vector3 baseDirection = (targetPosition - spawnPosition).normalized;
         
+        // Shoot multiple projectiles if projectile count > 1
+        if (currentProjectileCount == 1)
+        {
+            // Single projectile - shoot straight at target
+            SpawnProjectile(spawnPosition, baseDirection);
+        }
+        else
+        {
+            // Multiple projectiles - spread them out
+            float totalSpread = spreadAngle * (currentProjectileCount - 1);
+            float startAngle = -totalSpread / 2f;
+            
+            for (int i = 0; i < currentProjectileCount; i++)
+            {
+                float angle = startAngle + (spreadAngle * i);
+                Vector3 spreadDirection = Quaternion.Euler(0, angle, 0) * baseDirection;
+                SpawnProjectile(spawnPosition, spreadDirection);
+            }
+        }
+    }
+    
+    private void SpawnProjectile(Vector3 spawnPosition, Vector3 direction)
+    {
         GameObject projectile = Instantiate(projectilePrefab, spawnPosition, Quaternion.LookRotation(direction));
         
         TurretProjectile projectileScript = projectile.GetComponent<TurretProjectile>();

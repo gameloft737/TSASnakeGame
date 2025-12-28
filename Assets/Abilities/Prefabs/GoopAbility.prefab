@@ -45,7 +45,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e873cacb6f3d12c4292258f1be960fe6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  currentLevel: 1
+  maxLevel: 6
+  upgradeData: {fileID: 11400000, guid: 44d293e6f7916d9488cb11a617441420, type: 2}
   goopParticles: {fileID: 9001178323179673168}
+  collisionScript: {fileID: 0}
+  effector: 0.5
+  effectorDecreasePerLevel: 0.15
 --- !u!1 &6946235217696593668
 GameObject:
   m_ObjectHideFlags: 0
@@ -4893,3 +4899,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   goopSlowEffectPrefab: {fileID: 2629736422588366125, guid: 2d22f9def353e9b4283263a8e9e5e6f3, type: 3}
+  effector: 0

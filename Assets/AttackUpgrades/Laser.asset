@@ -16,22 +16,98 @@ MonoBehaviour:
   attackDescription: Snake shoots a continuous laser beam
   attackIcon: {fileID: 21300000, guid: 5f45125a5edd65a4985d0f8a2df4f4cd, type: 3}
   levels:
-  - levelName: Test Level
-    description: 1
-    damage: 0
-    range: 10
-    minFuelToActivate: 0
-    fuelRechargeRate: 0
+  - levelName: 1
+    description: Shoots two lasers that dela 15 damage per second
+    damage: 15
+    range: 8
+    minFuelToActivate: 50
+    fuelRechargeRate: 20
     burstFuelCost: 0
-    continuousDrainRate: 0
-    customStats: []
-  - levelName: Test Level 2
-    description: 2
-    damage: 0
-    range: 10
-    minFuelToActivate: 0
-    fuelRechargeRate: 0
+    continuousDrainRate: 10
+    customStats:
+    - statName: laserDistance
+      value: 8
+    - statName: laserWidth
+      value: 0.1
+  - levelName: 2
+    description: increased damage and range
+    damage: 15
+    range: 8
+    minFuelToActivate: 50
+    fuelRechargeRate: 20
     burstFuelCost: 0
-    continuousDrainRate: 0
-    customStats: []
-  maxLevel: 5
+    continuousDrainRate: 10
+    customStats:
+    - statName: laserDistance
+      value: 10
+    - statName: laserWidth
+      value: 0.12
+  - levelName: 3
+    description: increased damage and range
+    damage: 25
+    range: 12
+    minFuelToActivate: 40
+    fuelRechargeRate: 24
+    burstFuelCost: 0
+    continuousDrainRate: 8
+    customStats:
+    - statName: laserDistance
+      value: 12
+    - statName: laserWidth
+      value: 0.15
+  - levelName: 4
+    description: increased damage and range
+    damage: 32
+    range: 14
+    minFuelToActivate: 35
+    fuelRechargeRate: 26
+    burstFuelCost: 0
+    continuousDrainRate: 7
+    customStats:
+    - statName: laserDistance
+      value: 14
+    - statName: laserWidth
+      value: 0.18
+  - levelName: 5
+    description: increased damage and range
+    damage: 40
+    range: 16
+    minFuelToActivate: 30
+    fuelRechargeRate: 28
+    burstFuelCost: 0
+    continuousDrainRate: 6
+    customStats:
+    - statName: laserDistance
+      value: 16
+    - statName: laserWidth
+      value: 0.22
+  - levelName: 6
+    description: increased damage and range
+    damage: 50
+    range: 20
+    minFuelToActivate: 25
+    fuelRechargeRate: 30
+    burstFuelCost: 0
+    continuousDrainRate: 5
+    customStats:
+    - statName: laserDistance
+      value: 20
+    - statName: laserWidth
+      value: 0.28
+  - levelName: 7
+    description: big fat laser (edit in attack upgrades)
+    damage: 50
+    range: 20
+    minFuelToActivate: 25
+    fuelRechargeRate: 30
+    burstFuelCost: 0
+    continuousDrainRate: 5
+    customStats:
+    - statName: laserDistance
+      value: 20
+    - statName: laserWidth
+      value: 0.28
+    - statName: sideLasersEnabled
+      value: 1
+  maxLevel: 7
+  evolutionData: {fileID: 11400000, guid: 695f3cd5f0db8ff4aac8e83dae93be2d, type: 2}

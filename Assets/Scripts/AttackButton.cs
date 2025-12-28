@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UI Button component for displaying attack upgrade information
+/// UI Button component for displaying attack or ability upgrade information
 /// </summary>
 public class AttackButton : MonoBehaviour
 {
@@ -21,11 +21,16 @@ public class AttackButton : MonoBehaviour
     [SerializeField] private Color selectedColor = Color.green;
     [SerializeField] private Color maxLevelColor = Color.yellow;
     [SerializeField] private Color newColor = new Color(0.5f, 0.8f, 1f); // Light blue for new attacks
+    [SerializeField] private Color passiveAbilityColor = new Color(0.5f, 0.8f, 1f); // Light blue for passive abilities
+    [SerializeField] private Color activeAbilityColor = new Color(1f, 0.6f, 0.6f); // Light red for active abilities
     
     private Attack attack;
+    private AbilitySO abilitySO;
     private int attackIndex;
+    private int currentAbilityLevel;
     private AttackSelectionUI selectionUI;
     private Button button;
+    private bool isAbilityMode = false;
     
     private void Awake()
     {
@@ -89,10 +94,159 @@ public class AttackButton : MonoBehaviour
     }
     
     /// <summary>
+    /// Initialize the button with ability data
+    /// </summary>
+    public void InitializeWithAbility(AbilitySO abilitySO, int currentLevel, AttackSelectionUI selectionUI, bool isSelected)
+    {
+        this.abilitySO = abilitySO;
+        this.attack = null;
+        this.currentAbilityLevel = currentLevel;
+        this.selectionUI = selectionUI;
+        this.isAbilityMode = true;
+        
+        UpdateAbilityDisplay(isSelected);
+        
+        // Set up button click
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(OnAbilityButtonClicked);
+        }
+    }
+    
+    /// <summary>
+    /// Updates the display with current ability information
+    /// </summary>
+    public void UpdateAbilityDisplay(bool isSelected)
+    {
+        if (abilitySO == null) return;
+        
+        bool isNew = currentAbilityLevel == 0;
+        int nextLevel = isNew ? 1 : currentAbilityLevel + 1;
+        bool canUpgrade = abilitySO.CanUpgrade(currentAbilityLevel);
+        int maxLevel = abilitySO.maxLevel;
+        
+        // Set ability name
+        if (attackNameText != null)
+        {
+            attackNameText.text = abilitySO.abilityName;
+        }
+        
+        // Set level text
+        if (levelText != null)
+        {
+            if (isNew)
+            {
+                levelText.text = "(NEW) ";
+            }
+            else if (canUpgrade)
+            {
+                levelText.text = $"(Lvl {nextLevel}) ";
+            }
+            else
+            {
+                levelText.text = $"(Lvl {currentAbilityLevel})(MAX) ";
+            }
+        }
+        
+        // Set description from upgrade data
+        if (descriptionText != null)
+        {
+            string description = abilitySO.GetDescriptionForLevel(nextLevel);
+            if (!string.IsNullOrEmpty(description))
+            {
+                if (!canUpgrade && !isNew)
+                {
+                    descriptionText.text = description + " (Maxed)";
+                }
+                else
+                {
+                    descriptionText.text = description;
+                }
+            }
+            else if (!string.IsNullOrEmpty(abilitySO.description))
+            {
+                descriptionText.text = abilitySO.description;
+            }
+            else
+            {
+                descriptionText.text = isNew ? "Gain this ability" : $"Level up to Lvl {nextLevel}";
+            }
+        }
+        
+        // Set icon
+        if (iconImage != null)
+        {
+            if (abilitySO.icon != null)
+            {
+                iconImage.sprite = abilitySO.icon;
+                iconImage.enabled = true;
+            }
+            else if (abilitySO.upgradeData != null && abilitySO.upgradeData.abilityIcon != null)
+            {
+                iconImage.sprite = abilitySO.upgradeData.abilityIcon;
+                iconImage.enabled = true;
+            }
+            else
+            {
+                iconImage.enabled = false;
+            }
+        }
+        
+        // Set background color
+        if (backgroundImage != null)
+        {
+            if (isSelected)
+            {
+                backgroundImage.color = selectedColor;
+            }
+            else if (isNew)
+            {
+                backgroundImage.color = abilitySO.abilityType == AbilityType.Passive ? passiveAbilityColor : activeAbilityColor;
+            }
+            else if (!canUpgrade)
+            {
+                backgroundImage.color = maxLevelColor;
+            }
+            else
+            {
+                backgroundImage.color = abilitySO.abilityType == AbilityType.Passive ?
+                    new Color(0.7f, 0.9f, 1f) : new Color(1f, 0.8f, 0.8f);
+            }
+        }
+        
+        // Show/hide indicators
+        if (newIndicator != null)
+        {
+            newIndicator.SetActive(isNew);
+        }
+        
+        if (upgradeIndicator != null)
+        {
+            upgradeIndicator.SetActive(!isNew && canUpgrade);
+        }
+    }
+    
+    private void OnAbilityButtonClicked()
+    {
+        if (selectionUI != null && abilitySO != null)
+        {
+            selectionUI.OnAbilitySelected(abilitySO);
+        }
+    }
+    
+    /// <summary>
     /// Updates the display with current attack information
     /// </summary>
     public void UpdateDisplay(bool isSelected)
     {
+        // If in ability mode, use ability display instead
+        if (isAbilityMode)
+        {
+            UpdateAbilityDisplay(isSelected);
+            return;
+        }
+        
         if (attack == null) return;
         
         AttackUpgradeData upgradeData = attack.GetUpgradeData();

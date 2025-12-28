@@ -9,11 +9,20 @@ public abstract class BaseAbility : MonoBehaviour
     [SerializeField] protected int currentLevel = 1;
     [SerializeField] protected int maxLevel = 3;
     
+    [Header("Upgrade Data")]
+    [SerializeField] protected AbilityUpgradeData upgradeData;
+    
     protected bool isActive = false;
     protected bool isFrozen = false; // Whether the ability is frozen (paused)
 
     protected virtual void Awake()
     {
+        // If upgrade data is assigned, sync max level from it
+        if (upgradeData != null)
+        {
+            maxLevel = upgradeData.maxLevel;
+        }
+        
         ActivateAbility();
     }
 
@@ -26,19 +35,145 @@ public abstract class BaseAbility : MonoBehaviour
     }
 
     /// <summary>
-    /// Levels up the ability
+    /// Levels up the ability (considers evolutions)
     /// </summary>
     public virtual bool LevelUp()
     {
-        if (currentLevel >= maxLevel)
+        int effectiveMaxLevel = GetEffectiveMaxLevel();
+        
+        if (currentLevel >= effectiveMaxLevel)
         {
-            // Already max level
+            // Already at max level (including evolutions)
+            return false;
+        }
+        
+        // Check if we have level data for the next level
+        if (upgradeData != null && currentLevel >= upgradeData.levels.Count)
+        {
+            Debug.LogWarning($"{GetType().Name}: No level data for level {currentLevel + 1}");
             return false;
         }
         
         currentLevel++;
+        ApplyLevelStats();
         OnLevelUp();
+        
+        // Check if this is an evolution level
+        if (upgradeData != null && upgradeData.IsEvolutionLevel(currentLevel))
+        {
+            OnEvolutionUnlocked();
+        }
+        
         return true;
+    }
+    
+    /// <summary>
+    /// Sets the upgrade data for this ability
+    /// </summary>
+    public virtual void SetUpgradeData(AbilityUpgradeData data)
+    {
+        upgradeData = data;
+        if (upgradeData != null)
+        {
+            maxLevel = upgradeData.maxLevel;
+        }
+    }
+    
+    /// <summary>
+    /// Gets the upgrade data for this ability
+    /// </summary>
+    public AbilityUpgradeData GetUpgradeData() => upgradeData;
+    
+    /// <summary>
+    /// Applies stats from the upgrade data for the current level
+    /// Override this in derived classes to apply specific stats
+    /// </summary>
+    protected virtual void ApplyLevelStats()
+    {
+        if (upgradeData == null) return;
+        
+        AbilityLevelStats stats = upgradeData.GetStatsForLevel(currentLevel);
+        ApplyCustomStats(stats);
+    }
+    
+    /// <summary>
+    /// Override this to apply custom stats from the level data
+    /// </summary>
+    protected virtual void ApplyCustomStats(AbilityLevelStats stats)
+    {
+        // Override in derived classes to apply specific stats
+    }
+    
+    /// <summary>
+    /// Gets the damage value for the current level from upgrade data
+    /// </summary>
+    protected float GetDamage()
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetDamage(currentLevel);
+        }
+        return 0f;
+    }
+    
+    /// <summary>
+    /// Gets the cooldown value for the current level from upgrade data
+    /// </summary>
+    protected float GetCooldown()
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetCooldown(currentLevel);
+        }
+        return 0f;
+    }
+    
+    /// <summary>
+    /// Gets the duration value for the current level from upgrade data
+    /// </summary>
+    protected float GetDuration()
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetDuration(currentLevel);
+        }
+        return 0f;
+    }
+    
+    /// <summary>
+    /// Gets a custom stat value for the current level
+    /// </summary>
+    protected float GetCustomStat(string statName, float defaultValue = 0f)
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetCustomStat(currentLevel, statName, defaultValue);
+        }
+        return defaultValue;
+    }
+    
+    /// <summary>
+    /// Gets the description for the current level
+    /// </summary>
+    public string GetDescription()
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetDescription(currentLevel);
+        }
+        return "";
+    }
+    
+    /// <summary>
+    /// Gets the description for a specific level
+    /// </summary>
+    public string GetDescriptionForLevel(int level)
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.GetDescription(level);
+        }
+        return "";
     }
 
     /// <summary>
@@ -55,6 +190,7 @@ public abstract class BaseAbility : MonoBehaviour
     protected virtual void ActivateAbility()
     {
         isActive = true;
+        ApplyLevelStats();
     }
 
     /// <summary>
@@ -72,11 +208,76 @@ public abstract class BaseAbility : MonoBehaviour
     {
         isFrozen = frozen;
     }
+    
+    /// <summary>
+    /// Checks if the ability can be upgraded further (considers evolutions)
+    /// </summary>
+    public bool CanUpgrade()
+    {
+        if (upgradeData != null)
+        {
+            AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+            return upgradeData.CanUpgradeWithEvolutions(currentLevel, abilityManager);
+        }
+        return currentLevel < maxLevel;
+    }
+    
+    /// <summary>
+    /// Checks if the ability can be upgraded without considering evolutions
+    /// </summary>
+    public bool CanUpgradeBase()
+    {
+        if (upgradeData != null)
+        {
+            return upgradeData.CanUpgrade(currentLevel);
+        }
+        return currentLevel < maxLevel;
+    }
+    
+    /// <summary>
+    /// Gets the effective max level considering evolutions
+    /// </summary>
+    public int GetEffectiveMaxLevel()
+    {
+        if (upgradeData != null)
+        {
+            AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+            return upgradeData.GetEffectiveMaxLevel(abilityManager);
+        }
+        return maxLevel;
+    }
+    
+    /// <summary>
+    /// Checks if the current level is an evolution level
+    /// </summary>
+    public bool IsAtEvolutionLevel()
+    {
+        if (upgradeData == null) return false;
+        return upgradeData.IsEvolutionLevel(currentLevel);
+    }
+    
+    /// <summary>
+    /// Gets the evolution requirement for the next level (if it's an evolution)
+    /// </summary>
+    public EvolutionRequirement GetNextEvolution()
+    {
+        if (upgradeData == null) return null;
+        return upgradeData.GetEvolutionForLevel(currentLevel + 1);
+    }
+    
+    /// <summary>
+    /// Called when an evolution level is reached
+    /// </summary>
+    protected virtual void OnEvolutionUnlocked()
+    {
+        Debug.Log($"{GetType().Name} evolved to level {currentLevel}!");
+    }
 
     // Getters
     public int GetCurrentLevel() => currentLevel;
     public int GetMaxLevel() => maxLevel;
+    public int GetBaseMaxLevel() => upgradeData != null ? upgradeData.maxLevel : maxLevel;
     public bool IsActive() => isActive;
-    public bool IsMaxLevel() => currentLevel >= maxLevel;
+    public bool IsMaxLevel() => currentLevel >= GetEffectiveMaxLevel();
     public bool IsFrozen() => isFrozen;
 }

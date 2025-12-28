@@ -190,12 +190,58 @@ public abstract class Attack : MonoBehaviour
     public AttackUpgradeData GetUpgradeData() => upgradeData;
     
     /// <summary>
-    /// Checks if this attack can be upgraded
+    /// Gets the effective max level considering evolutions
+    /// </summary>
+    public int GetEffectiveMaxLevel(AbilityManager abilityManager = null)
+    {
+        if (upgradeData == null) return 1;
+        
+        // Try to find AbilityManager if not provided
+        if (abilityManager == null)
+        {
+            abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+        }
+        
+        return upgradeData.GetEffectiveMaxLevel(abilityManager);
+    }
+    
+    /// <summary>
+    /// Checks if this attack can be upgraded (considers evolutions)
     /// </summary>
     public bool CanUpgrade()
     {
         if (upgradeData == null) return false;
+        
+        // Find AbilityManager to check for evolutions
+        AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+        return upgradeData.CanUpgradeWithEvolutions(currentLevel, abilityManager);
+    }
+    
+    /// <summary>
+    /// Checks if this attack can be upgraded without considering evolutions
+    /// </summary>
+    public bool CanUpgradeBase()
+    {
+        if (upgradeData == null) return false;
         return upgradeData.CanUpgrade(currentLevel);
+    }
+    
+    /// <summary>
+    /// Checks if the current level is an evolution level
+    /// </summary>
+    public bool IsAtEvolutionLevel()
+    {
+        if (upgradeData == null) return false;
+        return upgradeData.IsEvolutionLevel(currentLevel);
+    }
+    
+    /// <summary>
+    /// Gets the evolution requirement for the next level (if it's an evolution)
+    /// </summary>
+    public EvolutionRequirement GetNextEvolution()
+    {
+        if (upgradeData == null) return null;
+        return upgradeData.GetEvolutionForLevel(currentLevel + 1);
     }
     
     /// <summary>

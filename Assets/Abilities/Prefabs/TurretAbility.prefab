@@ -547,15 +547,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6376baf89dea6da409d5f29f11988a2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shootInterval: 1.5
+  currentLevel: 1
+  maxLevel: 6
+  upgradeData: {fileID: 11400000, guid: f45d6c5994463fe449b0e5c54d65c6b4, type: 2}
+  baseShootInterval: 1.5
   detectionRange: 20
   turretBody: {fileID: 3046407594552429455}
   originPoint: {fileID: 8159454634642112976}
   projectilePrefab: {fileID: 1003997767319658915, guid: b672c3ac99be4634fbfc60d9a9c27463, type: 3}
   projectileSpeed: 15
-  projectileDamage: 25
+  baseProjectileDamage: 25
   projectileLifetime: 5
   spawnOffset: {x: 0, y: 0, z: 0}
+  damageIncreasePerLevel: 10
+  intervalDecreasePerLevel: 0.2
+  baseProjectileCount: 1
+  spreadAngle: 15
 --- !u!1 &8699957442159637014
 GameObject:
   m_ObjectHideFlags: 0

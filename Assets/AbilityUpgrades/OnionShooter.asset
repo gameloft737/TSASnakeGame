@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f58b0c76f8afbb74390e1fdfdb66d050, type: 3}
+  m_Name: OnionShooter
+  m_EditorClassIdentifier: 
+  abilityName: 
+  abilityDescription: 
+  abilityIcon: {fileID: 21300000, guid: a86b60d65d3061b4598f591a6085e8a7, type: 3}
+  abilityType: 1
+  levels:
+  - levelName: 1
+    description: Shoots one dart every 1.5 seconds
+    damage: 10
+    cooldown: 1.5
+    duration: 0
+    customStats:
+    - statName: projectileCount
+      value: 1
+  - levelName: 2
+    description: Increased damage with faster shots
+    damage: 12
+    cooldown: 1.3
+    duration: 0
+    customStats:
+    - statName: projectileCount
+      value: 1
+  - levelName: 3
+    description: Fires two shots with more damage and speed
+    damage: 15
+    cooldown: 1.1
+    duration: 0
+    customStats:
+    - statName: projectileCount
+      value: 2
+  - levelName: 4
+    description: Increased damage and speed
+    damage: 18
+    cooldown: 0.9
+    duration: 0
+    customStats:
+    - statName: projectileCount
+      value: 2
+  - levelName: 5
+    description: Fires 3 shots and increased speed
+    damage: 20
+    cooldown: 0.7
+    duration: 0
+    customStats:
+    - statName: projectileCount
+      value: 3
+  - levelName: 6
+    description: Fires faster
+    damage: 25
+    cooldown: 0.5
+    duration: 0
+    customStats:
+    - statName: projectileCount
+      value: 3
+  maxLevel: 6

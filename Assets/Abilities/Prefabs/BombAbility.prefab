@@ -44,6 +44,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b394289773eeef244b21e68b41f6541e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  currentLevel: 1
+  maxLevel: 6
+  upgradeData: {fileID: 11400000, guid: 1c2223d47eab07d4ba11aede2fefadf7, type: 2}
   bombPrefab: {fileID: 8389747036733351956, guid: c56f0827b539fec4b9017853c2f324ac, type: 3}
+  defaultRespawnCooldown: 10
   snakeBody: {fileID: 0}
   damage: 20

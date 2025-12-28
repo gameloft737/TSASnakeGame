@@ -14,22 +14,104 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackName: Lunge
   attackDescription: Snake lunges forwards
-  attackIcon: {fileID: 0}
+  attackIcon: {fileID: 21300000, guid: 25b39f27e6ba465419d921c8e93132fd, type: 3}
   levels:
-  - levelName: Test Level
-    description: 1
-    damage: 0
-    minFuelToActivate: 0
-    fuelRechargeRate: 0
-    burstFuelCost: 0
+  - levelName: 1
+    description: Dash forward and bite enemies
+    damage: 10
+    range: 2.5
+    minFuelToActivate: 100
+    fuelRechargeRate: 100
+    burstFuelCost: 100
     continuousDrainRate: 0
-    customStats: []
-  - levelName: Test Level 2
-    description: 2
-    damage: 0
-    minFuelToActivate: 0
-    fuelRechargeRate: 0
-    burstFuelCost: 0
+    customStats:
+    - statName: lungeForce
+      value: 30
+    - statName: hitRadius
+      value: 1.5
+  - levelName: 2
+    description: Deal more damage and have a wider hit area
+    damage: 15
+    range: 3
+    minFuelToActivate: 100
+    fuelRechargeRate: 116
+    burstFuelCost: 100
     continuousDrainRate: 0
-    customStats: []
-  maxLevel: 5
+    customStats:
+    - statName: lungeForce
+      value: 35
+    - statName: hitRadius
+      value: 1.8
+  - levelName: 3
+    description: Deal more damage and have a wider hit area
+    damage: 20
+    range: 3.5
+    minFuelToActivate: 100
+    fuelRechargeRate: 132
+    burstFuelCost: 100
+    continuousDrainRate: 0
+    customStats:
+    - statName: lungeForce
+      value: 40
+    - statName: hitRadius
+      value: 2.1
+  - levelName: 4
+    description: Deal more damage and have a wider hit area
+    damage: 25
+    range: 4
+    minFuelToActivate: 100
+    fuelRechargeRate: 148
+    burstFuelCost: 100
+    continuousDrainRate: 0
+    customStats:
+    - statName: lungeForce
+      value: 45
+    - statName: hitRadius
+      value: 2.4
+  - levelName: 5
+    description: Deal more damage and have a wider hit area
+    damage: 30
+    range: 4.5
+    minFuelToActivate: 100
+    fuelRechargeRate: 164
+    burstFuelCost: 100
+    continuousDrainRate: 0
+    customStats:
+    - statName: lungeForce
+      value: 50
+    - statName: hitRadius
+      value: 2.7
+  - levelName: 6
+    description: Deal more damage and have a wider hit area
+    damage: 40
+    range: 5
+    minFuelToActivate: 100
+    fuelRechargeRate: 200
+    burstFuelCost: 100
+    continuousDrainRate: 0
+    customStats:
+    - statName: lungeForce
+      value: 60
+    - statName: hitRadius
+      value: 3
+  - levelName: 7
+    description: (EVO) Explode enemies with every lunge!
+    damage: 40
+    range: 5
+    minFuelToActivate: 100
+    fuelRechargeRate: 200
+    burstFuelCost: 100
+    continuousDrainRate: 0
+    customStats:
+    - statName: lungeForce
+      value: 60
+    - statName: hitRadius
+      value: 3
+    - statName: explosionEnabled
+      value: 1
+    - statName: explosionRadius
+      value: 8
+    - statName: ExplosionDamage
+      value: 20
+  maxLevel: 7
+  evolutionData: {fileID: 11400000, guid: 6c83b33a077f0ca42a421ee585d8d92f, type: 2}

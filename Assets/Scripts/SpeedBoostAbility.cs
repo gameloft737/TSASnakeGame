@@ -3,10 +3,11 @@ using UnityEngine;
 /// <summary>
 /// Passive ability that increases movement speed.
 /// Each level adds more speed multiplier.
+/// Uses AbilityUpgradeData for level-based stats if assigned.
 /// </summary>
 public class SpeedBoostAbility : BaseAbility
 {
-    [Header("Speed Boost Settings")]
+    [Header("Speed Boost Settings (Fallback if no UpgradeData)")]
     [SerializeField] private float speedMultiplierPerLevel = 0.10f; // 10% per level
     
     private float currentBonus = 0f;
@@ -40,6 +41,15 @@ public class SpeedBoostAbility : BaseAbility
         ApplyBonus();
     }
     
+    /// <summary>
+    /// Applies custom stats from the upgrade data
+    /// </summary>
+    protected override void ApplyCustomStats(AbilityLevelStats stats)
+    {
+        // The effectValue from upgrade data represents the speed multiplier for this level
+        // We'll apply it in ApplyBonus() which is called after this
+    }
+    
     private void ApplyBonus()
     {
         if (PlayerStats.Instance == null)
@@ -48,7 +58,17 @@ public class SpeedBoostAbility : BaseAbility
             return;
         }
         
-        currentBonus = speedMultiplierPerLevel * currentLevel;
+        // Use upgrade data if available, otherwise fall back to per-level calculation
+        // For passive abilities, "damage" field represents the effect value (speed multiplier)
+        if (upgradeData != null)
+        {
+            currentBonus = GetDamage();
+        }
+        else
+        {
+            currentBonus = speedMultiplierPerLevel * currentLevel;
+        }
+        
         PlayerStats.Instance.AddSpeedMultiplier(currentBonus);
         
         // Also directly update PlayerMovement speeds
@@ -61,8 +81,8 @@ public class SpeedBoostAbility : BaseAbility
     {
         if (playerMovement == null) return;
         
-        float multiplier = PlayerStats.Instance != null 
-            ? PlayerStats.Instance.GetSpeedMultiplier() 
+        float multiplier = PlayerStats.Instance != null
+            ? PlayerStats.Instance.GetSpeedMultiplier()
             : 1f + currentBonus;
         
         playerMovement.maxSpeed = originalMaxSpeed * multiplier;
