@@ -8,9 +8,6 @@ public class AbilityDrop : MonoBehaviour
     [SerializeField] private float groundedCheckTime = 1f;
     [SerializeField] private float stillThreshold = 0.1f;
     
-    [Header("Ability Pool")]
-    [SerializeField] private AbilitySO[] possibleAbilities;
-    
     [Header("UI References")]
     [SerializeField] private Transform uiContainer;
     
@@ -19,24 +16,13 @@ public class AbilityDrop : MonoBehaviour
     [SerializeField] private string openTrigger = "Open";
     [SerializeField] private string closeTrigger = "Close";
     
-    public AbilitySO selectedAbility;
-    private DropType dropType;
     private Rigidbody rb;
-    public bool isGrounded = false;
+    private bool isGrounded = false;
     private bool isCollected = false;
     private bool isDying = false;
     private float lifetimeTimer = 0f;
     private float stillTimer = 0f;
-    private AbilityManager playerAbilityManager;
-    private DropShower dropShower;
     private Camera worldSpaceCamera;
-
-    public enum DropType
-    {
-        New,
-        Upgrade,
-        Duration
-    }
 
     private void Awake()
     {
@@ -52,24 +38,20 @@ public class AbilityDrop : MonoBehaviour
             }
         }
         
+        // Find the camera for world space UI
         AbilityCollector collector = FindFirstObjectByType<AbilityCollector>();
         if (collector != null)
         {
-            playerAbilityManager = collector.GetComponent<AbilityManager>();
-            if (playerAbilityManager != null)
+            AbilityManager abilityManager = collector.GetComponent<AbilityManager>();
+            if (abilityManager != null)
             {
-                worldSpaceCamera = playerAbilityManager.GetWorldSpaceCamera();
+                worldSpaceCamera = abilityManager.GetWorldSpaceCamera();
             }
         }
         
+        // Set up UI container
         if (uiContainer != null)
         {
-            dropShower = uiContainer.GetComponent<DropShower>();
-            if (dropShower == null)
-            {
-                dropShower = uiContainer.gameObject.AddComponent<DropShower>();
-            }
-            
             // Set camera for world space canvas
             Canvas canvas = uiContainer.GetComponent<Canvas>();
             if (canvas != null && canvas.renderMode == RenderMode.WorldSpace && worldSpaceCamera != null)
@@ -79,14 +61,13 @@ public class AbilityDrop : MonoBehaviour
             
             uiContainer.gameObject.SetActive(false);
         }
-        
-        SelectRandomAbility();
     }
 
     private void Update()
     {
         if (isCollected || isDying) return;
         
+        // Check if the drop has stopped moving (grounded)
         if (!isGrounded && rb != null)
         {
             float velocity = rb.linearVelocity.magnitude;
@@ -106,6 +87,7 @@ public class AbilityDrop : MonoBehaviour
             }
         }
         
+        // Count down lifetime after grounded
         if (isGrounded && !isDying)
         {
             lifetimeTimer += Time.deltaTime;
@@ -118,42 +100,6 @@ public class AbilityDrop : MonoBehaviour
         }
     }
 
-    private void SelectRandomAbility()
-    {
-        if (possibleAbilities == null || possibleAbilities.Length == 0)
-        {
-            Debug.LogWarning("No abilities assigned to drop!");
-            return;
-        }
-        
-        selectedAbility = possibleAbilities[Random.Range(0, possibleAbilities.Length)];
-        DetermineDropType();
-    }
-
-    private void DetermineDropType()
-    {
-        if (playerAbilityManager == null || selectedAbility == null)
-        {
-            dropType = DropType.New;
-            return;
-        }
-        
-        BaseAbility existingAbility = playerAbilityManager.GetAbility(selectedAbility.abilityPrefab);
-        
-        if (existingAbility == null)
-        {
-            dropType = DropType.New;
-        }
-        else if (existingAbility.IsMaxLevel())
-        {
-            dropType = DropType.Duration;
-        }
-        else
-        {
-            dropType = DropType.Upgrade;
-        }
-    }
-
     private void OnGrounded()
     {
         if (isGrounded) return; // Prevent multiple calls
@@ -161,9 +107,9 @@ public class AbilityDrop : MonoBehaviour
         
         if (rb != null)
         {
-            rb.isKinematic = true;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
         }
         
         // Trigger open animation
@@ -172,20 +118,13 @@ public class AbilityDrop : MonoBehaviour
             animator.SetTrigger(openTrigger);
         }
         
-        if (dropShower != null && selectedAbility != null && uiContainer != null)
+        // Show simple UI indicator if available (optional)
+        if (uiContainer != null)
         {
-            int level = 1;
-            if (playerAbilityManager != null && selectedAbility.abilityPrefab != null)
-            {
-                BaseAbility existing = playerAbilityManager.GetAbility(selectedAbility.abilityPrefab);
-                if (existing != null)
-                {
-                    level = existing.GetCurrentLevel() + (dropType == DropType.Upgrade ? 1 : 0);
-                }
-            }
-            
             uiContainer.gameObject.SetActive(true);
-            dropShower.Initialize(selectedAbility, dropType, level, worldSpaceCamera);
+            
+            // You could add a simple sprite or text here to indicate
+            // this is an ability drop that can be collected
         }
     }
     
@@ -210,8 +149,6 @@ public class AbilityDrop : MonoBehaviour
         Destroy(gameObject, 1f);
     }
 
-    public AbilitySO GetAbilitySO() => selectedAbility;
-    public DropType GetDropType() => dropType;
     public bool IsGrounded() => isGrounded;
     public bool IsCollected() => isCollected;
     
@@ -225,7 +162,7 @@ public class AbilityDrop : MonoBehaviour
         CancelInvoke();
         StopAllCoroutines();
         
-        // Trigger close animation on collection too
+        // Trigger close animation on collection
         if (animator != null)
         {
             animator.SetTrigger(closeTrigger);
