@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 18a94a20ab5d2bc47bff8a4a6d0fc665, type: 3}
-  m_Name: Wave7
+  m_Name: Wave13
   m_EditorClassIdentifier: 
-  waveName: Wave 2
+  waveName: Wave 13
   enemyConfigs:
   - enemyPrefab: {fileID: 57176229489227899, guid: 75cb68e2fae50764d8740f8adf5f9030, type: 3}
     maxOnScreen: 4
@@ -32,5 +32,9 @@ MonoBehaviour:
     spawnCooldown: 0
   - enemyPrefab: {fileID: 4327141488123506268, guid: 450b0872f779cde49a43e2929c5c708d, type: 3}
     maxOnScreen: 4
+    allowedSpawnZones: 
+    spawnCooldown: 0
+  - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
+    maxOnScreen: 10
     allowedSpawnZones: 
     spawnCooldown: 0

@@ -1,12 +1,22 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
+using System;
 
 public class AttackManager : MonoBehaviour
 {
+    public static event Action OnAttacksChanged;
+    
     [Header("Attack Settings")]
+    [Tooltip("Attacks the player currently owns. First attack (index 0) is the active one. Leave empty to start with no attacks.")]
     public List<Attack> attacks = new List<Attack>();
-    [SerializeField] private int currentAttackIndex = 0;
+    
+    [Header("Attack Limits")]
+    [SerializeField] private int maxAttacks = 4;
+    
+    [Header("Startup")]
+    [Tooltip("If true, clears all attacks on game start so player starts with none.")]
+    [SerializeField] private bool clearAttacksOnStart = true;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -14,7 +24,8 @@ public class AttackManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
 
-    private Attack CurrentAttack => attacks.Count > 0 && currentAttackIndex < attacks.Count ? attacks[currentAttackIndex] : null;
+    // The active attack is always the first one (index 0)
+    private Attack CurrentAttack => attacks.Count > 0 ? attacks[0] : null;
     
     private bool isHoldingAttack = false;
     private bool isFrozen = false; // Whether attacks are frozen (for ability selection)
@@ -36,11 +47,19 @@ public class AttackManager : MonoBehaviour
             snakeBody = GetComponent<SnakeBody>();
         }
         
-        // Apply initial variation and set as current attack
-        ApplyCurrentVariation();
-        if (CurrentAttack != null)
+        // Clear attacks on start if configured (so player starts with no attacks)
+        if (clearAttacksOnStart)
         {
-            CurrentAttack.SetAsCurrentAttack();
+            ClearAllAttacks();
+        }
+        else
+        {
+            // Apply initial variation and set as current attack
+            ApplyCurrentVariation();
+            if (CurrentAttack != null)
+            {
+                CurrentAttack.SetAsCurrentAttack();
+            }
         }
     }
 
@@ -82,48 +101,190 @@ public class AttackManager : MonoBehaviour
         }
     }
 
-    public void SetAttackIndex(int index)
+    /// <summary>
+    /// Moves an attack to the first slot, making it the active attack
+    /// </summary>
+    public void SetActiveAttack(int index)
     {
+        if (index <= 0 || index >= attacks.Count) return;
+        
         if (isHoldingAttack && CurrentAttack != null)
         {
             CurrentAttack.StopUsing();
             isHoldingAttack = false;
         }
 
-        if (index >= 0 && index < attacks.Count)
+        // Move the attack at index to position 0
+        Attack attackToActivate = attacks[index];
+        attacks.RemoveAt(index);
+        attacks.Insert(0, attackToActivate);
+        
+        ApplyCurrentVariation();
+        if (CurrentAttack != null)
         {
-            currentAttackIndex = index;
+            CurrentAttack.SetAsCurrentAttack();
+        }
+        
+        OnAttacksChanged?.Invoke();
+    }
+    
+    /// <summary>
+    /// Swaps two attacks in the list
+    /// </summary>
+    public void SwapAttacks(int indexA, int indexB)
+    {
+        if (indexA < 0 || indexA >= attacks.Count || indexB < 0 || indexB >= attacks.Count) return;
+        if (indexA == indexB) return;
+        
+        if (isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.StopUsing();
+            isHoldingAttack = false;
+        }
+        
+        Attack temp = attacks[indexA];
+        attacks[indexA] = attacks[indexB];
+        attacks[indexB] = temp;
+        
+        // If we swapped something into position 0, update the active attack
+        if (indexA == 0 || indexB == 0)
+        {
             ApplyCurrentVariation();
-            
-            // Set the new attack as the current one for fuel recharging
             if (CurrentAttack != null)
             {
                 CurrentAttack.SetAsCurrentAttack();
             }
         }
+        
+        OnAttacksChanged?.Invoke();
+    }
+    
+    /// <summary>
+    /// Moves an attack from one index to another
+    /// </summary>
+    public void MoveAttack(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || fromIndex >= attacks.Count || toIndex < 0 || toIndex >= attacks.Count) return;
+        if (fromIndex == toIndex) return;
+        
+        if (isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.StopUsing();
+            isHoldingAttack = false;
+        }
+        
+        Attack attackToMove = attacks[fromIndex];
+        attacks.RemoveAt(fromIndex);
+        attacks.Insert(toIndex, attackToMove);
+        
+        // If position 0 changed, update the active attack
+        if (fromIndex == 0 || toIndex == 0)
+        {
+            ApplyCurrentVariation();
+            if (CurrentAttack != null)
+            {
+                CurrentAttack.SetAsCurrentAttack();
+            }
+        }
+        
+        OnAttacksChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Adds a new attack to the player's collection
+    /// </summary>
+    public bool AddAttack(Attack newAttack)
+    {
+        if (newAttack == null) return false;
+        
+        // Check if already owned
+        if (attacks.Contains(newAttack))
+        {
+            Debug.Log($"Already own attack: {newAttack.attackName}");
+            return false;
+        }
+        
+        // Check max limit
+        if (attacks.Count >= maxAttacks)
+        {
+            Debug.LogWarning($"Cannot add attack {newAttack.attackName}: max attacks ({maxAttacks}) reached!");
+            return false;
+        }
+        
+        attacks.Add(newAttack);
+        Debug.Log($"Added attack: {newAttack.attackName}. Total attacks: {attacks.Count}");
+        
+        // If this is the first attack, make it active
+        if (attacks.Count == 1)
+        {
+            ApplyCurrentVariation();
+            CurrentAttack?.SetAsCurrentAttack();
+        }
+        
+        OnAttacksChanged?.Invoke();
+        return true;
+    }
+    
+    /// <summary>
+    /// Checks if the player owns a specific attack
+    /// </summary>
+    public bool HasAttack(Attack attack)
+    {
+        return attack != null && attacks.Contains(attack);
+    }
+    
+    /// <summary>
+    /// Checks if a new attack can be added
+    /// </summary>
+    public bool CanAddAttack()
+    {
+        return attacks.Count < maxAttacks;
+    }
+    
+    /// <summary>
+    /// Clears all attacks from the player's collection
+    /// </summary>
+    public void ClearAllAttacks()
+    {
+        if (isHoldingAttack && CurrentAttack != null)
+        {
+            CurrentAttack.StopUsing();
+            isHoldingAttack = false;
+        }
+        
+        attacks.Clear();
+        Debug.Log("Cleared all attacks");
+        OnAttacksChanged?.Invoke();
+    }
+    
+    /// <summary>
+    /// Gets the maximum number of attacks allowed
+    /// </summary>
+    public int GetMaxAttacks() => maxAttacks;
+    
+    /// <summary>
+    /// Legacy method - sets the attack at index as active by moving it to position 0
+    /// </summary>
+    public void SetAttackIndex(int index)
+    {
+        SetActiveAttack(index);
     }
 
     public void NextAttack()
     {
-        if (attacks.Count > 0)
+        // Cycle through attacks by moving the first one to the end
+        if (attacks.Count > 1)
         {
-            SetAttackIndex((currentAttackIndex + 1) % attacks.Count);
+            MoveAttack(0, attacks.Count - 1);
         }
     }
 
     public void PreviousAttack()
     {
-        if (attacks.Count > 0)
+        // Cycle through attacks by moving the last one to the front
+        if (attacks.Count > 1)
         {
-            SetAttackIndex((currentAttackIndex - 1 + attacks.Count) % attacks.Count);
-        }
-    }
-
-    public void AddAttack(Attack newAttack)
-    {
-        if (!attacks.Contains(newAttack))
-        {
-            attacks.Add(newAttack);
+            MoveAttack(attacks.Count - 1, 0);
         }
     }
     
@@ -199,7 +360,14 @@ public class AttackManager : MonoBehaviour
 
     public Attack GetCurrentAttack() => CurrentAttack;
     
-    public int GetCurrentAttackIndex() => currentAttackIndex;
+    public int GetCurrentAttackIndex() => 0; // Active attack is always at index 0
+    
+    public Attack GetAttackAtIndex(int index)
+    {
+        if (index >= 0 && index < attacks.Count)
+            return attacks[index];
+        return null;
+    }
     
     public int GetAttackCount() => attacks.Count;
     

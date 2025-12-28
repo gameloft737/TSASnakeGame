@@ -13,5 +13,8 @@ MonoBehaviour:
   m_Name: Bombs
   m_EditorClassIdentifier: 
   abilityName: Bombs
-  icon: {fileID: 21300000, guid: 8e0f0dc791c680943b2723818a3df902, type: 3}
+  description: 
+  icon: {fileID: 21300000, guid: 3131c554f8c77d242886370b3e967f05, type: 3}
   abilityPrefab: {fileID: 7541819147028461549, guid: 32a6341b68bcbe846852198ffe3aa332, type: 3}
+  abilityType: 1
+  maxLevel: 3

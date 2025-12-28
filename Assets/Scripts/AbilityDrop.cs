@@ -5,16 +5,23 @@ public class AbilityDrop : MonoBehaviour
 {
     [Header("Drop Settings")]
     [SerializeField] private float lifetimeAfterGround = 10f;
-    [SerializeField] private float groundedCheckTime = 1f;
-    [SerializeField] private float stillThreshold = 0.1f;
+    [SerializeField] private float groundedCheckTime = 0.5f; // Reduced for faster grounding
+    [SerializeField] private float stillThreshold = 0.2f; // Slightly higher threshold
+    [SerializeField] private float collectionRadius = 2f; // Radius for continuous collection check
     
     [Header("UI References")]
     [SerializeField] private Transform uiContainer;
     
     [Header("Animation")]
     [SerializeField] private Animator animator;
-    [SerializeField] private string openTrigger = "Open";
+    [SerializeField] private string openBool = "IsOpen"; // Changed to bool for more reliable animation
+    [SerializeField] private string openTrigger = "Open"; // Keep trigger as fallback
     [SerializeField] private string closeTrigger = "Close";
+    [SerializeField] private bool useBoolAnimation = true; // Toggle between bool and trigger
+    
+    [Header("Visual Feedback")]
+    [SerializeField] private float pulseSpeed = 2f;
+    [SerializeField] private float pulseAmount = 0.1f;
     
     private Rigidbody rb;
     private bool isGrounded = false;
@@ -23,10 +30,13 @@ public class AbilityDrop : MonoBehaviour
     private float lifetimeTimer = 0f;
     private float stillTimer = 0f;
     private Camera worldSpaceCamera;
+    private Vector3 originalScale;
+    private Transform playerTransform;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        originalScale = transform.localScale;
         
         // Find animator if not assigned
         if (animator == null)
@@ -47,6 +57,9 @@ public class AbilityDrop : MonoBehaviour
             {
                 worldSpaceCamera = abilityManager.GetWorldSpaceCamera();
             }
+            
+            // Cache player transform for continuous collection check
+            playerTransform = collector.transform;
         }
         
         // Set up UI container
@@ -87,6 +100,28 @@ public class AbilityDrop : MonoBehaviour
             }
         }
         
+        // Continuous collection check when grounded - fixes player walking through drops
+        if (isGrounded && !isCollected && !isDying && playerTransform != null)
+        {
+            float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
+            if (distanceToPlayer <= collectionRadius)
+            {
+                // Try to collect via the AbilityCollector
+                AbilityCollector collector = playerTransform.GetComponent<AbilityCollector>();
+                if (collector != null)
+                {
+                    collector.TryCollectDrop(this);
+                }
+            }
+        }
+        
+        // Pulse effect when grounded to make it more visible
+        if (isGrounded && !isDying)
+        {
+            float pulse = 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseAmount;
+            transform.localScale = originalScale * pulse;
+        }
+        
         // Count down lifetime after grounded
         if (isGrounded && !isDying)
         {
@@ -112,20 +147,26 @@ public class AbilityDrop : MonoBehaviour
             rb.isKinematic = true;
         }
         
-        // Trigger open animation
+        // Trigger open animation - use bool for more reliable state
         if (animator != null)
         {
-            animator.SetTrigger(openTrigger);
+            if (useBoolAnimation)
+            {
+                animator.SetBool(openBool, true);
+            }
+            else
+            {
+                animator.SetTrigger(openTrigger);
+            }
         }
         
         // Show simple UI indicator if available (optional)
         if (uiContainer != null)
         {
             uiContainer.gameObject.SetActive(true);
-            
-            // You could add a simple sprite or text here to indicate
-            // this is an ability drop that can be collected
         }
+        
+        Debug.Log($"[AbilityDrop] Grounded at {transform.position}");
     }
     
     private void StartDeathAnimation()
@@ -133,9 +174,16 @@ public class AbilityDrop : MonoBehaviour
         if (isDying || isCollected) return;
         isDying = true;
         
+        // Reset scale
+        transform.localScale = originalScale;
+        
         // Trigger close animation
         if (animator != null)
         {
+            if (useBoolAnimation)
+            {
+                animator.SetBool(openBool, false);
+            }
             animator.SetTrigger(closeTrigger);
         }
         
@@ -154,9 +202,12 @@ public class AbilityDrop : MonoBehaviour
     
     public void Collect()
     {
-        if (isCollected || isDying) return;
+        if (isCollected) return; // Only check isCollected, not isDying
         isCollected = true;
         isDying = true; // Prevent death animation from triggering
+        
+        // Reset scale immediately
+        transform.localScale = originalScale;
         
         // Cancel any pending destruction
         CancelInvoke();
@@ -165,6 +216,10 @@ public class AbilityDrop : MonoBehaviour
         // Trigger close animation on collection
         if (animator != null)
         {
+            if (useBoolAnimation)
+            {
+                animator.SetBool(openBool, false);
+            }
             animator.SetTrigger(closeTrigger);
         }
         
@@ -174,8 +229,10 @@ public class AbilityDrop : MonoBehaviour
             uiContainer.gameObject.SetActive(false);
         }
         
-        // Destroy after brief delay for animation
-        Destroy(gameObject, 0.3f);
+        // Destroy immediately or after brief delay
+        Destroy(gameObject, 0.1f); // Reduced delay for faster response
+        
+        Debug.Log("[AbilityDrop] Collected!");
     }
     
     private void OnDestroy()

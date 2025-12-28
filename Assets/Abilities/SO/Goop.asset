@@ -13,5 +13,8 @@ MonoBehaviour:
   m_Name: Goop
   m_EditorClassIdentifier: 
   abilityName: Goop
-  icon: {fileID: 21300000, guid: 656022f27a0d05348a37be4c84c5a29c, type: 3}
+  description: 
+  icon: {fileID: 21300000, guid: 563b0a16d962d814ca3a4e5c8fefea8a, type: 3}
   abilityPrefab: {fileID: 2215779063130808820, guid: 301e9597fe6aa8e458ac0fe8acf2e4fd, type: 3}
+  abilityType: 1
+  maxLevel: 3

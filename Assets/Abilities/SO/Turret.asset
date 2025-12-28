@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
   m_Name: Turret
   m_EditorClassIdentifier: 
-  abilityName: Turrent
-  icon: {fileID: 21300000, guid: 37036e23c776a844dbfea68714bbbdac, type: 3}
+  abilityName: Onion Shooter
+  description: Shoots one dart
+  icon: {fileID: 21300000, guid: a86b60d65d3061b4598f591a6085e8a7, type: 3}
   abilityPrefab: {fileID: 8346413092723725895, guid: 7db5d825dce573647a660962b3a69cfd, type: 3}
+  abilityType: 1
+  maxLevel: 3

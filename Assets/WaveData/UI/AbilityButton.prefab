@@ -703,7 +703,7 @@ MonoBehaviour:
   levelText: {fileID: 8920789148600894215}
   descriptionText: {fileID: 8110716824212927462}
   newIndicator: {fileID: 5088055961393574485}
-  upgradeIndicator: {fileID: 0}
+  upgradeIndicator: {fileID: 9172490329548006678}
   backgroundImage: {fileID: 0}
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   newColor: {r: 1, g: 1, b: 1, a: 1}
@@ -725,7 +725,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &8732942183731976630
 RectTransform:
   m_ObjectHideFlags: 0

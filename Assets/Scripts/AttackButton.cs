@@ -54,6 +54,29 @@ public class AttackButton : MonoBehaviour
         this.attack = attack;
         this.attackIndex = attackIndex;
         this.selectionUI = selectionUI;
+        this.playerOwnsAttack = false; // Will be set by InitializeWithOwnership
+        
+        UpdateDisplay(isSelected);
+        
+        // Set up button click
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(OnButtonClicked);
+        }
+    }
+    
+    private bool playerOwnsAttack = false;
+    
+    /// <summary>
+    /// Initialize the button with attack data and ownership info
+    /// </summary>
+    public void InitializeWithOwnership(Attack attack, int attackIndex, AttackSelectionUI selectionUI, bool isSelected, bool ownsAttack)
+    {
+        this.attack = attack;
+        this.attackIndex = attackIndex;
+        this.selectionUI = selectionUI;
+        this.playerOwnsAttack = ownsAttack;
         
         UpdateDisplay(isSelected);
         
@@ -76,7 +99,9 @@ public class AttackButton : MonoBehaviour
         int currentLevel = attack.GetCurrentLevel();
         int maxLevel = attack.GetMaxLevel();
         bool canUpgrade = attack.CanUpgrade();
-        bool isNew = currentLevel == 1; // Attack is "new" if it's at level 1
+        
+        // Attack is "new" if the player doesn't own it yet
+        bool isNew = !playerOwnsAttack;
         
         // Set attack name
         if (attackNameText != null)
@@ -177,13 +202,13 @@ public class AttackButton : MonoBehaviour
             }
         }
         
-        // Show/hide new indicator (only for level 1 attacks)
+        // Show/hide new indicator (only for attacks the player doesn't own)
         if (newIndicator != null)
         {
             newIndicator.SetActive(isNew);
         }
         
-        // Show/hide upgrade indicator (only for non-new attacks that can upgrade)
+        // Show/hide upgrade indicator (only for owned attacks that can upgrade)
         if (upgradeIndicator != null)
         {
             upgradeIndicator.SetActive(!isNew && canUpgrade);

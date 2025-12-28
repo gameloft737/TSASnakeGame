@@ -13,5 +13,8 @@ MonoBehaviour:
   m_Name: Health
   m_EditorClassIdentifier: 
   abilityName: Health Boost
-  icon: {fileID: 0}
+  description: 
+  icon: {fileID: 21300000, guid: 19848ea00cdf6254094666aae46ee624, type: 3}
   abilityPrefab: {fileID: 8371761886178093558, guid: 00f646ccfa20c85418e8b8a95f602511, type: 3}
+  abilityType: 0
+  maxLevel: 3

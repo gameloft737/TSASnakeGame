@@ -33,9 +33,13 @@ public class AbilityCollector : MonoBehaviour
     [SerializeField] private Transform abilityButtonContainer; // Container to hold ability buttons
     [SerializeField] private GameObject abilityButtonPrefab; // Prefab for ability buttons
     
-    [Header("Current Abilities Display")]
-    [SerializeField] private Transform currentAbilitiesContainer; // Container to show current abilities on the side
-    [SerializeField] private GameObject currentAbilityDisplayPrefab; // Prefab for displaying current abilities (simpler than button)
+    [Header("Current Abilities Display (Drop Menu - Passive)")]
+    [SerializeField] private Transform passiveAbilitiesContainer; // Container for passive abilities in drop menu
+    [SerializeField] private GameObject passiveAbilityDisplayPrefab; // Prefab for displaying passive abilities
+    
+    [Header("Current Abilities Display (Drop Menu - Active)")]
+    [SerializeField] private Transform activeAbilitiesContainer; // Container for active abilities in drop menu
+    [SerializeField] private GameObject activeAbilityDisplayPrefab; // Prefab for displaying active abilities
     
     [Header("Current Attack Display")]
     [SerializeField] private Transform currentAttackContainer; // Container to show current attack on the side
@@ -49,10 +53,15 @@ public class AbilityCollector : MonoBehaviour
     [SerializeField] private MouseLookAt mouseLookAt; // Reference to mouse look to freeze
     [SerializeField] private CameraManager cameraManager; // Reference to camera manager to freeze
     [SerializeField] private AttackManager attackManager; // Reference to attack manager to freeze
+    [SerializeField] private EnemySpawner enemySpawner; // Reference to enemy spawner to pause spawning
+    
+    [Header("Post-Selection")]
+    [SerializeField] private float enemyFreezeDelayAfterClose = 0.5f; // How long enemies stay frozen after menu closes
 
     private AbilityManager abilityManager;
     private List<GameObject> spawnedButtons = new List<GameObject>(); // Track spawned buttons for cleanup
-    private List<GameObject> spawnedCurrentAbilityDisplays = new List<GameObject>(); // Track current ability displays
+    private List<GameObject> spawnedPassiveAbilityDisplays = new List<GameObject>(); // Track passive ability displays
+    private List<GameObject> spawnedActiveAbilityDisplays = new List<GameObject>(); // Track active ability displays
     private GameObject spawnedCurrentAttackDisplay; // Track current attack display
     private List<AppleEnemy> frozenEnemies = new List<AppleEnemy>(); // Track frozen enemies
     private List<BaseAbility> frozenAbilities = new List<BaseAbility>(); // Track frozen abilities
@@ -162,35 +171,49 @@ public class AbilityCollector : MonoBehaviour
     }
     
     /// <summary>
-    /// Populates the current abilities container with the player's active abilities
+    /// Populates the current abilities containers with the player's abilities (separated by type)
     /// </summary>
     private void PopulateCurrentAbilities()
     {
         // Clear existing displays
         ClearCurrentAbilityDisplays();
         
-        if (currentAbilitiesContainer == null)
-        {
-            return; // No container assigned, skip
-        }
+        // Get all abilities from the ability manager
+        List<BaseAbility> allAbilities = abilityManager.GetActiveAbilities();
         
-        // Get all active abilities from the ability manager
-        List<BaseAbility> activeAbilities = abilityManager.GetActiveAbilities();
-        
-        foreach (BaseAbility ability in activeAbilities)
+        foreach (BaseAbility ability in allAbilities)
         {
             if (ability == null) continue;
             
-            // Find the matching AbilitySO for this ability
-            AbilitySO matchingSO = FindAbilitySOForAbility(ability);
+            // First try to get the AbilitySO from the AbilityManager's stored mapping
+            AbilitySO matchingSO = abilityManager.GetAbilitySO(ability);
             
-            if (currentAbilityDisplayPrefab != null)
+            // Fallback to searching available abilities if not found in mapping
+            if (matchingSO == null)
+            {
+                matchingSO = FindAbilitySOForAbility(ability);
+            }
+            
+            // Determine if this is a passive or active ability
+            // Default to passive if no SO found (safer default)
+            bool isPassive = matchingSO == null || matchingSO.abilityType == AbilityType.Passive;
+            
+            Debug.Log($"[AbilityCollector] Ability: {ability.gameObject.name}, SO: {(matchingSO != null ? matchingSO.abilityName : "null")}, Type: {(matchingSO != null ? matchingSO.abilityType.ToString() : "unknown")}, isPassive: {isPassive}");
+            
+            // Choose the appropriate container and prefab based on ability type
+            Transform targetContainer = isPassive ? passiveAbilitiesContainer : activeAbilitiesContainer;
+            GameObject prefab = isPassive ? passiveAbilityDisplayPrefab : activeAbilityDisplayPrefab;
+            List<GameObject> displayList = isPassive ? spawnedPassiveAbilityDisplays : spawnedActiveAbilityDisplays;
+            
+            if (targetContainer == null) continue;
+            
+            if (prefab != null)
             {
                 // Use the prefab if assigned
-                GameObject displayObj = Instantiate(currentAbilityDisplayPrefab, currentAbilitiesContainer);
-                spawnedCurrentAbilityDisplays.Add(displayObj);
+                GameObject displayObj = Instantiate(prefab, targetContainer);
+                displayList.Add(displayObj);
                 
-                // Try to initialize it (if it has an AbilityButton component, use it in display-only mode)
+                // Try to initialize it (if it has a CurrentAbilityDisplay component)
                 CurrentAbilityDisplay display = displayObj.GetComponent<CurrentAbilityDisplay>();
                 if (display != null)
                 {
@@ -205,7 +228,7 @@ public class AbilityCollector : MonoBehaviour
             else
             {
                 // Create a simple text display if no prefab
-                CreateSimpleAbilityDisplay(ability, matchingSO);
+                CreateSimpleAbilityDisplay(ability, matchingSO, targetContainer, displayList);
             }
         }
     }
@@ -260,10 +283,10 @@ public class AbilityCollector : MonoBehaviour
     /// <summary>
     /// Creates a simple text-based ability display
     /// </summary>
-    private void CreateSimpleAbilityDisplay(BaseAbility ability, AbilitySO abilitySO)
+    private void CreateSimpleAbilityDisplay(BaseAbility ability, AbilitySO abilitySO, Transform container, List<GameObject> displayList)
     {
         GameObject displayObj = new GameObject("AbilityDisplay");
-        displayObj.transform.SetParent(currentAbilitiesContainer);
+        displayObj.transform.SetParent(container);
         displayObj.transform.localScale = Vector3.one;
         
         TMPro.TextMeshProUGUI text = displayObj.AddComponent<TMPro.TextMeshProUGUI>();
@@ -272,7 +295,7 @@ public class AbilityCollector : MonoBehaviour
         text.fontSize = 14;
         text.alignment = TMPro.TextAlignmentOptions.Left;
         
-        spawnedCurrentAbilityDisplays.Add(displayObj);
+        displayList.Add(displayObj);
     }
     
     /// <summary>
@@ -280,14 +303,25 @@ public class AbilityCollector : MonoBehaviour
     /// </summary>
     private void ClearCurrentAbilityDisplays()
     {
-        foreach (GameObject display in spawnedCurrentAbilityDisplays)
+        // Clear passive ability displays
+        foreach (GameObject display in spawnedPassiveAbilityDisplays)
         {
             if (display != null)
             {
                 Destroy(display);
             }
         }
-        spawnedCurrentAbilityDisplays.Clear();
+        spawnedPassiveAbilityDisplays.Clear();
+        
+        // Clear active ability displays
+        foreach (GameObject display in spawnedActiveAbilityDisplays)
+        {
+            if (display != null)
+            {
+                Destroy(display);
+            }
+        }
+        spawnedActiveAbilityDisplays.Clear();
     }
 
     /// <summary>
@@ -335,9 +369,6 @@ public class AbilityCollector : MonoBehaviour
 
     private void CloseCanvas()
     {
-        // Unfreeze all entities before closing
-        UnfreezeAllEntities();
-
         if (uiAnimator != null)
         {
             uiAnimator.SetBool(openTrigger, false); // Trigger the "close" animation
@@ -346,11 +377,11 @@ public class AbilityCollector : MonoBehaviour
         // Stop any existing close animation coroutine
         StopAllCoroutines();
         
-        // Start coroutine to wait for animation to finish before hiding the UI container
-        StartCoroutine(WaitForCloseAnimation());
+        // Start coroutine to handle the close sequence with delayed enemy unfreeze
+        StartCoroutine(CloseSequence());
     }
 
-    private IEnumerator WaitForCloseAnimation()
+    private IEnumerator CloseSequence()
     {
         // Safety timeout to prevent infinite loops
         float timeout = 2f;
@@ -386,6 +417,13 @@ public class AbilityCollector : MonoBehaviour
             uiContainer.SetActive(false); // Hide the UI container
         }
         
+        // Switch back to normal camera
+        if (cameraManager != null)
+        {
+            cameraManager.SetFrozen(false);
+            cameraManager.SwitchToNormalCamera();
+        }
+        
         // Clear the spawned buttons after UI is hidden
         ClearAbilityButtons();
         ClearCurrentAbilityDisplays();
@@ -396,6 +434,97 @@ public class AbilityCollector : MonoBehaviour
         {
             cursorLock.StopAbilitySelection();
         }
+        
+        // Unfreeze player controls immediately so they can react
+        UnfreezePlayerControls();
+        
+        // Unfreeze abilities
+        foreach (BaseAbility ability in frozenAbilities)
+        {
+            if (ability != null)
+            {
+                ability.SetFrozen(false);
+            }
+        }
+        frozenAbilities.Clear();
+        
+        // Keep enemies frozen for a short delay to give player time to react
+        if (enemyFreezeDelayAfterClose > 0)
+        {
+            yield return new WaitForSeconds(enemyFreezeDelayAfterClose);
+        }
+        
+        // Now unfreeze enemies
+        UnfreezeEnemies();
+        
+        // Resume enemy spawning
+        ResumeSpawning();
+        
+        Debug.Log("Close sequence complete - all entities unfrozen.");
+    }
+    
+    /// <summary>
+    /// Resumes enemy spawning after the ability selection menu closes
+    /// </summary>
+    private void ResumeSpawning()
+    {
+        if (enemySpawner == null)
+        {
+            enemySpawner = FindFirstObjectByType<EnemySpawner>();
+        }
+        
+        if (enemySpawner != null)
+        {
+            // Get the wave manager to resume spawning with current wave data
+            WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+            if (waveManager != null)
+            {
+                WaveData currentWave = waveManager.GetWaveData(waveManager.GetCurrentWaveIndex());
+                if (currentWave != null)
+                {
+                    enemySpawner.StartWaveSpawning(currentWave);
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Unfreezes only player controls (movement, look, attack)
+    /// </summary>
+    private void UnfreezePlayerControls()
+    {
+        // Unfreeze the player
+        if (playerMovement != null)
+        {
+            playerMovement.SetFrozen(false);
+        }
+
+        // Unfreeze the mouse look
+        if (mouseLookAt != null)
+        {
+            mouseLookAt.SetFrozen(false);
+        }
+
+        // Unfreeze the attack manager
+        if (attackManager != null)
+        {
+            attackManager.SetFrozen(false);
+        }
+    }
+    
+    /// <summary>
+    /// Unfreezes all frozen enemies
+    /// </summary>
+    private void UnfreezeEnemies()
+    {
+        foreach (AppleEnemy enemy in frozenEnemies)
+        {
+            if (enemy != null)
+            {
+                enemy.SetFrozen(false);
+            }
+        }
+        frozenEnemies.Clear();
     }
 
     private void Awake()
@@ -410,6 +539,18 @@ public class AbilityCollector : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        if (!autoCollect) return;
+
+        AbilityDrop drop = other.GetComponent<AbilityDrop>();
+        if (drop != null && drop.IsGrounded() && !drop.IsCollected())
+        {
+            TryCollectDrop(drop);
+        }
+    }
+    
+    private void OnTriggerStay(Collider other)
+    {
+        // Also check on stay - in case the drop becomes grounded while player is already overlapping
         if (!autoCollect) return;
 
         AbilityDrop drop = other.GetComponent<AbilityDrop>();
@@ -467,6 +608,21 @@ public class AbilityCollector : MonoBehaviour
 
         // Freeze all entities immediately
         FreezeAllEntities();
+        
+        // Stop enemy spawning while menu is open
+        if (enemySpawner != null)
+        {
+            enemySpawner.StopSpawning();
+        }
+        else
+        {
+            // Try to find enemy spawner if not assigned
+            enemySpawner = FindFirstObjectByType<EnemySpawner>();
+            if (enemySpawner != null)
+            {
+                enemySpawner.StopSpawning();
+            }
+        }
     }
 
     /// <summary>
@@ -564,7 +720,8 @@ public class AbilityCollector : MonoBehaviour
     }
 
     /// <summary>
-    /// Unfreezes the player, mouse look, camera, abilities, and all previously frozen enemies
+    /// Unfreezes the player, mouse look, camera, abilities, and all previously frozen enemies (immediate, no delay)
+    /// Used for emergency/immediate unfreeze scenarios
     /// </summary>
     private void UnfreezeAllEntities()
     {
@@ -613,7 +770,7 @@ public class AbilityCollector : MonoBehaviour
         }
         frozenAbilities.Clear();
 
-        Debug.Log("All entities unfrozen.");
+        Debug.Log("All entities unfrozen (immediate).");
     }
 
     private void PlayEffect(Vector3 position, bool isUpgrade)

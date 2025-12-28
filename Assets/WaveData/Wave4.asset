@@ -12,43 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 18a94a20ab5d2bc47bff8a4a6d0fc665, type: 3}
   m_Name: Wave4
   m_EditorClassIdentifier: 
-  waveName: Wave 4
-  spawnGroups:
+  waveName: Wave 2
+  enemyConfigs:
+  - enemyPrefab: {fileID: 57176229489227899, guid: 75cb68e2fae50764d8740f8adf5f9030, type: 3}
+    maxOnScreen: 3
+    allowedSpawnZones: 
+    spawnCooldown: 0
   - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
-    count: 3
-    spawnZoneIndex: 14
-    spawnThreshold: 100
-    spawnDelay: 0.5
-  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
-    count: 2
-    spawnZoneIndex: 13
-    spawnThreshold: 100
-    spawnDelay: 0.5
-  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
-    count: 3
-    spawnZoneIndex: 12
-    spawnThreshold: 100
-    spawnDelay: 0.5
-  - enemyPrefab: {fileID: 4327141488123506268, guid: 450b0872f779cde49a43e2929c5c708d, type: 3}
-    count: 5
-    spawnZoneIndex: 11
-    spawnThreshold: 100
-    spawnDelay: 0.5
+    maxOnScreen: 3
+    allowedSpawnZones: 
+    spawnCooldown: 0
+  - enemyPrefab: {fileID: 1924989329093748297, guid: 91749118754f7514582cfc8325adf2e2, type: 3}
+    maxOnScreen: 3
+    allowedSpawnZones: 
+    spawnCooldown: 0
   - enemyPrefab: {fileID: 1033166858978132019, guid: 30d0d7d6aa8cb4b4999e6755b1b19f68, type: 3}
-    count: 2
-    spawnZoneIndex: 10
-    spawnThreshold: 100
-    spawnDelay: 0.5
-  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
-    count: 2
-    spawnZoneIndex: 9
-    spawnThreshold: 100
-    spawnDelay: 0.5
-  - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}
-    count: 3
-    spawnZoneIndex: 8
-    spawnThreshold: 100
-    spawnDelay: 0.5
-  spriteCounts:
-  - sprite: {fileID: 21300000, guid: 656022f27a0d05348a37be4c84c5a29c, type: 3}
-    count: 5
+    maxOnScreen: 3
+    allowedSpawnZones: 
+    spawnCooldown: 0
+  - enemyPrefab: {fileID: 4327141488123506268, guid: 450b0872f779cde49a43e2929c5c708d, type: 3}
+    maxOnScreen: 4
+    allowedSpawnZones: 
+    spawnCooldown: 0
