@@ -25,7 +25,9 @@ public class EnemySpawner : MonoBehaviour
     private Dictionary<GameObject, EnemySpawnConfig> enemyToConfigMap = new Dictionary<GameObject, EnemySpawnConfig>();
     
     private WaveData currentWaveData;
+    private List<EnemySpawnConfig> currentInfiniteConfigs;
     private bool isSpawningActive = false;
+    private bool isInfiniteMode = false;
     private Coroutine spawnLoopCoroutine;
     
     private void Start()
@@ -53,7 +55,28 @@ public class EnemySpawner : MonoBehaviour
     public void StartWaveSpawning(WaveData waveData)
     {
         currentWaveData = waveData;
+        currentInfiniteConfigs = null;
+        isInfiniteMode = false;
         waveData.ResetConfigs();
+        
+        enemyToConfigMap.Clear();
+        
+        isSpawningActive = true;
+        if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
+        spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
+    }
+    
+    public void StartInfiniteWaveSpawning(List<EnemySpawnConfig> configs)
+    {
+        currentWaveData = null;
+        currentInfiniteConfigs = configs;
+        isInfiniteMode = true;
+        
+        // Reset all configs
+        foreach (var config in configs)
+        {
+            config.Reset();
+        }
         
         enemyToConfigMap.Clear();
         
@@ -74,9 +97,26 @@ public class EnemySpawner : MonoBehaviour
     
     private IEnumerator SpawnLoopCoroutine()
     {
-        while (isSpawningActive && currentWaveData != null)
+        while (isSpawningActive)
         {
-            foreach (var config in currentWaveData.enemyConfigs)
+            List<EnemySpawnConfig> configsToUse = null;
+            
+            if (isInfiniteMode && currentInfiniteConfigs != null)
+            {
+                configsToUse = currentInfiniteConfigs;
+            }
+            else if (!isInfiniteMode && currentWaveData != null)
+            {
+                configsToUse = currentWaveData.enemyConfigs;
+            }
+            
+            if (configsToUse == null)
+            {
+                yield return new WaitForSeconds(spawnCheckInterval);
+                continue;
+            }
+            
+            foreach (var config in configsToUse)
             {
                 if (config.CanSpawn())
                 {

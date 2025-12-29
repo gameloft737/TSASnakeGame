@@ -4,7 +4,13 @@ using System.Collections.Generic;
 
 public class WaveManager : MonoBehaviour
 {
-    [Header("Wave Configuration")]
+    [Header("Wave Mode")]
+    [SerializeField] private bool useInfiniteWaves = true;
+    
+    [Header("Infinite Wave Configuration")]
+    [SerializeField] private InfiniteWaveConfig infiniteWaveConfig;
+    
+    [Header("Legacy Wave Configuration (used when useInfiniteWaves is false)")]
     [SerializeField] private List<WaveData> waves = new List<WaveData>();
     
     [Header("References")]
@@ -16,9 +22,11 @@ public class WaveManager : MonoBehaviour
     [Header("Events")]
     public UnityEvent OnWaveComplete;
     public UnityEvent OnAllWavesComplete;
+    public UnityEvent<int> OnWaveStarted;
     
     public int currentWaveIndex = 0;
     private WaveData currentWave;
+    private List<EnemySpawnConfig> currentInfiniteWaveConfigs;
     private bool waveActive = false;
     private bool inChoicePhase = false;
 
@@ -50,6 +58,51 @@ public class WaveManager : MonoBehaviour
 
     public void StartWave()
     {
+        if (useInfiniteWaves)
+        {
+            StartInfiniteWave();
+        }
+        else
+        {
+            StartLegacyWave();
+        }
+    }
+    
+    private void StartInfiniteWave()
+    {
+        if (!infiniteWaveConfig)
+        {
+            Debug.LogError("InfiniteWaveConfig is not assigned! Please assign it in the inspector.");
+            return;
+        }
+        
+        // Generate wave configuration dynamically
+        currentInfiniteWaveConfigs = infiniteWaveConfig.GenerateWaveConfig(currentWaveIndex);
+        
+        // Reset all configs
+        foreach (var config in currentInfiniteWaveConfigs)
+        {
+            config.Reset();
+        }
+        
+        waveActive = true;
+        inChoicePhase = false;
+        
+        SetPlayerMovement(true);
+        SetAttacksPaused(false);
+        
+        if (enemySpawner)
+        {
+            enemySpawner.StartInfiniteWaveSpawning(currentInfiniteWaveConfigs);
+        }
+        
+        OnWaveStarted?.Invoke(currentWaveIndex);
+        
+        Debug.Log($"Started {infiniteWaveConfig.GetWaveName(currentWaveIndex)} - Difficulty: {infiniteWaveConfig.GetDifficultyMultiplier(currentWaveIndex):F2}x");
+    }
+    
+    private void StartLegacyWave()
+    {
         if (currentWaveIndex >= waves.Count)
         {
             OnAllWavesComplete?.Invoke();
@@ -69,6 +122,8 @@ public class WaveManager : MonoBehaviour
         {
             enemySpawner.StartWaveSpawning(currentWave);
         }
+        
+        OnWaveStarted?.Invoke(currentWaveIndex);
     }
 
     private void OnLevelUp(int newLevel)
@@ -156,6 +211,26 @@ public class WaveManager : MonoBehaviour
     public int GetCurrentWaveIndex() => currentWaveIndex;
     public bool IsWaveActive() => waveActive;
     public bool IsInChoicePhase() => inChoicePhase;
-    public int GetWaveCount() => waves.Count;
+    public bool IsInfiniteMode() => useInfiniteWaves;
+    public int GetWaveCount() => useInfiniteWaves ? int.MaxValue : waves.Count;
     public WaveData GetWaveData(int index) => index >= 0 && index < waves.Count ? waves[index] : null;
+    public InfiniteWaveConfig GetInfiniteWaveConfig() => infiniteWaveConfig;
+    
+    public float GetCurrentDifficultyMultiplier()
+    {
+        if (useInfiniteWaves && infiniteWaveConfig)
+        {
+            return infiniteWaveConfig.GetDifficultyMultiplier(currentWaveIndex);
+        }
+        return 1f;
+    }
+    
+    public string GetCurrentWaveName()
+    {
+        if (useInfiniteWaves && infiniteWaveConfig)
+        {
+            return infiniteWaveConfig.GetWaveName(currentWaveIndex);
+        }
+        return currentWave != null ? currentWave.waveName : $"Wave {currentWaveIndex + 1}";
+    }
 }

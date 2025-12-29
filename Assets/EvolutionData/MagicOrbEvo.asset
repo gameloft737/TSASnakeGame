@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d290879b72c57b479cc91eb51d6c696, type: 3}
+  m_Name: MagicOrbEvo
+  m_EditorClassIdentifier: 
+  baseName: Magic Orb
+  evolutionSystemDescription: Combine with passive abilities to unlock the ultimate
+    Arcane Barrage evolution!
+  evolutions:
+  - requiredPassivePrefab: {fileID: 1577351419451060289, guid: 960819189910b98468cbe6afb117c1bc, type: 3}
+    requiredPassiveLevel: 1
+    unlockedLevel: 7
+    evolutionName: Arcane Barrage
+    evolutionDescription: Unleashes a devastating barrage of 6 piercing arcane orbs
+      with maximum homing and explosive damage!
+    evolutionHeadMaterial: {fileID: 2100000, guid: 2ccf34f0195fe11409e125173fa2acba, type: 2}
+    evolutionBodyMaterial: {fileID: 2100000, guid: 3fb8d50a7a447434fab302ce8b5c9ba0, type: 2}
+    evolutionAttachment: {fileID: 0}

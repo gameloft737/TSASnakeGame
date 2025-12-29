@@ -13,9 +13,69 @@ MonoBehaviour:
   m_Name: Lightning
   m_EditorClassIdentifier: 
   abilityName: Lightning Strike
-  abilityDescription: Strikes apples yay
+  abilityDescription: Strikes nearby enemies with bolts of lightning
   abilityIcon: {fileID: 21300000, guid: 0e14c15ee9c137042acbb3fdb7e0a478, type: 3}
   abilityType: 1
-  levels: []
-  maxLevel: 7
+  levels:
+  - levelName: Level 1
+    description: Strikes 1 enemy every 2.5 seconds for 15 damage
+    damage: 15
+    cooldown: 2.5
+    duration: 0
+    customStats:
+    - statName: strikeCount
+      value: 1
+    - statName: strikeRange
+      value: 12
+  - levelName: Level 2
+    description: Strikes 1 enemy every 2.2 seconds for 22 damage
+    damage: 22
+    cooldown: 2.2
+    duration: 0
+    customStats:
+    - statName: strikeCount
+      value: 1
+    - statName: strikeRange
+      value: 14
+  - levelName: Level 3
+    description: Strikes 2 enemies every 2 seconds for 30 damage
+    damage: 30
+    cooldown: 2
+    duration: 0
+    customStats:
+    - statName: strikeCount
+      value: 2
+    - statName: strikeRange
+      value: 16
+  - levelName: Level 4
+    description: Strikes 2 enemies every 1.7 seconds for 40 damage
+    damage: 40
+    cooldown: 1.7
+    duration: 0
+    customStats:
+    - statName: strikeCount
+      value: 2
+    - statName: strikeRange
+      value: 18
+  - levelName: Level 5
+    description: Strikes 3 enemies every 1.4 seconds for 55 damage
+    damage: 55
+    cooldown: 1.4
+    duration: 0
+    customStats:
+    - statName: strikeCount
+      value: 3
+    - statName: strikeRange
+      value: 20
+  - levelName: Level 6
+    description: Strikes 4 enemies every 1 second for 75 damage
+    damage: 75
+    cooldown: 1
+    duration: 0
+    customStats:
+    - statName: strikeCount
+      value: 4
+    - statName: strikeRange
+      value: 25
+  maxLevel: 6
   evolutionData: {fileID: 0}
