@@ -216,17 +216,20 @@ public class LaserAttack : Attack
             rotatedDirection = rotationOffset * aimReference.forward;
         }
         
+        // Get effective laser distance with range multiplier
+        float effectiveLaserDistance = GetEffectiveLaserDistance();
+        
         // Calculate convergence point using the rotated direction
         Ray forwardRay = new Ray(aimReference.position, rotatedDirection);
         RaycastHit hit;
         
-        if (Physics.Raycast(forwardRay, out hit, laserDistance, ~ignoreMask))
+        if (Physics.Raycast(forwardRay, out hit, effectiveLaserDistance, ~ignoreMask))
         {
             convergencePoint = hit.point;
         }
         else
         {
-            convergencePoint = aimReference.position + rotatedDirection * laserDistance;
+            convergencePoint = aimReference.position + rotatedDirection * effectiveLaserDistance;
         }
         
         // Update both main lasers to converge at that point
@@ -252,6 +255,15 @@ public class LaserAttack : Attack
             UpdateSideLaser(rightSideLineRenderer, rightSideParticles, ref rightSideTarget, ref isDamagingRightSide, rightEyePos, rightSideDirection);
             UpdateSideLaser(rightBackLineRenderer, rightBackParticles, ref rightBackTarget, ref isDamagingRightBack, rightEyePos, rightBackDirection);
         }
+    }
+    
+    /// <summary>
+    /// Gets the effective laser distance with range multiplier applied
+    /// </summary>
+    private float GetEffectiveLaserDistance()
+    {
+        float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetRangeMultiplier() : 1f;
+        return laserDistance * multiplier;
     }
 
     protected override void OnDeactivate()
@@ -351,13 +363,16 @@ public class LaserAttack : Attack
     {
         if (lineRenderer == null) return;
 
+        // Get effective laser distance with range multiplier
+        float effectiveLaserDistance = GetEffectiveLaserDistance();
+        
         // Calculate end point based on direction and laser distance
-        Vector3 endPoint = startPoint + direction * laserDistance;
+        Vector3 endPoint = startPoint + direction * effectiveLaserDistance;
         
         // Raycast along this laser's path
         Ray ray = new Ray(startPoint, direction);
         RaycastHit hit;
-        bool hitSomething = Physics.Raycast(ray, out hit, laserDistance, ~ignoreMask);
+        bool hitSomething = Physics.Raycast(ray, out hit, effectiveLaserDistance, ~ignoreMask);
 
         if (hitSomething)
         {

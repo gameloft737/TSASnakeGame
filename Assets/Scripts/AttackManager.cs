@@ -325,37 +325,89 @@ public class AttackManager : MonoBehaviour
     public bool IsFrozen() => isFrozen;
     
     /// <summary>
-    /// Apply the visual variation for the current attack
+    /// Apply the visual variation for the current attack.
+    /// Only applies attachment objects for regular attacks.
+    /// Material changes are only applied for evolution attacks.
     /// </summary>
     private void ApplyCurrentVariation()
     {
         if (snakeBody == null || CurrentAttack == null) return;
         
         AttackVariation variation = CurrentAttack.GetVisualVariation();
-        if (variation == null) return;
         
-        snakeBody.ApplyAttackVariation(
-            variation.headMaterial,
-            variation.bodyMaterial,
-            variation.attachmentObject
-        );
+        // Check if this attack is at an evolution level
+        if (CurrentAttack.IsAtEvolutionLevel())
+        {
+            // Apply evolution visuals (including materials)
+            ApplyEvolutionVisuals(CurrentAttack);
+        }
+        else
+        {
+            // For non-evolution attacks, only apply attachment (no material changes)
+            if (variation != null)
+            {
+                snakeBody.ApplyAttackVariation(null, null, variation.attachmentObject);
+            }
+        }
     }
     
     /// <summary>
-    /// Manually apply a specific variation from an attack
+    /// Applies evolution-specific visuals including materials
+    /// </summary>
+    private void ApplyEvolutionVisuals(Attack attack)
+    {
+        if (snakeBody == null || attack == null) return;
+        
+        EvolutionRequirement evolution = attack.GetCurrentEvolution();
+        if (evolution == null) return;
+        
+        // Apply evolution materials and attachment
+        snakeBody.ApplyAttackVariation(
+            evolution.evolutionHeadMaterial,
+            evolution.evolutionBodyMaterial,
+            evolution.evolutionAttachment
+        );
+        
+        Debug.Log($"Applied evolution visuals for {attack.attackName}: {evolution.evolutionName}");
+    }
+    
+    /// <summary>
+    /// Manually apply a specific variation from an attack.
+    /// Only applies attachment objects for regular attacks.
+    /// Material changes are only applied for evolution attacks.
     /// </summary>
     public void ApplyVariation(int attackIndex)
     {
         if (snakeBody == null || attackIndex < 0 || attackIndex >= attacks.Count) return;
         
-        AttackVariation variation = attacks[attackIndex].GetVisualVariation();
-        if (variation == null) return;
+        Attack attack = attacks[attackIndex];
+        AttackVariation variation = attack.GetVisualVariation();
         
-        snakeBody.ApplyAttackVariation(
-            variation.headMaterial,
-            variation.bodyMaterial,
-            variation.attachmentObject
-        );
+        // Check if this attack is at an evolution level
+        if (attack.IsAtEvolutionLevel())
+        {
+            // Apply evolution visuals (including materials)
+            ApplyEvolutionVisuals(attack);
+        }
+        else
+        {
+            // For non-evolution attacks, only apply attachment (no material changes)
+            if (variation != null)
+            {
+                snakeBody.ApplyAttackVariation(null, null, variation.attachmentObject);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Forces application of evolution visuals for the current attack if it's evolved
+    /// </summary>
+    public void RefreshEvolutionVisuals()
+    {
+        if (CurrentAttack != null && CurrentAttack.IsAtEvolutionLevel())
+        {
+            ApplyEvolutionVisuals(CurrentAttack);
+        }
     }
 
     public Attack GetCurrentAttack() => CurrentAttack;

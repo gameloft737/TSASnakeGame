@@ -192,13 +192,20 @@ public class SnakeBody : MonoBehaviour
         return bodyLength;
     }
 
+    /// <summary>
+    /// Applies visual variation to the snake.
+    /// If headMaterial or bodyMaterial is null, the current material is preserved.
+    /// This allows evolution attacks to change materials while regular attacks only change attachments.
+    /// </summary>
     public void ApplyAttackVariation(Material headMaterial, Material bodyMaterial, GameObject attachmentObject)
     {
+        // Only apply head material if provided (evolution attacks)
         if (headRenderer != null && headMaterial != null)
         {
             headRenderer.material = headMaterial;
         }
         
+        // Only apply body material if provided (evolution attacks)
         if (bodyMaterial != null)
         {
             foreach (BodyPart part in bodyParts)
@@ -207,6 +214,7 @@ public class SnakeBody : MonoBehaviour
             }
         }
         
+        // Always handle attachment changes
         if (currentAttachment != null)
         {
             currentAttachment.SetActive(false);
@@ -217,6 +225,26 @@ public class SnakeBody : MonoBehaviour
         {
             currentAttachment = attachmentObject;
             currentAttachment.SetActive(true);
+        }
+    }
+    
+    /// <summary>
+    /// Resets the snake materials to their default state.
+    /// Call this when switching away from an evolved attack.
+    /// </summary>
+    public void ResetMaterials(Material defaultHeadMaterial, Material defaultBodyMaterial)
+    {
+        if (headRenderer != null && defaultHeadMaterial != null)
+        {
+            headRenderer.material = defaultHeadMaterial;
+        }
+        
+        if (defaultBodyMaterial != null)
+        {
+            foreach (BodyPart part in bodyParts)
+            {
+                part.SetMaterial(defaultBodyMaterial);
+            }
         }
     }
     

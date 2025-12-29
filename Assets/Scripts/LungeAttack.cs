@@ -65,9 +65,13 @@ public class LungeAttack : Attack
         
         hitEnemies.Clear();
         
+        // Apply range multiplier to hit range
+        float effectiveHitRange = GetEffectiveHitRange();
+        float effectiveHitRadius = GetEffectiveHitRadius();
+        
         Collider[] hitColliders = Physics.OverlapSphere(
-            orientation.position + orientation.forward * (hitRange * 0.5f),
-            hitRadius,
+            orientation.position + orientation.forward * (effectiveHitRange * 0.5f),
+            effectiveHitRadius,
             enemyLayer
         );
         
@@ -93,6 +97,24 @@ public class LungeAttack : Attack
         {
             TriggerExplosion();
         }
+    }
+    
+    /// <summary>
+    /// Gets the effective hit range with range multiplier applied
+    /// </summary>
+    private float GetEffectiveHitRange()
+    {
+        float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetRangeMultiplier() : 1f;
+        return hitRange * multiplier;
+    }
+    
+    /// <summary>
+    /// Gets the effective hit radius with range multiplier applied
+    /// </summary>
+    private float GetEffectiveHitRadius()
+    {
+        float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetRangeMultiplier() : 1f;
+        return hitRadius * multiplier;
     }
     
     /// <summary>
@@ -130,7 +152,8 @@ public class LungeAttack : Attack
     /// </summary>
     private void TriggerExplosion()
     {
-        Vector3 explosionCenter = orientation.position + orientation.forward * (hitRange * 0.5f);
+        float effectiveHitRange = GetEffectiveHitRange();
+        Vector3 explosionCenter = orientation.position + orientation.forward * (effectiveHitRange * 0.5f);
         float explosionRadius = GetExplosionRadius();
         float explosionDamage = GetExplosionDamage();
         
@@ -192,15 +215,19 @@ public class LungeAttack : Attack
     {
         if (orientation == null) return;
         
+        // Show effective range with multiplier in play mode, base range in editor
+        float displayHitRange = Application.isPlaying ? GetEffectiveHitRange() : hitRange;
+        float displayHitRadius = Application.isPlaying ? GetEffectiveHitRadius() : hitRadius;
+        
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(orientation.position + orientation.forward * (hitRange * 0.5f), hitRadius);
-        Gizmos.DrawLine(orientation.position, orientation.position + orientation.forward * hitRange);
+        Gizmos.DrawWireSphere(orientation.position + orientation.forward * (displayHitRange * 0.5f), displayHitRadius);
+        Gizmos.DrawLine(orientation.position, orientation.position + orientation.forward * displayHitRange);
         
         // Draw explosion radius if enabled
         if (IsExplosionEnabled())
         {
             Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(orientation.position + orientation.forward * (hitRange * 0.5f), GetExplosionRadius());
+            Gizmos.DrawWireSphere(orientation.position + orientation.forward * (displayHitRange * 0.5f), GetExplosionRadius());
         }
     }
 }

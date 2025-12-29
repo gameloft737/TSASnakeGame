@@ -4,9 +4,8 @@ using UnityEngine;
 public class AttackVariation
 {
     public string attackName;
-    public Material headMaterial;
-    public Material bodyMaterial;
     public GameObject attachmentObject; // Can be null if no attachment
+    // Note: Material changes are now only applied through evolutions
 }
 
 public abstract class Attack : MonoBehaviour
@@ -32,6 +31,9 @@ public abstract class Attack : MonoBehaviour
     
     [Header("Visual Variation")]
     [SerializeField] protected AttackVariation visualVariation;
+    
+    // Track if we're at an evolution level for material changes
+    private bool hasAppliedEvolutionVisuals = false;
 
     public enum AttackType
     {
@@ -255,9 +257,38 @@ public abstract class Attack : MonoBehaviour
         ApplyLevelStats();
         OnUpgrade();
         
+        // Check if this is an evolution level and apply visuals
+        if (IsAtEvolutionLevel())
+        {
+            OnEvolutionReached();
+        }
+        
         Debug.Log($"{attackName} upgraded to level {currentLevel}!");
         return true;
     }
+    
+    /// <summary>
+    /// Called when an evolution level is reached
+    /// </summary>
+    protected virtual void OnEvolutionReached()
+    {
+        hasAppliedEvolutionVisuals = true;
+        Debug.Log($"{attackName} evolved to level {currentLevel}!");
+    }
+    
+    /// <summary>
+    /// Gets the evolution requirement for the current level (if it's an evolution)
+    /// </summary>
+    public EvolutionRequirement GetCurrentEvolution()
+    {
+        if (upgradeData == null) return null;
+        return upgradeData.GetEvolutionForLevel(currentLevel);
+    }
+    
+    /// <summary>
+    /// Returns whether this attack has applied evolution visuals
+    /// </summary>
+    public bool HasEvolutionVisuals() => hasAppliedEvolutionVisuals;
     
     /// <summary>
     /// Sets the attack to a specific level

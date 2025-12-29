@@ -211,7 +211,9 @@ public class TurretAbility : BaseAbility
         if (apples.Length == 0) return null;
         
         AppleEnemy nearest = null;
-        float nearestDistance = detectionRange;
+        // Apply range multiplier from PlayerStats to detection range
+        float effectiveRange = GetEffectiveDetectionRange();
+        float nearestDistance = effectiveRange;
         Vector3 playerPos = playerTransform.position;
         
         foreach (var apple in apples)
@@ -229,6 +231,15 @@ public class TurretAbility : BaseAbility
         }
         
         return nearest;
+    }
+    
+    /// <summary>
+    /// Gets the effective detection range with range multiplier applied
+    /// </summary>
+    private float GetEffectiveDetectionRange()
+    {
+        float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetRangeMultiplier() : 1f;
+        return detectionRange * multiplier;
     }
 
     private void ShootAtTarget(Transform target)
@@ -304,8 +315,11 @@ public class TurretAbility : BaseAbility
     {
         Vector3 position = transform.parent != null ? transform.parent.position : transform.position;
         
+        // Show effective range with multiplier in play mode, base range in editor
+        float displayRange = Application.isPlaying ? GetEffectiveDetectionRange() : detectionRange;
+        
         Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(position, detectionRange);
+        Gizmos.DrawWireSphere(position, displayRange);
         
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(position + spawnOffset, 0.2f);

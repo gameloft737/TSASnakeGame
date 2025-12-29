@@ -40,16 +40,20 @@ public class ShaderWarmup : MonoBehaviour
             {
                 foreach (Attack attack in attackManager.attacks)
                 {
-                    AttackVariation variation = attack.GetVisualVariation();
-                    if (variation != null)
+                    // Get evolution materials from the attack's upgrade data
+                    AttackUpgradeData upgradeData = attack.GetUpgradeData();
+                    if (upgradeData != null && upgradeData.evolutionData != null)
                     {
-                        if (variation.headMaterial != null && !materialsToWarmup.Contains(variation.headMaterial))
+                        foreach (EvolutionRequirement evolution in upgradeData.evolutionData.evolutions)
                         {
-                            materialsToWarmup.Add(variation.headMaterial);
-                        }
-                        if (variation.bodyMaterial != null && !materialsToWarmup.Contains(variation.bodyMaterial))
-                        {
-                            materialsToWarmup.Add(variation.bodyMaterial);
+                            if (evolution.evolutionHeadMaterial != null && !materialsToWarmup.Contains(evolution.evolutionHeadMaterial))
+                            {
+                                materialsToWarmup.Add(evolution.evolutionHeadMaterial);
+                            }
+                            if (evolution.evolutionBodyMaterial != null && !materialsToWarmup.Contains(evolution.evolutionBodyMaterial))
+                            {
+                                materialsToWarmup.Add(evolution.evolutionBodyMaterial);
+                            }
                         }
                     }
                 }

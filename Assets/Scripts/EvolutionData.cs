@@ -24,6 +24,16 @@ public class EvolutionRequirement
     [TextArea(2, 4)]
     [Tooltip("Description of what this evolution does")]
     public string evolutionDescription = "Unlocks a powerful new form!";
+    
+    [Header("Evolution Visual Changes")]
+    [Tooltip("Material to apply to the snake head when this evolution is active")]
+    public Material evolutionHeadMaterial;
+    
+    [Tooltip("Material to apply to the snake body when this evolution is active")]
+    public Material evolutionBodyMaterial;
+    
+    [Tooltip("Optional attachment object to enable when this evolution is active")]
+    public GameObject evolutionAttachment;
 }
 
 /// <summary>
