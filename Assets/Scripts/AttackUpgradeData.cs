@@ -107,8 +107,27 @@ public class AttackUpgradeData : ScriptableObject
     /// </summary>
     public bool CanUpgradeWithEvolutions(int currentLevel, AbilityManager abilityManager)
     {
-        int effectiveMaxLevel = GetEffectiveMaxLevel(abilityManager);
-        return currentLevel < effectiveMaxLevel && currentLevel < levels.Count;
+        // First check if we have level data for the next level
+        if (currentLevel >= levels.Count)
+            return false;
+        
+        int nextLevel = currentLevel + 1;
+        
+        // If next level is within base max level, allow upgrade
+        if (nextLevel <= maxLevel)
+            return true;
+        
+        // Next level is an evolution level - check if the evolution is unlocked
+        if (evolutionData == null || abilityManager == null)
+            return false;
+        
+        // Get the evolution requirement for the next level
+        EvolutionRequirement evolution = evolutionData.GetEvolutionForLevel(nextLevel);
+        if (evolution == null)
+            return false;
+        
+        // Check if the player has the required passive at the required level
+        return evolutionData.IsEvolutionUnlocked(evolution, abilityManager);
     }
     
     /// <summary>

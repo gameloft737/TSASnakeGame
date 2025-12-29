@@ -20,6 +20,7 @@ public class EnemySpawner : MonoBehaviour
     
     [Header("Spawn Settings")]
     [SerializeField] private float spawnCheckInterval = 0.25f;
+    [SerializeField] private float countSyncInterval = 1.0f; // How often to sync enemy counts
     
     private List<GameObject> activeEnemies = new List<GameObject>();
     private Dictionary<GameObject, EnemySpawnConfig> enemyToConfigMap = new Dictionary<GameObject, EnemySpawnConfig>();
@@ -78,15 +79,20 @@ public class EnemySpawner : MonoBehaviour
             config.Reset();
         }
         
+        // Clear the mapping - enemies from previous waves will be orphaned but that's OK
+        // They will still be tracked in activeEnemies list
         enemyToConfigMap.Clear();
         
         isSpawningActive = true;
         if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
         spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
+        
+        Debug.Log($"[EnemySpawner] Started infinite wave spawning with {configs.Count} enemy types, isInfiniteMode={isInfiniteMode}");
     }
     
     public void StopSpawning()
     {
+        Debug.Log("[EnemySpawner] StopSpawning called");
         isSpawningActive = false;
         if (spawnLoopCoroutine != null)
         {
@@ -95,8 +101,56 @@ public class EnemySpawner : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Resume spawning with the current wave configuration (infinite or legacy)
+    /// Call this when returning from a menu that paused spawning
+    /// </summary>
+    public void ResumeSpawning()
+    {
+        Debug.Log($"[EnemySpawner] ResumeSpawning called. isInfiniteMode={isInfiniteMode}, hasConfigs={(isInfiniteMode ? currentInfiniteConfigs != null : currentWaveData != null)}");
+        
+        // Don't resume if already spawning
+        if (isSpawningActive && spawnLoopCoroutine != null)
+        {
+            Debug.Log("[EnemySpawner] Already spawning, no need to resume");
+            return;
+        }
+        
+        // Check if we have valid configs to resume with
+        if (isInfiniteMode && currentInfiniteConfigs != null && currentInfiniteConfigs.Count > 0)
+        {
+            isSpawningActive = true;
+            if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
+            spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
+            Debug.Log("[EnemySpawner] Resumed infinite wave spawning");
+        }
+        else if (!isInfiniteMode && currentWaveData != null)
+        {
+            isSpawningActive = true;
+            if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
+            spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
+            Debug.Log("[EnemySpawner] Resumed legacy wave spawning");
+        }
+        else
+        {
+            Debug.LogWarning("[EnemySpawner] Cannot resume spawning - no valid configuration");
+        }
+    }
+    
+    /// <summary>
+    /// Check if spawning is currently active
+    /// </summary>
+    public bool IsSpawning()
+    {
+        return isSpawningActive && spawnLoopCoroutine != null;
+    }
+    
     private IEnumerator SpawnLoopCoroutine()
     {
+        Debug.Log($"[EnemySpawner] SpawnLoopCoroutine started. isInfiniteMode={isInfiniteMode}, isSpawningActive={isSpawningActive}");
+        
+        float lastSyncTime = Time.time;
+        
         while (isSpawningActive)
         {
             List<EnemySpawnConfig> configsToUse = null;
@@ -110,10 +164,18 @@ public class EnemySpawner : MonoBehaviour
                 configsToUse = currentWaveData.enemyConfigs;
             }
             
-            if (configsToUse == null)
+            if (configsToUse == null || configsToUse.Count == 0)
             {
+                Debug.LogWarning($"[EnemySpawner] No configs to use! isInfiniteMode={isInfiniteMode}, currentInfiniteConfigs null={currentInfiniteConfigs == null}");
                 yield return new WaitForSeconds(spawnCheckInterval);
                 continue;
+            }
+            
+            // Periodically sync enemy counts to fix any desync issues
+            if (Time.time - lastSyncTime >= countSyncInterval)
+            {
+                SyncEnemyCounts(configsToUse);
+                lastSyncTime = Time.time;
             }
             
             foreach (var config in configsToUse)
@@ -125,6 +187,47 @@ public class EnemySpawner : MonoBehaviour
             }
             
             yield return new WaitForSeconds(spawnCheckInterval);
+        }
+        
+        Debug.Log($"[EnemySpawner] SpawnLoopCoroutine ended. isSpawningActive={isSpawningActive}");
+    }
+    
+    /// <summary>
+    /// Syncs the currentOnScreen counts with actual living enemies.
+    /// This fixes any desync that might occur if enemies are destroyed without proper notification.
+    /// </summary>
+    private void SyncEnemyCounts(List<EnemySpawnConfig> configs)
+    {
+        // Clean up null entries from activeEnemies list
+        activeEnemies.RemoveAll(e => e == null);
+        
+        // Clean up null entries from enemyToConfigMap
+        List<GameObject> deadEnemies = new List<GameObject>();
+        foreach (var kvp in enemyToConfigMap)
+        {
+            if (kvp.Key == null)
+            {
+                deadEnemies.Add(kvp.Key);
+            }
+        }
+        foreach (var deadEnemy in deadEnemies)
+        {
+            enemyToConfigMap.Remove(deadEnemy);
+        }
+        
+        // Reset all config counts
+        foreach (var config in configs)
+        {
+            config.currentOnScreen = 0;
+        }
+        
+        // Recount based on actual living enemies
+        foreach (var kvp in enemyToConfigMap)
+        {
+            if (kvp.Key != null && kvp.Value != null)
+            {
+                kvp.Value.currentOnScreen++;
+            }
         }
     }
     

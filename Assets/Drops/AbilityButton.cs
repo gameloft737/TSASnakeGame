@@ -174,10 +174,27 @@ public class AbilityButton : MonoBehaviour
             }
         }
         
-        // Set description text based on ability type
+        // Set description text from AbilitySO
         if (descriptionText != null)
         {
-            descriptionText.text = GetAbilityDescription(isNew ? 1 : currentLevel + 1);
+            // Use the description from AbilitySO
+            if (!string.IsNullOrEmpty(abilitySO.description))
+            {
+                descriptionText.text = abilitySO.description;
+            }
+            else
+            {
+                // Fallback to level-specific description from upgrade data if available
+                string levelDescription = abilitySO.GetDescriptionForLevel(isNew ? 1 : currentLevel + 1);
+                if (!string.IsNullOrEmpty(levelDescription))
+                {
+                    descriptionText.text = levelDescription;
+                }
+                else
+                {
+                    descriptionText.text = abilitySO.abilityName;
+                }
+            }
         }
         
         // Set background color
@@ -210,45 +227,6 @@ public class AbilityButton : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Gets a description for the ability at the specified level
-    /// </summary>
-    private string GetAbilityDescription(int level)
-    {
-        if (abilitySO == null || abilitySO.abilityPrefab == null) return "";
-        
-        // Check the type of ability and generate appropriate description
-        string prefabName = abilitySO.abilityPrefab.name.ToLower();
-        
-        if (prefabName.Contains("damage"))
-        {
-            float bonus = 15 * level;
-            return $"+{bonus}% damage to all attacks";
-        }
-        else if (prefabName.Contains("range"))
-        {
-            float bonus = 20 * level;
-            return $"+{bonus}% range to all attacks";
-        }
-        else if (prefabName.Contains("health") && prefabName.Contains("regen"))
-        {
-            float bonus = 2 * level;
-            return $"+{bonus} HP/sec regeneration";
-        }
-        else if (prefabName.Contains("health"))
-        {
-            float bonus = 25 * level;
-            return $"+{bonus} max health";
-        }
-        else if (prefabName.Contains("speed"))
-        {
-            float bonus = 10 * level;
-            return $"+{bonus}% movement speed";
-        }
-        
-        return abilitySO.abilityName;
-    }
-
     // This method will be called when the player clicks the button
     private void OnButtonClicked()
     {

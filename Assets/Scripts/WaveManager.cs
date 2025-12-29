@@ -76,13 +76,21 @@ public class WaveManager : MonoBehaviour
             return;
         }
         
+        Debug.Log($"[WaveManager] StartInfiniteWave called for wave {currentWaveIndex}");
+        
         // Generate wave configuration dynamically
         currentInfiniteWaveConfigs = infiniteWaveConfig.GenerateWaveConfig(currentWaveIndex);
+        
+        Debug.Log($"[WaveManager] Generated {currentInfiniteWaveConfigs.Count} enemy configs for wave {currentWaveIndex}");
         
         // Reset all configs
         foreach (var config in currentInfiniteWaveConfigs)
         {
             config.Reset();
+            if (config.enemyPrefab != null)
+            {
+                Debug.Log($"[WaveManager] Config: {config.enemyPrefab.name}, maxOnScreen={config.maxOnScreen}, cooldown={config.spawnCooldown}");
+            }
         }
         
         waveActive = true;
@@ -94,6 +102,10 @@ public class WaveManager : MonoBehaviour
         if (enemySpawner)
         {
             enemySpawner.StartInfiniteWaveSpawning(currentInfiniteWaveConfigs);
+        }
+        else
+        {
+            Debug.LogError("[WaveManager] enemySpawner is null!");
         }
         
         OnWaveStarted?.Invoke(currentWaveIndex);
@@ -206,6 +218,61 @@ public class WaveManager : MonoBehaviour
     private void SetAttacksPaused(bool paused)
     {
         if (attackManager) attackManager.SetPaused(paused);
+    }
+    
+    /// <summary>
+    /// Pause the current wave (stops spawning but keeps wave state)
+    /// Call this when opening menus that should pause gameplay
+    /// </summary>
+    public void PauseWave()
+    {
+        Debug.Log("[WaveManager] PauseWave called");
+        
+        if (enemySpawner) enemySpawner.StopSpawning();
+        SetPlayerMovement(false);
+        SetAttacksPaused(true);
+    }
+    
+    /// <summary>
+    /// Resume the current wave (restarts spawning if wave was active)
+    /// Call this when closing menus that paused gameplay
+    /// </summary>
+    public void ResumeWave()
+    {
+        Debug.Log($"[WaveManager] ResumeWave called. waveActive={waveActive}, inChoicePhase={inChoicePhase}");
+        
+        // Don't resume if we're in the choice phase (attack selection)
+        if (inChoicePhase)
+        {
+            Debug.Log("[WaveManager] In choice phase, not resuming");
+            return;
+        }
+        
+        // Only resume if the wave was active
+        if (waveActive)
+        {
+            SetPlayerMovement(true);
+            SetAttacksPaused(false);
+            
+            if (enemySpawner)
+            {
+                enemySpawner.ResumeSpawning();
+            }
+            
+            Debug.Log("[WaveManager] Wave resumed");
+        }
+        else
+        {
+            Debug.Log("[WaveManager] Wave was not active, not resuming spawning");
+        }
+    }
+    
+    /// <summary>
+    /// Check if spawning is currently active
+    /// </summary>
+    public bool IsSpawningActive()
+    {
+        return enemySpawner != null && enemySpawner.IsSpawning();
     }
 
     public int GetCurrentWaveIndex() => currentWaveIndex;

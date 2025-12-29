@@ -14,8 +14,62 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveNamePrefix: Wave
   baseDifficulty: 1
-  difficultyGrowthRate: 0.1
-  maxDifficultyMultiplier: 10
-  enemyConfigs: []
-  minSpawnCooldown: 0.2
-  cooldownReductionPerWave: 0.02
+  difficultyGrowthRate: 0.5
+  maxDifficultyMultiplier: 15
+  enemyConfigs:
+  - enemyPrefab: {fileID: 4464936335970247717, guid: 8980b8f2f6cae0d45b82d523664e135d, type: 3}
+    unlockAtWave: 0
+    baseMaxOnScreen: 8
+    spawnCooldown: 2
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.15
+  - enemyPrefab: {fileID: 57176229489227899, guid: 75cb68e2fae50764d8740f8adf5f9030, type: 3}
+    unlockAtWave: 3
+    baseMaxOnScreen: 2
+    spawnCooldown: 2.5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.12
+  - enemyPrefab: {fileID: 1924989329093748297, guid: 91749118754f7514582cfc8325adf2e2, type: 3}
+    unlockAtWave: 6
+    baseMaxOnScreen: 2
+    spawnCooldown: 2.5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.12
+  - enemyPrefab: {fileID: 4327141488123506268, guid: 450b0872f779cde49a43e2929c5c708d, type: 3}
+    unlockAtWave: 10
+    baseMaxOnScreen: 2
+    spawnCooldown: 2
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.15
+  - enemyPrefab: {fileID: 3162731328899396539, guid: 41c686f6043ca3740aa65bdaf17b49de, type: 3}
+    unlockAtWave: 15
+    baseMaxOnScreen: 2
+    spawnCooldown: 2.5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.1
+  - enemyPrefab: {fileID: 1033166858978132019, guid: 30d0d7d6aa8cb4b4999e6755b1b19f68, type: 3}
+    unlockAtWave: 20
+    baseMaxOnScreen: 2
+    spawnCooldown: 2.5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.1
+  - enemyPrefab: {fileID: 8639534169944591133, guid: 7e3dd509dfe86a241b258255673b23ec, type: 3}
+    unlockAtWave: 25
+    baseMaxOnScreen: 1
+    spawnCooldown: 5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.08
+  - enemyPrefab: {fileID: 57176229489227899, guid: 152bd7cd0c963e64eace5187d46ce989, type: 3}
+    unlockAtWave: 20
+    baseMaxOnScreen: 3
+    spawnCooldown: 5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.08
+  - enemyPrefab: {fileID: 1881601566728902033, guid: 44ad36e8669ed4d43ab11b773c62eb79, type: 3}
+    unlockAtWave: 35
+    baseMaxOnScreen: 1
+    spawnCooldown: 5
+    allowedSpawnZones: 
+    maxOnScreenScalePerWave: 0.01
+  minSpawnCooldown: 0.3
+  cooldownReductionPerWave: 0.1

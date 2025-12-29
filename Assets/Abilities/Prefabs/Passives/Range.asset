@@ -13,5 +13,9 @@ MonoBehaviour:
   m_Name: Range
   m_EditorClassIdentifier: 
   abilityName: Range
+  description: Increase range by 20%
   icon: {fileID: 0}
   abilityPrefab: {fileID: 4207583943138578996, guid: 07c763164f4c6e6429e98a945612637a, type: 3}
+  abilityType: 0
+  maxLevel: 5
+  upgradeData: {fileID: 0}

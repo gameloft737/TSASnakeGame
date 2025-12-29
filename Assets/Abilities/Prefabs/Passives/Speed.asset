@@ -13,5 +13,9 @@ MonoBehaviour:
   m_Name: Speed
   m_EditorClassIdentifier: 
   abilityName: Speed
-  icon: {fileID: 0}
+  description: Increase speed by 10%
+  icon: {fileID: 21300000, guid: bfc1c08fa00c04549991db87a06ad137, type: 3}
   abilityPrefab: {fileID: 412156212217377529, guid: 96fa2d070a10f4645b1edae8d7dd3444, type: 3}
+  abilityType: 0
+  maxLevel: 5
+  upgradeData: {fileID: 0}

@@ -529,28 +529,16 @@ public class AttackSelectionUI : MonoBehaviour
                     Debug.Log($"Upgraded attack: {selectedAttack.attackName}");
                 }
                 
-                // Also make this the active attack by moving it to slot 0
-                int attackIndex = attackManager.attacks.IndexOf(selectedAttack);
-                if (attackIndex > 0)
-                {
-                    attackManager.SetActiveAttack(attackIndex);
-                    Debug.Log($"Set {selectedAttack.attackName} as active attack");
-                }
+                // Don't automatically switch to this attack - let player keep their current active attack
             }
             else
             {
                 // Player doesn't own this attack - add it to their collection
+                // The attack will be added to the end of the list, not made active
                 if (attackManager.AddAttack(selectedAttack))
                 {
                     Debug.Log($"Added new attack: {selectedAttack.attackName}");
-                    
-                    // Make the newly added attack the active one (move to slot 0)
-                    int newAttackIndex = attackManager.attacks.IndexOf(selectedAttack);
-                    if (newAttackIndex > 0)
-                    {
-                        attackManager.SetActiveAttack(newAttackIndex);
-                        Debug.Log($"Set new attack {selectedAttack.attackName} as active");
-                    }
+                    // Don't switch to the new attack - keep the current active attack
                 }
             }
         }
@@ -615,7 +603,29 @@ public class AttackSelectionUI : MonoBehaviour
     {
         if (!ability) return null;
         string abilityName = ability.gameObject.name;
-        foreach (AbilitySO so in possibleAbilities) if (so && so.abilityPrefab && abilityName.Contains(so.abilityPrefab.name)) return so;
+        
+        // First search in possibleAbilities
+        foreach (AbilitySO so in possibleAbilities)
+        {
+            if (so && so.abilityPrefab && abilityName.Contains(so.abilityPrefab.name))
+                return so;
+        }
+        
+        // Fallback: search in AbilityCollector's available abilities
+        AbilityCollector abilityCollector = FindFirstObjectByType<AbilityCollector>();
+        if (abilityCollector != null)
+        {
+            List<AbilitySO> availableAbilities = abilityCollector.GetAvailableAbilities();
+            if (availableAbilities != null)
+            {
+                foreach (AbilitySO so in availableAbilities)
+                {
+                    if (so && so.abilityPrefab && abilityName.Contains(so.abilityPrefab.name))
+                        return so;
+                }
+            }
+        }
+        
         return null;
     }
     

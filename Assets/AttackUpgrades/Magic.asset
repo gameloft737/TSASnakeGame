@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackName: Magic Orb
   attackDescription: Fires homing magic orbs that seek out enemies
-  attackIcon: {fileID: 0}
+  attackIcon: {fileID: 21300000, guid: e6313500ebac1b846bdf2250ac366e92, type: 3}
   levels:
   - levelName: Level 1
     description: Fires 1 slow orb with weak homing
@@ -149,5 +149,5 @@ MonoBehaviour:
       value: 50
     - statName: spreadAngle
       value: 60
-  maxLevel: 6
-  evolutionData: {fileID: 0}
+  maxLevel: 7
+  evolutionData: {fileID: 11400000, guid: 11d42b5cafccd1a47b4794dbf15d338c, type: 2}

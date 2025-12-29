@@ -20,3 +20,6 @@ MonoBehaviour:
     unlockedLevel: 7
     evolutionName: Big Fat Laser
     evolutionDescription: double laser yay (edit in laser evo)
+    evolutionHeadMaterial: {fileID: 2100000, guid: bf07d6242fb47b24cabd38a70ed33258, type: 2}
+    evolutionBodyMaterial: {fileID: 2100000, guid: f2bcfbbaacbc301488cbe0e9091c842a, type: 2}
+    evolutionAttachment: {fileID: 0}

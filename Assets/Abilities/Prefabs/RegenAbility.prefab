@@ -46,4 +46,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   currentLevel: 1
   maxLevel: 5
-  regenPerSecondPerLevel: 2
+  upgradeData: {fileID: 0}
+  regenPerSecondPerLevel: 0.5

@@ -361,6 +361,20 @@ public class AttackManager : MonoBehaviour
         EvolutionRequirement evolution = attack.GetCurrentEvolution();
         if (evolution == null) return;
         
+        // Verify that the evolution is actually unlocked before applying visuals
+        AbilityManager abilityManager = FindFirstObjectByType<AbilityManager>();
+        AttackUpgradeData upgradeData = attack.GetUpgradeData();
+        
+        if (upgradeData != null && upgradeData.evolutionData != null && abilityManager != null)
+        {
+            // Check if this evolution is actually unlocked
+            if (!upgradeData.evolutionData.IsEvolutionUnlocked(evolution, abilityManager))
+            {
+                Debug.LogWarning($"Evolution {evolution.evolutionName} for {attack.attackName} is not unlocked - skipping visual application");
+                return;
+            }
+        }
+        
         // Apply evolution materials and attachment
         snakeBody.ApplyAttackVariation(
             evolution.evolutionHeadMaterial,

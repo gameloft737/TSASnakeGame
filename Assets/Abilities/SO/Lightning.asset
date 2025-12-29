@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
   m_Name: Lightning
   m_EditorClassIdentifier: 
-  abilityName: Lightning Strike (ABILITY SO)
+  abilityName: Lightning Strike
   description: ability so description
   icon: {fileID: 21300000, guid: 0e14c15ee9c137042acbb3fdb7e0a478, type: 3}
   abilityPrefab: {fileID: 4014072926787019236, guid: 2063e2efed0fa76498ddece8b7c51660, type: 3}

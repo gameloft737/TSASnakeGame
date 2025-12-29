@@ -8,7 +8,7 @@ using UnityEngine;
 public class HealthRegenAbility : BaseAbility
 {
     [Header("Health Regen Settings (Fallback if no UpgradeData)")]
-    [SerializeField] private float regenPerSecondPerLevel = 2f; // +2 HP/sec per level
+    [SerializeField] private float regenPerSecondPerLevel = 0.5f; // +0.5 HP/sec per level (reduced from 2)
     
     private float currentBonus = 0f;
     private SnakeHealth snakeHealth;

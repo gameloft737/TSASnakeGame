@@ -20,6 +20,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] private float damageMultiplierBonus = 0f;
     [SerializeField] private float rangeMultiplierBonus = 0f;
     [SerializeField] private float maxHealthBonus = 0f;
+    [SerializeField] private float maxHealthPercentBonus = 0f; // Percentage bonus (0.1 = 10%)
     [SerializeField] private float healthRegenPerSecond = 0f;
     [SerializeField] private float speedMultiplierBonus = 0f;
     
@@ -56,11 +57,19 @@ public class PlayerStats : MonoBehaviour
     }
     
     /// <summary>
-    /// Gets the total max health bonus
+    /// Gets the total max health bonus (flat amount)
     /// </summary>
     public float GetMaxHealthBonus()
     {
         return baseMaxHealthBonus + maxHealthBonus;
+    }
+    
+    /// <summary>
+    /// Gets the total max health percentage bonus (e.g., 0.2 = 20% increase)
+    /// </summary>
+    public float GetMaxHealthPercentBonus()
+    {
+        return maxHealthPercentBonus;
     }
     
     /// <summary>
@@ -102,13 +111,23 @@ public class PlayerStats : MonoBehaviour
     }
     
     /// <summary>
-    /// Adds to the max health bonus
+    /// Adds to the max health bonus (flat amount)
     /// </summary>
     public void AddMaxHealthBonus(float amount)
     {
         maxHealthBonus += amount;
         onStatsChanged?.Invoke();
         Debug.Log($"[PlayerStats] Max health bonus now: +{GetMaxHealthBonus():F0}");
+    }
+    
+    /// <summary>
+    /// Adds to the max health percentage bonus (e.g., 0.1 = +10%)
+    /// </summary>
+    public void AddMaxHealthPercentBonus(float percent)
+    {
+        maxHealthPercentBonus += percent;
+        onStatsChanged?.Invoke();
+        Debug.Log($"[PlayerStats] Max health percent bonus now: +{GetMaxHealthPercentBonus() * 100:F0}%");
     }
     
     /// <summary>
@@ -141,6 +160,7 @@ public class PlayerStats : MonoBehaviour
         damageMultiplierBonus = 0f;
         rangeMultiplierBonus = 0f;
         maxHealthBonus = 0f;
+        maxHealthPercentBonus = 0f;
         healthRegenPerSecond = 0f;
         speedMultiplierBonus = 0f;
         onStatsChanged?.Invoke();

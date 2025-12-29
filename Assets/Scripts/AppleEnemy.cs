@@ -378,16 +378,29 @@ public class AppleEnemy : MonoBehaviour
                 frozenVelocity = agent.velocity;
                 agent.velocity = Vector3.zero;
                 agent.isStopped = true;
+                agent.enabled = false; // Fully disable the agent to prevent any movement
             }
             
             if (biteParticles && biteParticles.isPlaying) biteParticles.Pause();
         }
         else if (!frozen && isFrozen)
         {
-            if (agent.enabled && agent.isOnNavMesh)
+            // Re-enable the agent if it was enabled before freezing
+            if (wasAgentEnabled)
             {
-                agent.isStopped = false;
-                agent.velocity = frozenVelocity;
+                agent.enabled = true;
+                if (agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                    agent.velocity = frozenVelocity;
+                    
+                    // Re-acquire target after unfreezing
+                    nearestBodyPart = FindNearestBodyPart();
+                    if (nearestBodyPart)
+                    {
+                        agent.SetDestination(nearestBodyPart.position);
+                    }
+                }
             }
             
             if (biteParticles && isBiting) biteParticles.Play();

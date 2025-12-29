@@ -107,8 +107,11 @@ public class SnakeHealth : MonoBehaviour
     
     private void UpdateMaxHealth()
     {
-        float bonus = PlayerStats.Instance != null ? PlayerStats.Instance.GetMaxHealthBonus() : 0f;
-        maxHealth = baseMaxHealth + bonus;
+        float flatBonus = PlayerStats.Instance != null ? PlayerStats.Instance.GetMaxHealthBonus() : 0f;
+        float percentBonus = PlayerStats.Instance != null ? PlayerStats.Instance.GetMaxHealthPercentBonus() : 0f;
+        
+        // Apply flat bonus first, then percentage bonus
+        maxHealth = (baseMaxHealth + flatBonus) * (1f + percentBonus);
     }
     
     private void OnStatsChanged()

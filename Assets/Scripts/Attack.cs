@@ -229,12 +229,27 @@ public abstract class Attack : MonoBehaviour
     }
     
     /// <summary>
-    /// Checks if the current level is an evolution level
+    /// Checks if the current level is an evolution level AND the evolution is unlocked
     /// </summary>
     public bool IsAtEvolutionLevel()
     {
         if (upgradeData == null) return false;
-        return upgradeData.IsEvolutionLevel(currentLevel);
+        
+        // First check if this is an evolution level
+        if (!upgradeData.IsEvolutionLevel(currentLevel))
+            return false;
+        
+        // Now verify the evolution is actually unlocked
+        EvolutionRequirement evolution = upgradeData.GetEvolutionForLevel(currentLevel);
+        if (evolution == null)
+            return false;
+        
+        // Check if the player has the required passive
+        AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+        if (upgradeData.evolutionData == null || abilityManager == null)
+            return false;
+        
+        return upgradeData.evolutionData.IsEvolutionUnlocked(evolution, abilityManager);
     }
     
     /// <summary>

@@ -30,15 +30,20 @@ public class CameraManager : MonoBehaviour
     public void OnAim(InputAction.CallbackContext context)
     {
         if (isPaused || isFrozen) return; // Don't process aim input when frozen
+        
+        // Only respond to button press, not release - toggle between cameras
         if (context.performed)
         {
-            // Button pressed
-            SwitchToAimCamera();
-        }
-        else if (context.canceled)
-        {
-            // Button released
-            SwitchToNormalCamera();
+            if (isAiming)
+            {
+                // Currently aiming, switch to normal camera
+                SwitchToNormalCamera();
+            }
+            else
+            {
+                // Not aiming, switch to aim camera
+                SwitchToAimCamera();
+            }
         }
     }
     

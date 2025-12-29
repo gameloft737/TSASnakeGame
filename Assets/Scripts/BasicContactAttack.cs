@@ -11,6 +11,10 @@ public class BasicContactAttack : MonoBehaviour
     [SerializeField] private float nearbyRange = 3f;
     [SerializeField] private LayerMask enemyLayer;
 
+    [Header("Damage")]
+    [SerializeField] private float damage = 100f; // Damage dealt per bite
+    [SerializeField] private bool instantKill = false; // If true, bypasses health and kills instantly
+
     [Header("Animation")]
     [SerializeField] private AttackManager attackManager;
     [SerializeField] private SnakeBody snakeBody;
@@ -46,12 +50,19 @@ public class BasicContactAttack : MonoBehaviour
         if (attackManager != null)
             attackManager.SetBool(mouthOpenBool, true);
 
-        // Kill the tracked enemy even if it left the trigger
+        // Damage or kill the tracked enemy even if it left the trigger
         if (trackedEnemy != null)
         {
             snakeBody.TriggerSwallowAnimation();
-            trackedEnemy.Die();
-            trackedEnemy = null; // Clear reference after killing
+            if (instantKill)
+            {
+                trackedEnemy.Die();
+            }
+            else
+            {
+                trackedEnemy.TakeDamage(damage);
+            }
+            trackedEnemy = null; // Clear reference after attacking
         }
     }
 
@@ -63,7 +74,14 @@ public class BasicContactAttack : MonoBehaviour
         if (mouthOpen)
         {
             snakeBody.TriggerSwallowAnimation();
-            enemy.Die();
+            if (instantKill)
+            {
+                enemy.Die();
+            }
+            else
+            {
+                enemy.TakeDamage(damage);
+            }
         }
     }
 

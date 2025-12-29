@@ -39,11 +39,9 @@ public abstract class BaseAbility : MonoBehaviour
     /// </summary>
     public virtual bool LevelUp()
     {
-        int effectiveMaxLevel = GetEffectiveMaxLevel();
-        
-        if (currentLevel >= effectiveMaxLevel)
+        // Use CanUpgrade which properly checks evolution requirements
+        if (!CanUpgrade())
         {
-            // Already at max level (including evolutions)
             return false;
         }
         
@@ -58,8 +56,8 @@ public abstract class BaseAbility : MonoBehaviour
         ApplyLevelStats();
         OnLevelUp();
         
-        // Check if this is an evolution level
-        if (upgradeData != null && upgradeData.IsEvolutionLevel(currentLevel))
+        // Check if this is an evolution level (now properly checks if evolution is unlocked)
+        if (IsAtEvolutionLevel())
         {
             OnEvolutionUnlocked();
         }
@@ -248,12 +246,27 @@ public abstract class BaseAbility : MonoBehaviour
     }
     
     /// <summary>
-    /// Checks if the current level is an evolution level
+    /// Checks if the current level is an evolution level AND the evolution is unlocked
     /// </summary>
     public bool IsAtEvolutionLevel()
     {
         if (upgradeData == null) return false;
-        return upgradeData.IsEvolutionLevel(currentLevel);
+        
+        // First check if this is an evolution level
+        if (!upgradeData.IsEvolutionLevel(currentLevel))
+            return false;
+        
+        // Now verify the evolution is actually unlocked
+        EvolutionRequirement evolution = upgradeData.GetEvolutionForLevel(currentLevel);
+        if (evolution == null)
+            return false;
+        
+        // Check if the player has the required passive
+        AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+        if (upgradeData.evolutionData == null || abilityManager == null)
+            return false;
+        
+        return upgradeData.evolutionData.IsEvolutionUnlocked(evolution, abilityManager);
     }
     
     /// <summary>

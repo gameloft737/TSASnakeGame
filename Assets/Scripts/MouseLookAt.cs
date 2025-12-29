@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 public class MouseLookAt : MonoBehaviour
 {
     [Header("Look Settings")]
-    [SerializeField] private float mouseSensitivity = 0.5f; // How much mouse movement affects rotation
+    [SerializeField] private float mouseSensitivity = 0.1f; // How much mouse movement affects rotation (lowered to match free look camera feel)
     [SerializeField] private float mouseSmoothing = 0.15f; // Lower = smoother, higher = more responsive
     [SerializeField] private float minXRotation = -5f; // Minimum X rotation
     [SerializeField] private float maxXRotation = 5f; // Maximum X rotation

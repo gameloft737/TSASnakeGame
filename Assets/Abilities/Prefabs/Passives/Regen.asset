@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: Regen
   m_EditorClassIdentifier: 
   abilityName: Regeneration
-  description: 
+  description: 'Heal 0.5HP every second
+
+'
   icon: {fileID: 21300000, guid: a19b0fb2aa17b1c4881b6987ccd6c493, type: 3}
   abilityPrefab: {fileID: 1577351419451060289, guid: 960819189910b98468cbe6afb117c1bc, type: 3}
   abilityType: 0
-  maxLevel: 3
+  maxLevel: 5
+  upgradeData: {fileID: 0}

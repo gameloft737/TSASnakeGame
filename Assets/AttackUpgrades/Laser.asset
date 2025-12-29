@@ -17,7 +17,7 @@ MonoBehaviour:
   attackIcon: {fileID: 21300000, guid: 5f45125a5edd65a4985d0f8a2df4f4cd, type: 3}
   levels:
   - levelName: 1
-    description: Shoots two lasers that dela 15 damage per second
+    description: Shoots two lasers that deal 15 damage per second
     damage: 15
     range: 8
     minFuelToActivate: 50
@@ -95,7 +95,7 @@ MonoBehaviour:
     - statName: laserWidth
       value: 0.28
   - levelName: 7
-    description: big fat laser (edit in attack upgrades)
+    description: Shoots 4 additional lasers all around you
     damage: 50
     range: 20
     minFuelToActivate: 25

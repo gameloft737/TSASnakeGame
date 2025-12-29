@@ -46,7 +46,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentLevel: 1
-  maxLevel: 3
+  maxLevel: 6
   upgradeData: {fileID: 11400000, guid: 12b79528e92a8474f8d50c4da5418973, type: 2}
   strikeInterval: 2
   strikeCount: 1

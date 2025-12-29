@@ -41,9 +41,9 @@ public class AbilityCollector : MonoBehaviour
     [SerializeField] private Transform activeAbilitiesContainer; // Container for active abilities in drop menu
     [SerializeField] private GameObject activeAbilityDisplayPrefab; // Prefab for displaying active abilities
     
-    [Header("Current Attack Display")]
-    [SerializeField] private Transform currentAttackContainer; // Container to show current attack on the side
-    [SerializeField] private GameObject currentAttackDisplayPrefab; // Prefab for displaying current attack
+    [Header("Current Attack Display (Drop Menu)")]
+    [SerializeField] private Transform currentAttackContainer; // Container to show attacks on the side
+    [SerializeField] private GameObject currentAttackDisplayPrefab; // Prefab for displaying attacks (should match DraggableAttackSlot styling)
 
     // Reference to CursorLock script
     [SerializeField] private CursorLock cursorLock; // Drag and drop the CursorLock script here
@@ -62,7 +62,7 @@ public class AbilityCollector : MonoBehaviour
     private List<GameObject> spawnedButtons = new List<GameObject>(); // Track spawned buttons for cleanup
     private List<GameObject> spawnedPassiveAbilityDisplays = new List<GameObject>(); // Track passive ability displays
     private List<GameObject> spawnedActiveAbilityDisplays = new List<GameObject>(); // Track active ability displays
-    private GameObject spawnedCurrentAttackDisplay; // Track current attack display
+    private List<GameObject> spawnedAttackDisplays = new List<GameObject>(); // Track attack displays
     private List<AppleEnemy> frozenEnemies = new List<AppleEnemy>(); // Track frozen enemies
     private List<BaseAbility> frozenAbilities = new List<BaseAbility>(); // Track frozen abilities
 
@@ -122,26 +122,35 @@ public class AbilityCollector : MonoBehaviour
     }
 
     /// <summary>
-    /// Gets a random selection of abilities from the available pool (excluding maxed out abilities)
+    /// Gets a random selection of abilities from the available pool.
+    /// Only includes abilities that can actually be added or upgraded:
+    /// - New abilities are only shown if there's room in the appropriate slot (passive/active)
+    /// - Existing abilities are only shown if they can still be upgraded (not maxed)
     /// </summary>
     private List<AbilitySO> GetRandomAbilities(int count)
     {
         List<AbilitySO> result = new List<AbilitySO>();
         
-        // Filter out null abilities and maxed out abilities
+        // Filter abilities based on whether they can be added or upgraded
         List<AbilitySO> validAbilities = new List<AbilitySO>();
         foreach (AbilitySO ability in availableAbilities)
         {
             if (ability != null && ability.abilityPrefab != null)
             {
-                // Check if this ability is already maxed out
-                BaseAbility existingAbility = abilityManager.GetAbility(ability.abilityPrefab);
-                if (existingAbility == null || !existingAbility.IsMaxLevel())
+                // Use CanAddOrUpgradeAbility which checks:
+                // 1. If player already has this ability -> can they upgrade it (not maxed)?
+                // 2. If player doesn't have this ability -> is there room for this type (passive/active)?
+                if (abilityManager.CanAddOrUpgradeAbility(ability))
                 {
                     validAbilities.Add(ability);
                 }
             }
         }
+        
+        // Log for debugging
+        Debug.Log($"[AbilityCollector] Valid abilities to show: {validAbilities.Count} out of {availableAbilities.Count} total. " +
+                  $"Passive slots: {abilityManager.GetPassiveAbilityCount()}/{abilityManager.GetMaxPassiveAbilities()}, " +
+                  $"Active slots: {abilityManager.GetActiveAbilityCount()}/{abilityManager.GetMaxActiveAbilities()}");
 
         // If we have fewer abilities than requested, return all of them
         if (validAbilities.Count <= count)
@@ -354,13 +363,17 @@ public class AbilityCollector : MonoBehaviour
     {
         if (abilitySO == null || abilitySO.abilityPrefab == null) return;
 
-        // Add the ability to the player
-        BaseAbility newAbility = abilityManager.AddAbility(abilitySO.abilityPrefab);
+        // Add the ability to the player (pass abilitySO for proper limit checking)
+        BaseAbility newAbility = abilityManager.AddAbility(abilitySO.abilityPrefab, abilitySO);
         
         if (newAbility != null)
         {
             Debug.Log("Ability selected and added: " + abilitySO.abilityName);
             PlayEffect(transform.position, false);
+        }
+        else
+        {
+            Debug.LogWarning($"Failed to add ability {abilitySO.abilityName} - limit may have been reached");
         }
 
         // Close the UI after selection
@@ -468,22 +481,25 @@ public class AbilityCollector : MonoBehaviour
     /// </summary>
     private void ResumeSpawning()
     {
-        if (enemySpawner == null)
+        // Use WaveManager's ResumeWave method which handles both infinite and legacy modes
+        WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+        if (waveManager != null)
         {
-            enemySpawner = FindFirstObjectByType<EnemySpawner>();
+            waveManager.ResumeWave();
+            Debug.Log("[AbilityCollector] Called WaveManager.ResumeWave()");
         }
-        
-        if (enemySpawner != null)
+        else
         {
-            // Get the wave manager to resume spawning with current wave data
-            WaveManager waveManager = FindFirstObjectByType<WaveManager>();
-            if (waveManager != null)
+            // Fallback: try to resume spawning directly on the enemy spawner
+            if (enemySpawner == null)
             {
-                WaveData currentWave = waveManager.GetWaveData(waveManager.GetCurrentWaveIndex());
-                if (currentWave != null)
-                {
-                    enemySpawner.StartWaveSpawning(currentWave);
-                }
+                enemySpawner = FindFirstObjectByType<EnemySpawner>();
+            }
+            
+            if (enemySpawner != null)
+            {
+                enemySpawner.ResumeSpawning();
+                Debug.Log("[AbilityCollector] Called EnemySpawner.ResumeSpawning() directly (fallback)");
             }
         }
     }
@@ -794,9 +810,16 @@ public class AbilityCollector : MonoBehaviour
     {
         if (abilitySO == null || abilitySO.abilityPrefab == null) return;
 
-        // Add the ability to the AbilityManager
-        abilityManager.AddAbility(abilitySO.abilityPrefab);
-        Debug.Log("Ability added: " + abilitySO.abilityPrefab.name);
+        // Add the ability to the AbilityManager (pass abilitySO for proper limit checking)
+        BaseAbility newAbility = abilityManager.AddAbility(abilitySO.abilityPrefab, abilitySO);
+        if (newAbility != null)
+        {
+            Debug.Log("Ability added: " + abilitySO.abilityPrefab.name);
+        }
+        else
+        {
+            Debug.LogWarning($"Failed to add ability {abilitySO.abilityName} - limit may have been reached");
+        }
     }
 
     /// <summary>
@@ -830,11 +853,13 @@ public class AbilityCollector : MonoBehaviour
     }
     
     /// <summary>
-    /// Populates the current attack container with the player's current attack
+    /// Populates the current attack container with all of the player's attacks.
+    /// The first attack (index 0) is shown as active with green highlight,
+    /// matching the DraggableAttackSlot formatting from the attack reorder panel.
     /// </summary>
     private void PopulateCurrentAttack()
     {
-        // Clear existing display
+        // Clear existing displays
         ClearCurrentAttackDisplay();
         
         if (currentAttackContainer == null)
@@ -847,47 +872,70 @@ public class AbilityCollector : MonoBehaviour
             return; // No attack manager
         }
         
-        // Get the current attack
-        Attack currentAttack = attackManager.GetCurrentAttack();
-        if (currentAttack == null)
+        // Get all attacks from the attack manager
+        int attackCount = attackManager.GetAttackCount();
+        if (attackCount == 0)
         {
-            return; // No current attack
+            return; // No attacks
         }
         
-        if (currentAttackDisplayPrefab != null)
+        // Create a display for each attack
+        for (int i = 0; i < attackCount; i++)
         {
-            // Use the prefab if assigned
-            spawnedCurrentAttackDisplay = Instantiate(currentAttackDisplayPrefab, currentAttackContainer);
+            Attack attack = attackManager.GetAttackAtIndex(i);
+            if (attack == null) continue;
             
-            // Try to initialize it with CurrentAttackDisplay component
-            CurrentAttackDisplay display = spawnedCurrentAttackDisplay.GetComponent<CurrentAttackDisplay>();
-            if (display != null)
+            // First attack (index 0) is the active attack
+            bool isActive = (i == 0);
+            
+            if (currentAttackDisplayPrefab != null)
             {
-                display.Initialize(currentAttack);
+                // Use the prefab if assigned
+                GameObject displayObj = Instantiate(currentAttackDisplayPrefab, currentAttackContainer);
+                spawnedAttackDisplays.Add(displayObj);
+                
+                // Try to initialize it with CurrentAttackDisplay component
+                CurrentAttackDisplay display = displayObj.GetComponent<CurrentAttackDisplay>();
+                if (display != null)
+                {
+                    // Initialize with active state matching DraggableAttackSlot behavior
+                    display.Initialize(attack, isActive);
+                }
+                else
+                {
+                    // Fallback: try to set up basic display elements
+                    SetupBasicAttackDisplay(displayObj, attack, isActive);
+                }
             }
             else
             {
-                // Fallback: try to set up basic display elements
-                SetupBasicAttackDisplay(spawnedCurrentAttackDisplay, currentAttack);
+                // Create a simple text display if no prefab
+                CreateSimpleAttackDisplay(attack, isActive);
             }
-        }
-        else
-        {
-            // Create a simple text display if no prefab
-            CreateSimpleAttackDisplay(currentAttack);
         }
     }
     
     /// <summary>
     /// Sets up basic display elements on an attack display object
     /// </summary>
-    private void SetupBasicAttackDisplay(GameObject displayObj, Attack attack)
+    private void SetupBasicAttackDisplay(GameObject displayObj, Attack attack, bool isActive)
     {
         // Try to find and set text
         TMPro.TextMeshProUGUI nameText = displayObj.GetComponentInChildren<TMPro.TextMeshProUGUI>();
         if (nameText != null)
         {
-            nameText.text = $"{attack.attackName} Lv.{attack.GetCurrentLevel()}";
+            nameText.text = attack.attackName;
+        }
+        
+        // Try to find and set level text (matching DraggableAttackSlot format)
+        TMPro.TextMeshProUGUI levelText = displayObj.transform.Find("Level")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (levelText == null)
+        {
+            levelText = displayObj.transform.Find("LevelText")?.GetComponent<TMPro.TextMeshProUGUI>();
+        }
+        if (levelText != null)
+        {
+            levelText.text = $"Lvl {attack.GetCurrentLevel()}";
         }
         
         // Try to find and set icon
@@ -899,32 +947,58 @@ public class AbilityCollector : MonoBehaviour
                 iconImage.sprite = attack.attackIcon;
             }
         }
+        
+        // Try to set background color based on active state (matching DraggableAttackSlot colors)
+        UnityEngine.UI.Image backgroundImage = displayObj.GetComponent<UnityEngine.UI.Image>();
+        if (backgroundImage != null)
+        {
+            // Use the same colors as DraggableAttackSlot
+            Color activeSlotColor = new Color(0.3f, 1f, 0.3f, 1f);
+            Color normalSlotColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+            backgroundImage.color = isActive ? activeSlotColor : normalSlotColor;
+        }
+        
+        // Try to show/hide active indicator
+        GameObject activeIndicator = displayObj.transform.Find("ActiveIndicator")?.gameObject;
+        if (activeIndicator != null)
+        {
+            activeIndicator.SetActive(isActive);
+        }
     }
     
     /// <summary>
     /// Creates a simple text-based attack display
     /// </summary>
-    private void CreateSimpleAttackDisplay(Attack attack)
+    private void CreateSimpleAttackDisplay(Attack attack, bool isActive)
     {
-        spawnedCurrentAttackDisplay = new GameObject("AttackDisplay");
-        spawnedCurrentAttackDisplay.transform.SetParent(currentAttackContainer);
-        spawnedCurrentAttackDisplay.transform.localScale = Vector3.one;
+        GameObject displayObj = new GameObject("AttackDisplay");
+        displayObj.transform.SetParent(currentAttackContainer);
+        displayObj.transform.localScale = Vector3.one;
         
-        TMPro.TextMeshProUGUI text = spawnedCurrentAttackDisplay.AddComponent<TMPro.TextMeshProUGUI>();
-        text.text = $"{attack.attackName} Lv.{attack.GetCurrentLevel()}";
+        TMPro.TextMeshProUGUI text = displayObj.AddComponent<TMPro.TextMeshProUGUI>();
+        string activeMarker = isActive ? " [ACTIVE]" : "";
+        text.text = $"{attack.attackName} Lvl {attack.GetCurrentLevel()}{activeMarker}";
         text.fontSize = 14;
         text.alignment = TMPro.TextAlignmentOptions.Left;
+        
+        // Set color based on active state
+        text.color = isActive ? new Color(0.3f, 1f, 0.3f, 1f) : Color.white;
+        
+        spawnedAttackDisplays.Add(displayObj);
     }
     
     /// <summary>
-    /// Clears the spawned current attack display
+    /// Clears all spawned attack displays
     /// </summary>
     private void ClearCurrentAttackDisplay()
     {
-        if (spawnedCurrentAttackDisplay != null)
+        foreach (GameObject display in spawnedAttackDisplays)
         {
-            Destroy(spawnedCurrentAttackDisplay);
-            spawnedCurrentAttackDisplay = null;
+            if (display != null)
+            {
+                Destroy(display);
+            }
         }
+        spawnedAttackDisplays.Clear();
     }
 }
