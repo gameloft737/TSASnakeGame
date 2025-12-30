@@ -1,3 +1,4 @@
+
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -20,6 +21,13 @@ public class HomingProjectileAttack : Attack
     [SerializeField] private float targetingRange = 30f; // Range to find targets
     [SerializeField] private bool retargetOnMiss = true; // Find new target if current dies
     
+    [Header("Explosion Settings (Evolution)")]
+    [SerializeField] private bool explosionEnabled = false; // Enabled when evolved
+    [SerializeField] private float explosionRadius = 3f; // Radius of explosion
+    [SerializeField] private float explosionDamageMultiplier = 0.5f; // Explosion damage as % of projectile damage
+    [SerializeField] private GameObject explosionEffectPrefab; // Optional explosion VFX
+    [SerializeField] private AudioClip explosionSound; // Optional explosion sound
+    
     [Header("Visual Effects")]
     [SerializeField] private ParticleSystem muzzleFlash;
     [SerializeField] private TrailRenderer projectileTrailPrefab;
@@ -39,6 +47,9 @@ public class HomingProjectileAttack : Attack
     private const string STAT_PROJECTILE_COUNT = "projectileCount";
     private const string STAT_SPREAD_ANGLE = "spreadAngle";
     private const string STAT_TARGETING_RANGE = "targetingRange";
+    private const string STAT_EXPLOSION_ENABLED = "explosionEnabled";
+    private const string STAT_EXPLOSION_RADIUS = "explosionRadius";
+    private const string STAT_EXPLOSION_DAMAGE_MULTIPLIER = "explosionDamageMultiplier";
     
     private void Awake()
     {
@@ -81,6 +92,12 @@ public class HomingProjectileAttack : Attack
         projectileCount = Mathf.RoundToInt(GetCustomStat(STAT_PROJECTILE_COUNT, projectileCount));
         spreadAngle = GetCustomStat(STAT_SPREAD_ANGLE, spreadAngle);
         targetingRange = GetCustomStat(STAT_TARGETING_RANGE, targetingRange);
+        
+        // Explosion settings (for evolution)
+        float explosionEnabledValue = GetCustomStat(STAT_EXPLOSION_ENABLED, explosionEnabled ? 1f : 0f);
+        explosionEnabled = explosionEnabledValue > 0.5f;
+        explosionRadius = GetCustomStat(STAT_EXPLOSION_RADIUS, explosionRadius);
+        explosionDamageMultiplier = GetCustomStat(STAT_EXPLOSION_DAMAGE_MULTIPLIER, explosionDamageMultiplier);
     }
     
     protected override void OnActivate()
@@ -185,6 +202,18 @@ public class HomingProjectileAttack : Attack
             currentRange,
             retargetOnMiss
         );
+        
+        // Set explosion parameters if enabled
+        if (IsExplosionEnabled())
+        {
+            homing.SetExplosionParams(
+                true,
+                GetExplosionRadius(),
+                currentDamage * GetExplosionDamageMultiplier(),
+                explosionEffectPrefab,
+                explosionSound
+            );
+        }
     }
     
     /// <summary>
@@ -318,7 +347,38 @@ public class HomingProjectileAttack : Attack
     
     protected override void OnUpgrade()
     {
-        Debug.Log($"Homing Projectile upgraded! Count: {GetProjectileCount()}, Speed: {GetProjectileSpeed():F1}, Homing: {GetHomingStrength():F1}");
+        Debug.Log($"Homing Projectile upgraded! Count: {GetProjectileCount()}, Speed: {GetProjectileSpeed():F1}, Homing: {GetHomingStrength():F1}, Explosion: {IsExplosionEnabled()}");
+    }
+    
+    // Explosion stat getters
+    private bool IsExplosionEnabled()
+    {
+        if (upgradeData != null)
+        {
+            float value = GetCustomStat(STAT_EXPLOSION_ENABLED, explosionEnabled ? 1f : 0f);
+            return value > 0.5f;
+        }
+        return explosionEnabled;
+    }
+    
+    private float GetExplosionRadius()
+    {
+        if (upgradeData != null)
+        {
+            float baseRadius = GetCustomStat(STAT_EXPLOSION_RADIUS, explosionRadius);
+            float multiplier = PlayerStats.Instance != null ? PlayerStats.Instance.GetRangeMultiplier() : 1f;
+            return baseRadius * multiplier;
+        }
+        return explosionRadius;
+    }
+    
+    private float GetExplosionDamageMultiplier()
+    {
+        if (upgradeData != null)
+        {
+            return GetCustomStat(STAT_EXPLOSION_DAMAGE_MULTIPLIER, explosionDamageMultiplier);
+        }
+        return explosionDamageMultiplier;
     }
     
     private void OnDrawGizmosSelected()
@@ -351,7 +411,21 @@ public class HomingProjectile : MonoBehaviour
     private float spawnTime;
     private bool isInitialized = false;
     
-    public void Initialize(float damage, float speed, float homingStrength, float lifetime, 
+    // Forward flight phase settings
+    private float forwardFlightDuration = 0.3f; // Time to fly forward before homing
+    private float forwardFlightDistance = 3f; // Distance to fly forward before homing
+    private Vector3 initialForwardDirection;
+    private Vector3 spawnPosition;
+    private bool isInForwardPhase = true;
+    
+    // Explosion settings
+    private bool explosionEnabled = false;
+    private float explosionRadius = 3f;
+    private float explosionDamage = 0f;
+    private GameObject explosionEffectPrefab;
+    private AudioClip explosionSound;
+    
+    public void Initialize(float damage, float speed, float homingStrength, float lifetime,
                           AppleEnemy initialTarget, float targetingRange, bool retargetOnMiss)
     {
         this.damage = damage;
@@ -363,7 +437,31 @@ public class HomingProjectile : MonoBehaviour
         this.retargetOnMiss = retargetOnMiss;
         
         spawnTime = Time.time;
+        spawnPosition = transform.position;
+        initialForwardDirection = transform.forward;
+        isInForwardPhase = true;
         isInitialized = true;
+    }
+    
+    /// <summary>
+    /// Set the forward flight parameters
+    /// </summary>
+    public void SetForwardFlightParams(float duration, float distance)
+    {
+        forwardFlightDuration = duration;
+        forwardFlightDistance = distance;
+    }
+    
+    /// <summary>
+    /// Set explosion parameters for evolved projectiles
+    /// </summary>
+    public void SetExplosionParams(bool enabled, float radius, float damage, GameObject effectPrefab, AudioClip sound)
+    {
+        explosionEnabled = enabled;
+        explosionRadius = radius;
+        explosionDamage = damage;
+        explosionEffectPrefab = effectPrefab;
+        explosionSound = sound;
     }
     
     private void Update()
@@ -377,8 +475,21 @@ public class HomingProjectile : MonoBehaviour
             return;
         }
         
-        // Check if target is still valid
-        if (currentTarget == null || currentTarget.IsFrozen())
+        // Check if we should transition from forward phase to homing phase
+        if (isInForwardPhase)
+        {
+            float timeSinceSpawn = Time.time - spawnTime;
+            float distanceTraveled = Vector3.Distance(transform.position, spawnPosition);
+            
+            // Transition to homing phase after time or distance threshold
+            if (timeSinceSpawn >= forwardFlightDuration || distanceTraveled >= forwardFlightDistance)
+            {
+                isInForwardPhase = false;
+            }
+        }
+        
+        // Check if target is still valid (only matters in homing phase)
+        if (!isInForwardPhase && (currentTarget == null || currentTarget.IsFrozen()))
         {
             if (retargetOnMiss)
             {
@@ -386,19 +497,30 @@ public class HomingProjectile : MonoBehaviour
             }
         }
         
-        // Move towards target or forward
-        Vector3 moveDirection = transform.forward;
+        // Determine movement direction based on phase
+        Vector3 moveDirection;
         
-        if (currentTarget != null)
+        if (isInForwardPhase)
         {
-            Vector3 toTarget = (currentTarget.transform.position - transform.position).normalized;
-            moveDirection = Vector3.Lerp(moveDirection, toTarget, homingStrength * Time.deltaTime);
-            moveDirection.Normalize();
+            // Forward phase: fly straight in the initial direction
+            moveDirection = initialForwardDirection;
+        }
+        else
+        {
+            // Homing phase: turn towards target
+            moveDirection = transform.forward;
             
-            // Rotate to face movement direction
-            if (moveDirection != Vector3.zero)
+            if (currentTarget != null)
             {
-                transform.rotation = Quaternion.LookRotation(moveDirection);
+                Vector3 toTarget = (currentTarget.transform.position - transform.position).normalized;
+                moveDirection = Vector3.Lerp(moveDirection, toTarget, homingStrength * Time.deltaTime);
+                moveDirection.Normalize();
+                
+                // Rotate to face movement direction
+                if (moveDirection != Vector3.zero)
+                {
+                    transform.rotation = Quaternion.LookRotation(moveDirection);
+                }
             }
         }
         
@@ -435,7 +557,140 @@ public class HomingProjectile : MonoBehaviour
         {
             enemy.TakeDamage(damage);
             Debug.Log($"Homing projectile hit {enemy.name} for {damage} damage!");
+            
+            // Create explosion if enabled
+            if (explosionEnabled)
+            {
+                CreateExplosion();
+            }
+            
             Destroy(gameObject);
+        }
+    }
+    
+    /// <summary>
+    /// Creates an explosion that damages nearby enemies
+    /// </summary>
+    private void CreateExplosion()
+    {
+        Vector3 explosionPos = transform.position;
+        
+        // Spawn explosion effect if available
+        if (explosionEffectPrefab != null)
+        {
+            GameObject effect = Instantiate(explosionEffectPrefab, explosionPos, Quaternion.identity);
+            Destroy(effect, 3f); // Clean up after 3 seconds
+        }
+        else
+        {
+            // Create a simple default explosion effect
+            CreateDefaultExplosionEffect(explosionPos);
+        }
+        
+        // Play explosion sound
+        if (explosionSound != null)
+        {
+            AudioSource.PlayClipAtPoint(explosionSound, explosionPos, 0.7f);
+        }
+        
+        // Find and damage all enemies in explosion radius
+        float radiusSqr = explosionRadius * explosionRadius;
+        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        
+        foreach (AppleEnemy nearbyEnemy in allEnemies)
+        {
+            if (nearbyEnemy == null || nearbyEnemy.IsFrozen()) continue;
+            
+            float distSqr = (nearbyEnemy.transform.position - explosionPos).sqrMagnitude;
+            if (distSqr <= radiusSqr)
+            {
+                // Calculate damage falloff based on distance (closer = more damage)
+                float distance = Mathf.Sqrt(distSqr);
+                float falloff = 1f - (distance / explosionRadius);
+                float finalDamage = explosionDamage * Mathf.Max(0.3f, falloff); // Minimum 30% damage
+                
+                nearbyEnemy.TakeDamage(finalDamage);
+                Debug.Log($"Explosion hit {nearbyEnemy.name} for {finalDamage:F1} damage!");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Creates a simple default explosion visual effect
+    /// </summary>
+    private void CreateDefaultExplosionEffect(Vector3 position)
+    {
+        // Create a simple expanding sphere effect
+        GameObject explosionObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        explosionObj.name = "ExplosionEffect";
+        explosionObj.transform.position = position;
+        explosionObj.transform.localScale = Vector3.one * 0.5f;
+        
+        // Remove collider
+        Collider col = explosionObj.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+        
+        // Set up material with purple/arcane color
+        Renderer renderer = explosionObj.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            Material mat = new Material(Shader.Find("Sprites/Default"));
+            mat.color = new Color(0.6f, 0.2f, 1f, 0.8f); // Purple/arcane color
+            renderer.material = mat;
+        }
+        
+        // Add explosion animation component
+        ExplosionEffect effect = explosionObj.AddComponent<ExplosionEffect>();
+        effect.Initialize(explosionRadius, 0.3f);
+    }
+}
+
+/// <summary>
+/// Simple component to animate explosion effect
+/// </summary>
+public class ExplosionEffect : MonoBehaviour
+{
+    private float targetRadius;
+    private float duration;
+    private float startTime;
+    private Vector3 startScale;
+    private Renderer rend;
+    private Color startColor;
+    
+    public void Initialize(float radius, float duration)
+    {
+        this.targetRadius = radius;
+        this.duration = duration;
+        this.startTime = Time.time;
+        this.startScale = transform.localScale;
+        this.rend = GetComponent<Renderer>();
+        if (rend != null)
+        {
+            startColor = rend.material.color;
+        }
+    }
+    
+    private void Update()
+    {
+        float elapsed = Time.time - startTime;
+        float t = elapsed / duration;
+        
+        if (t >= 1f)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        
+        // Expand the sphere
+        float currentRadius = Mathf.Lerp(0.5f, targetRadius * 2f, t);
+        transform.localScale = Vector3.one * currentRadius;
+        
+        // Fade out
+        if (rend != null)
+        {
+            Color c = startColor;
+            c.a = Mathf.Lerp(0.8f, 0f, t);
+            rend.material.color = c;
         }
     }
 }

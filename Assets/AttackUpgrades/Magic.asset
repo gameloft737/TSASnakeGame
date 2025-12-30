@@ -131,7 +131,7 @@ MonoBehaviour:
     - statName: spreadAngle
       value: 40
   - levelName: Level 7 - Arcane Barrage
-    description: EVOLUTION - Unleashes 6 piercing arcane orbs with devastating power
+    description: EVOLUTION - Unleashes 6 explosive arcane orbs that detonate on impact!
     damage: 35
     range: 42
     minFuelToActivate: 22
@@ -149,5 +149,11 @@ MonoBehaviour:
       value: 42
     - statName: spreadAngle
       value: 60
-  maxLevel: 7
+    - statName: explosionEnabled
+      value: 1
+    - statName: explosionRadius
+      value: 4
+    - statName: explosionDamageMultiplier
+      value: 0.6
+  maxLevel: 6
   evolutionData: {fileID: 11400000, guid: 11d42b5cafccd1a47b4794dbf15d338c, type: 2}

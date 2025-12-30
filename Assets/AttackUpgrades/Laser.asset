@@ -109,5 +109,5 @@ MonoBehaviour:
       value: 0.28
     - statName: sideLasersEnabled
       value: 1
-  maxLevel: 7
+  maxLevel: 6
   evolutionData: {fileID: 11400000, guid: 695f3cd5f0db8ff4aac8e83dae93be2d, type: 2}

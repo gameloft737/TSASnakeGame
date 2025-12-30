@@ -27,6 +27,13 @@ public class EnemyUnlockConfig
     [Header("Scaling")]
     [Tooltip("How much the max on screen increases per wave (added after exponential scaling)")]
     [Min(0)] public float maxOnScreenScalePerWave = 0.2f;
+    
+    [Header("Health Scaling")]
+    [Tooltip("Base health multiplier for this enemy type")]
+    [Min(0.1f)] public float baseHealthMultiplier = 1f;
+    
+    [Tooltip("How much the health multiplier increases per wave")]
+    [Min(0)] public float healthScalePerWave = 0.1f;
 }
 
 /// <summary>
@@ -49,6 +56,29 @@ public class InfiniteWaveConfig : ScriptableObject
     [Tooltip("Maximum difficulty multiplier cap")]
     [Min(1f)] public float maxDifficultyMultiplier = 10f;
     
+    [Header("Health Scaling")]
+    [Tooltip("Base health multiplier for all enemies at wave 0")]
+    [Min(0.1f)] public float baseHealthMultiplier = 1f;
+    
+    [Tooltip("Wave number where health scaling starts (before this, health stays at base)")]
+    public int healthScalingStartWave = 15;
+    
+    [Tooltip("How much the global health multiplier increases per wave (after scaling starts)")]
+    [Min(0)] public float globalHealthScalePerWave = 0.1f;
+    
+    [Tooltip("Maximum health multiplier cap")]
+    [Min(1f)] public float maxHealthMultiplier = 5f;
+    
+    [Header("Wave 20+ Difficulty Spike")]
+    [Tooltip("Wave number where difficulty spikes")]
+    public int difficultySpikeWave = 20;
+    
+    [Tooltip("Additional difficulty multiplier applied after spike wave")]
+    [Min(1f)] public float difficultySpikeMultiplier = 1.5f;
+    
+    [Tooltip("Additional health multiplier applied after spike wave")]
+    [Min(1f)] public float healthSpikeMultiplier = 1.3f;
+    
     [Header("Enemy Configuration")]
     [Tooltip("List of all enemies that can spawn, with their unlock waves")]
     public List<EnemyUnlockConfig> enemyConfigs = new List<EnemyUnlockConfig>();
@@ -67,7 +97,50 @@ public class InfiniteWaveConfig : ScriptableObject
     public float GetDifficultyMultiplier(int waveNumber)
     {
         float multiplier = baseDifficulty * Mathf.Exp(difficultyGrowthRate * waveNumber);
+        
+        // Apply difficulty spike after wave 20
+        if (waveNumber >= difficultySpikeWave)
+        {
+            multiplier *= difficultySpikeMultiplier;
+        }
+        
         return Mathf.Min(multiplier, maxDifficultyMultiplier);
+    }
+    
+    /// <summary>
+    /// Calculates the health multiplier for enemies at a given wave
+    /// Health stays at base until healthScalingStartWave, then scales by globalHealthScalePerWave
+    /// </summary>
+    public float GetHealthMultiplier(int waveNumber)
+    {
+        float multiplier = baseHealthMultiplier;
+        
+        // Only start scaling health after the scaling start wave
+        if (waveNumber >= healthScalingStartWave)
+        {
+            int wavesSinceScalingStart = waveNumber - healthScalingStartWave;
+            multiplier += wavesSinceScalingStart * globalHealthScalePerWave;
+        }
+        
+        // Apply health spike after wave 20
+        if (waveNumber >= difficultySpikeWave)
+        {
+            multiplier *= healthSpikeMultiplier;
+        }
+        
+        return Mathf.Min(multiplier, maxHealthMultiplier);
+    }
+    
+    /// <summary>
+    /// Calculates the health multiplier for a specific enemy type at a given wave
+    /// </summary>
+    public float GetEnemyHealthMultiplier(EnemyUnlockConfig config, int waveNumber)
+    {
+        float globalMult = GetHealthMultiplier(waveNumber);
+        int wavesSinceUnlock = Mathf.Max(0, waveNumber - config.unlockAtWave);
+        float enemyMult = config.baseHealthMultiplier + (wavesSinceUnlock * config.healthScalePerWave);
+        
+        return globalMult * enemyMult;
     }
     
     /// <summary>
@@ -214,14 +287,30 @@ public class InfiniteWaveConfigEditor : UnityEditor.Editor
             UnityEditor.EditorGUILayout.Space(5);
             
             // Show difficulty curve preview
-            UnityEditor.EditorGUILayout.LabelField("Difficulty Curve (first 20 waves):", UnityEditor.EditorStyles.boldLabel);
+            UnityEditor.EditorGUILayout.LabelField("Difficulty Curve (first 25 waves):", UnityEditor.EditorStyles.boldLabel);
             
             UnityEditor.EditorGUILayout.BeginHorizontal();
-            for (int i = 0; i < 20; i += 5)
+            for (int i = 0; i < 25; i += 5)
             {
                 UnityEditor.EditorGUILayout.LabelField($"W{i + 1}: {config.GetDifficultyMultiplier(i):F1}x", GUILayout.Width(70));
             }
             UnityEditor.EditorGUILayout.EndHorizontal();
+            
+            UnityEditor.EditorGUILayout.Space(5);
+            UnityEditor.EditorGUILayout.LabelField("Health Curve (first 25 waves):", UnityEditor.EditorStyles.boldLabel);
+            
+            UnityEditor.EditorGUILayout.BeginHorizontal();
+            for (int i = 0; i < 25; i += 5)
+            {
+                UnityEditor.EditorGUILayout.LabelField($"W{i + 1}: {config.GetHealthMultiplier(i):F1}x", GUILayout.Width(70));
+            }
+            UnityEditor.EditorGUILayout.EndHorizontal();
+            
+            if (previewWaveNumber >= config.difficultySpikeWave)
+            {
+                UnityEditor.EditorGUILayout.Space(5);
+                UnityEditor.EditorGUILayout.HelpBox($"Wave {previewWaveNumber + 1} is past the difficulty spike (Wave {config.difficultySpikeWave + 1})! Difficulty x{config.difficultySpikeMultiplier}, Health x{config.healthSpikeMultiplier}", UnityEditor.MessageType.Warning);
+            }
             
             UnityEditor.EditorGUILayout.EndVertical();
         }

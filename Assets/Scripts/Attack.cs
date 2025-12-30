@@ -276,6 +276,13 @@ public abstract class Attack : MonoBehaviour
         if (IsAtEvolutionLevel())
         {
             OnEvolutionReached();
+            
+            // Notify AttackManager to apply evolution visuals
+            AttackManager attackManager = Object.FindFirstObjectByType<AttackManager>();
+            if (attackManager != null)
+            {
+                attackManager.RefreshEvolutionVisuals();
+            }
         }
         
         Debug.Log($"{attackName} upgraded to level {currentLevel}!");
@@ -306,14 +313,32 @@ public abstract class Attack : MonoBehaviour
     public bool HasEvolutionVisuals() => hasAppliedEvolutionVisuals;
     
     /// <summary>
-    /// Sets the attack to a specific level
+    /// Sets the attack to a specific level (validates evolution requirements)
     /// </summary>
     public void SetLevel(int level)
     {
         if (upgradeData == null) return;
         
-        currentLevel = Mathf.Clamp(level, 1, upgradeData.maxLevel);
+        // Get the effective max level considering evolutions
+        AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+        int effectiveMaxLevel = upgradeData.GetEffectiveMaxLevel(abilityManager);
+        
+        // Clamp to effective max level (which considers unlocked evolutions)
+        currentLevel = Mathf.Clamp(level, 1, effectiveMaxLevel);
         ApplyLevelStats();
+        
+        // Check if this is an evolution level and apply visuals
+        if (IsAtEvolutionLevel())
+        {
+            OnEvolutionReached();
+            
+            // Notify AttackManager to apply evolution visuals
+            AttackManager attackManager = Object.FindFirstObjectByType<AttackManager>();
+            if (attackManager != null)
+            {
+                attackManager.RefreshEvolutionVisuals();
+            }
+        }
     }
     
     /// <summary>

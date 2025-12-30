@@ -9,14 +9,16 @@ using System.Collections.Generic;
 public class ForceFieldAbility : BaseAbility
 {
     [Header("Force Field Settings (Fallback if no UpgradeData)")]
-    [SerializeField] private float baseRadius = 5f;
+    [SerializeField] private float baseRadius = 3f;
     [SerializeField] private float baseDamage = 10f;
     [SerializeField] private float baseDamageInterval = 0.5f; // How often to deal damage
     
     [Header("Visual Settings")]
     [SerializeField] private GameObject forceFieldVisualPrefab;
-    [SerializeField] private Color forceFieldColor = new Color(0.5f, 1f, 0.5f, 0.3f); // Light green
+    [SerializeField] private Color forceFieldColor = new Color(0.3f, 0.7f, 1f, 0.4f); // Light blue
     [SerializeField] private bool showDebugGizmos = true;
+    [SerializeField] private float visualYOffset = -0.5f; // How far below the snake the visual sits
+    [SerializeField] private float visualThickness = 0.2f; // Thickness of the circular visual
     
     [Header("Audio")]
     [SerializeField] private AudioClip damageSound;
@@ -86,7 +88,7 @@ public class ForceFieldAbility : BaseAbility
     }
     
     /// <summary>
-    /// Creates the visual representation of the force field
+    /// Creates the visual representation of the force field as a flat circular disc underneath the snake
     /// </summary>
     private void CreateForceFieldVisual()
     {
@@ -97,8 +99,8 @@ public class ForceFieldAbility : BaseAbility
         }
         else
         {
-            // Create a simple sphere visual if no prefab assigned
-            forceFieldVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            // Create a flat cylinder visual to represent the force field as a disc underneath the snake
+            forceFieldVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             forceFieldVisual.name = "ForceFieldVisual";
             forceFieldVisual.transform.SetParent(transform);
             
@@ -106,12 +108,27 @@ public class ForceFieldAbility : BaseAbility
             Collider col = forceFieldVisual.GetComponent<Collider>();
             if (col != null) Destroy(col);
             
-            // Set up material
+            // Set up material with transparency
             Renderer renderer = forceFieldVisual.GetComponent<Renderer>();
             if (renderer != null)
             {
-                Material mat = new Material(Shader.Find("Sprites/Default"));
+                // Try to find a transparent shader
+                Shader transparentShader = Shader.Find("Sprites/Default");
+                if (transparentShader == null)
+                {
+                    transparentShader = Shader.Find("Universal Render Pipeline/Lit");
+                }
+                
+                Material mat = new Material(transparentShader);
                 mat.color = forceFieldColor;
+                
+                // Enable transparency if using URP shader
+                if (mat.HasProperty("_Surface"))
+                {
+                    mat.SetFloat("_Surface", 1); // 1 = Transparent
+                    mat.SetFloat("_Blend", 0); // Alpha blend
+                }
+                
                 renderer.material = mat;
             }
         }
@@ -120,25 +137,34 @@ public class ForceFieldAbility : BaseAbility
     }
     
     /// <summary>
-    /// Updates the visual position to follow the player
+    /// Updates the visual position to follow the player, positioned underneath
     /// </summary>
     private void UpdateVisualPosition()
     {
         if (forceFieldVisual != null && playerTransform != null)
         {
-            forceFieldVisual.transform.position = playerTransform.position;
+            // Position the visual underneath the snake
+            Vector3 position = playerTransform.position;
+            position.y += visualYOffset;
+            forceFieldVisual.transform.position = position;
+            
+            // Keep the visual flat (horizontal)
+            forceFieldVisual.transform.rotation = Quaternion.identity;
         }
     }
     
     /// <summary>
     /// Updates the visual scale based on current radius
+    /// Creates a flat disc shape (wide but thin cylinder)
     /// </summary>
     private void UpdateVisualScale()
     {
         if (forceFieldVisual != null)
         {
             float radius = GetRadius();
-            forceFieldVisual.transform.localScale = Vector3.one * radius * 2f; // Diameter
+            // Cylinder primitive: X and Z control diameter, Y controls height
+            // We want a flat disc, so make Y very small and X/Z large
+            forceFieldVisual.transform.localScale = new Vector3(radius * 2f, visualThickness, radius * 2f);
         }
     }
     
@@ -298,7 +324,7 @@ public class ForceFieldAbility : BaseAbility
     }
     
     /// <summary>
-    /// Debug visualization
+    /// Debug visualization - shows the force field as a flat disc
     /// </summary>
     private void OnDrawGizmosSelected()
     {
@@ -316,8 +342,26 @@ public class ForceFieldAbility : BaseAbility
         
         if (drawTransform != null)
         {
-            Gizmos.color = new Color(0.5f, 1f, 0.5f, 0.3f);
-            Gizmos.DrawWireSphere(drawTransform.position, Application.isPlaying ? GetRadius() : baseRadius);
+            float radius = Application.isPlaying ? GetRadius() : baseRadius;
+            Vector3 center = drawTransform.position + Vector3.up * visualYOffset;
+            
+            // Draw a flat disc gizmo
+            Gizmos.color = new Color(0.3f, 0.7f, 1f, 0.3f);
+            
+            // Draw circle outline
+            int segments = 32;
+            Vector3 prevPoint = center + new Vector3(radius, 0, 0);
+            for (int i = 1; i <= segments; i++)
+            {
+                float angle = (float)i / segments * Mathf.PI * 2f;
+                Vector3 newPoint = center + new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
+                Gizmos.DrawLine(prevPoint, newPoint);
+                prevPoint = newPoint;
+            }
+            
+            // Draw cross lines for visibility
+            Gizmos.DrawLine(center + new Vector3(-radius, 0, 0), center + new Vector3(radius, 0, 0));
+            Gizmos.DrawLine(center + new Vector3(0, 0, -radius), center + new Vector3(0, 0, radius));
         }
     }
 }

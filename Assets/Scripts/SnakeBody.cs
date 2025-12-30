@@ -10,33 +10,20 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private GameObject bodyPartPrefab;
     [SerializeField] private int bodyLength = 5;
     [SerializeField] private float segmentSpacing = 0.5f;
-    [SerializeField] private float minRecordDistance = 0.05f;
-
-    [SerializeField] private float impulseCarryover = 0.9f;
-    [SerializeField] private float rotationBlendAmount = 0.3f;
+    
+    [Header("Constraint Settings")]
+    [SerializeField] private int constraintIterations = 3; // More iterations = more stable but slower
     
     // Material system
     [SerializeField] private Renderer headRenderer;
     private GameObject currentAttachment;
     
     public List<BodyPart> bodyParts = new List<BodyPart>();
-    private List<PositionData> positionHistory = new List<PositionData>();
-    private Vector3 lastRecordedPosition;
-    private bool isHeadMoving = false;
-    
-    private struct PositionData
-    {
-        public Vector3 position;
-        public Quaternion rotation;
-        public float distanceFromStart;
-    }
     
     public static event Action OnBodyPartsInitialized;
     
     void Start()
     {
-        lastRecordedPosition = head.position;
-        
         // Set static references for AppleEnemy optimization
         SnakeHealth health = GetComponent<SnakeHealth>();
         AppleEnemy.SetSnakeReferences(this, health);
@@ -50,14 +37,8 @@ public class SnakeBody : MonoBehaviour
                 headRenderer = head.GetComponentInChildren<Renderer>();
             }
         }
-        
-        positionHistory.Add(new PositionData 
-        { 
-            position = head.position, 
-            rotation = head.rotation,
-            distanceFromStart = 0f
-        });
 
+        // Create body parts and set up the chain
         for (int i = 0; i < bodyLength; i++)
         {
             Vector3 startPos = head.position - head.forward * segmentSpacing * (i + 1);
@@ -65,11 +46,19 @@ public class SnakeBody : MonoBehaviour
             BodyPart bodyPartComponent = part.GetComponent<BodyPart>();
             bodyParts.Add(bodyPartComponent);
             
-            if (i < 3)
+            // Set up the leader chain - each segment follows the one in front
+            Transform leader = (i == 0) ? head : bodyParts[i - 1].transform;
+            bodyPartComponent.Initialize(leader, segmentSpacing);
+            
+            // Apply tail scaling (smaller segments at the tail end)
+            // Calculate how far from the tail this segment is
+            int distanceFromTail = bodyLength - 1 - i;
+            if (distanceFromTail < 3)
             {
-                float[] tailScales = { 0.5f, 0.7f, 0.8f};
+                // Scales from tail: smallest at tail (index 0 from tail), getting bigger toward head
+                float[] tailScales = { 0.5f, 0.7f, 0.85f };
                 Vector3 scale = part.transform.localScale;
-                scale.x = tailScales[i];
+                scale.x = tailScales[distanceFromTail];
                 part.transform.localScale = scale;
             }
             
@@ -89,95 +78,56 @@ public class SnakeBody : MonoBehaviour
         }
     }
 
-    void FixedUpdate()
+    void Update()
     {
-        float distanceMoved = Vector3.Distance(head.position, lastRecordedPosition);
-        isHeadMoving = distanceMoved >= minRecordDistance;
-        
-        if (isHeadMoving)
-        {
-            float totalDistance = positionHistory.Count > 0 
-                ? positionHistory[0].distanceFromStart + distanceMoved 
-                : distanceMoved;
-            
-            positionHistory.Insert(0, new PositionData 
-            { 
-                position = head.position, 
-                rotation = head.rotation,
-                distanceFromStart = totalDistance
-            });
-            
-            lastRecordedPosition = head.position;
-        }
-
+        // Update body parts in order from head to tail
+        // Each segment follows its leader
         for (int i = 0; i < bodyParts.Count; i++)
         {
-            int reverseIndex = bodyParts.Count - 1 - i;
-            float targetDistance = (reverseIndex + 1) * segmentSpacing;
-            var targetData = GetPositionAtDistance(targetDistance);
-            
-            Quaternion historicalRotation = targetData.rotation;
-            Quaternion lookAtRotation;
-            Vector3 lookTarget;
-            
-            if (i == bodyParts.Count - 1)
-            {
-                lookTarget = head.position;
-            }
-            else
-            {
-                lookTarget = bodyParts[i + 1].transform.position;
-            }
-            
-            Vector3 directionToNext = (lookTarget - bodyParts[i].transform.position).normalized;
-            
-            if (directionToNext != Vector3.zero)
-            {
-                lookAtRotation = Quaternion.LookRotation(directionToNext);
-            }
-            else
-            {
-                lookAtRotation = historicalRotation;
-            }
-            
-            Quaternion finalRotation = Quaternion.Slerp(historicalRotation, lookAtRotation, rotationBlendAmount);
-            
-            bodyParts[i].FollowTarget(targetData.position, finalRotation, isHeadMoving);
+            bodyParts[i].FollowLeader();
         }
+    }
 
-        float maxDistance = bodyLength * segmentSpacing + segmentSpacing * 2;
-        CleanupHistory(maxDistance);
+    void LateUpdate()
+    {
+        // Run multiple constraint iterations to ensure stable distances
+        // This is the key to preventing overlapping and maintaining consistent spacing
+        for (int iteration = 0; iteration < constraintIterations; iteration++)
+        {
+            // Forward pass: from head to tail
+            for (int i = 0; i < bodyParts.Count; i++)
+            {
+                bodyParts[i].EnforceConstraint();
+            }
+            
+            // Backward pass: from tail to head (helps with stability)
+            for (int i = bodyParts.Count - 1; i >= 0; i--)
+            {
+                bodyParts[i].EnforceConstraint();
+            }
+        }
     }
     
     public void ApplyForceToBody(Vector3 direction, float force)
     {
-        Vector3 lungeDirection = direction;
-        
-        PlayerMovement pm = GetComponent<PlayerMovement>();
-        if (pm != null && pm.IsGrounded())
-        {
-            lungeDirection = Vector3.ProjectOnPlane(direction, Vector3.up).normalized;
-        }
-        
-        foreach (BodyPart part in bodyParts)
-        {
-            Rigidbody partRb = part.GetComponent<Rigidbody>();
-            if (partRb != null)
-            {
-                partRb.AddForce(lungeDirection * force * impulseCarryover, ForceMode.Impulse);
-            }
-        }
+        // This method is kept for compatibility but the new system doesn't use physics forces
+        // The body will naturally follow the head's movement
     }
     
     public void IncreaseSize(int amount = 1)
     {
         for (int i = 0; i < amount; i++)
         {
-            Vector3 spawnPos = head.position - head.forward * segmentSpacing;
-            Quaternion spawnRot = head.rotation;
+            // Get the last segment's position and rotation for spawning
+            Transform lastSegment = bodyParts.Count > 0 ? bodyParts[bodyParts.Count - 1].transform : head;
+            Vector3 spawnPos = lastSegment.position - lastSegment.forward * segmentSpacing;
+            Quaternion spawnRot = lastSegment.rotation;
             
             GameObject newPart = Instantiate(bodyPartPrefab, spawnPos, spawnRot);
             BodyPart bodyPartComponent = newPart.GetComponent<BodyPart>();
+            
+            // Set up the leader - new segment follows the previous last segment
+            bodyPartComponent.Initialize(lastSegment, segmentSpacing);
             
             // Capture scale before adding to list
             bodyPartComponent.CaptureBaseScale();
@@ -199,19 +149,57 @@ public class SnakeBody : MonoBehaviour
     /// </summary>
     public void ApplyAttackVariation(Material headMaterial, Material bodyMaterial, GameObject attachmentObject)
     {
+        Debug.Log($"SnakeBody.ApplyAttackVariation called - HeadMaterial: {(headMaterial != null ? headMaterial.name : "null")}, BodyMaterial: {(bodyMaterial != null ? bodyMaterial.name : "null")}, Attachment: {(attachmentObject != null ? attachmentObject.name : "null")}");
+        
         // Only apply head material if provided (evolution attacks)
-        if (headRenderer != null && headMaterial != null)
+        if (headMaterial != null)
         {
-            headRenderer.material = headMaterial;
+            if (headRenderer != null)
+            {
+                headRenderer.material = headMaterial;
+                Debug.Log($"Applied head material: {headMaterial.name} to {headRenderer.gameObject.name}");
+            }
+            else
+            {
+                // Try to find head renderer if not assigned
+                if (head != null)
+                {
+                    headRenderer = head.GetComponent<Renderer>();
+                    if (headRenderer == null)
+                    {
+                        headRenderer = head.GetComponentInChildren<Renderer>();
+                    }
+                    
+                    if (headRenderer != null)
+                    {
+                        headRenderer.material = headMaterial;
+                        Debug.Log($"Found and applied head material: {headMaterial.name} to {headRenderer.gameObject.name}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("SnakeBody: Cannot apply head material - no Renderer found on head!");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("SnakeBody: Cannot apply head material - head transform is null!");
+                }
+            }
         }
         
         // Only apply body material if provided (evolution attacks)
         if (bodyMaterial != null)
         {
+            int appliedCount = 0;
             foreach (BodyPart part in bodyParts)
             {
-                part.SetMaterial(bodyMaterial);
+                if (part != null)
+                {
+                    part.SetMaterial(bodyMaterial);
+                    appliedCount++;
+                }
             }
+            Debug.Log($"Applied body material: {bodyMaterial.name} to {appliedCount} body parts");
         }
         
         // Always handle attachment changes
@@ -225,6 +213,7 @@ public class SnakeBody : MonoBehaviour
         {
             currentAttachment = attachmentObject;
             currentAttachment.SetActive(true);
+            Debug.Log($"Enabled attachment: {attachmentObject.name}");
         }
     }
     
@@ -264,69 +253,31 @@ public class SnakeBody : MonoBehaviour
 
     private IEnumerator SwallowAnimationCoroutine(float bulgeScale, float bulgeSpeed)
     {
-        for (int i = bodyParts.Count - 1; i >= 0; i--)
+        for (int i = 0; i < bodyParts.Count; i++)
         {
             bodyParts[i].AnimateBulge(bulgeScale, 0.2f);
             yield return new WaitForSeconds(bulgeSpeed);
         }
     }
 
-    private PositionData GetPositionAtDistance(float targetDistance)
-    {
-        if (positionHistory.Count == 0)
-            return new PositionData { position = head.position, rotation = head.rotation, distanceFromStart = 0 };
-
-        float currentTotalDistance = positionHistory[0].distanceFromStart;
-        float distanceFromHead = currentTotalDistance - targetDistance;
-
-        if (distanceFromHead < 0)
-            return positionHistory[positionHistory.Count - 1];
-
-        for (int i = 0; i < positionHistory.Count - 1; i++)
-        {
-            float dist1 = positionHistory[i].distanceFromStart;
-            float dist2 = positionHistory[i + 1].distanceFromStart;
-
-            if (distanceFromHead >= dist2 && distanceFromHead <= dist1)
-            {
-                float segmentLength = dist1 - dist2;
-                float t = segmentLength > 0 ? (distanceFromHead - dist2) / segmentLength : 0;
-
-                return new PositionData
-                {
-                    position = Vector3.Lerp(positionHistory[i + 1].position, positionHistory[i].position, t),
-                    rotation = Quaternion.Slerp(positionHistory[i + 1].rotation, positionHistory[i].rotation, t),
-                    distanceFromStart = distanceFromHead
-                };
-            }
-        }
-
-        return positionHistory[0];
-    }
-
-    private void CleanupHistory(float maxDistance)
-    {
-        if (positionHistory.Count < 2) return;
-
-        float currentDistance = positionHistory[0].distanceFromStart;
-        
-        for (int i = positionHistory.Count - 1; i >= 0; i--)
-        {
-            if (currentDistance - positionHistory[i].distanceFromStart > maxDistance)
-            {
-                positionHistory.RemoveAt(i);
-            }
-        }
-    }
-
     private void OnDrawGizmos()
     {
-        if (positionHistory == null || positionHistory.Count < 2) return;
+        if (bodyParts == null || bodyParts.Count == 0) return;
 
-        Gizmos.color = Color.yellow;
-        for (int i = 0; i < positionHistory.Count - 1; i++)
+        // Draw the chain from head to tail
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(head.position, bodyParts[0].transform.position);
+        
+        for (int i = 0; i < bodyParts.Count - 1; i++)
         {
-            Gizmos.DrawLine(positionHistory[i].position, positionHistory[i + 1].position);
+            Gizmos.DrawLine(bodyParts[i].transform.position, bodyParts[i + 1].transform.position);
+        }
+        
+        // Draw spheres at each segment to show spacing
+        Gizmos.color = Color.yellow;
+        foreach (var part in bodyParts)
+        {
+            Gizmos.DrawWireSphere(part.transform.position, 0.1f);
         }
     }
 }

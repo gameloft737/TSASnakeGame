@@ -60,9 +60,42 @@ public abstract class BaseAbility : MonoBehaviour
         if (IsAtEvolutionLevel())
         {
             OnEvolutionUnlocked();
+            
+            // Notify AttackManager to refresh evolution visuals (in case ability affects attack visuals)
+            AttackManager attackManager = Object.FindFirstObjectByType<AttackManager>();
+            if (attackManager != null)
+            {
+                attackManager.RefreshEvolutionVisuals();
+            }
         }
         
         return true;
+    }
+    
+    /// <summary>
+    /// Sets the ability to a specific level (validates evolution requirements)
+    /// </summary>
+    public void SetLevel(int level)
+    {
+        if (upgradeData == null)
+        {
+            currentLevel = Mathf.Clamp(level, 1, maxLevel);
+            return;
+        }
+        
+        // Get the effective max level considering evolutions
+        AbilityManager abilityManager = Object.FindFirstObjectByType<AbilityManager>();
+        int effectiveMaxLevel = upgradeData.GetEffectiveMaxLevel(abilityManager);
+        
+        // Clamp to effective max level (which considers unlocked evolutions)
+        currentLevel = Mathf.Clamp(level, 1, effectiveMaxLevel);
+        ApplyLevelStats();
+        
+        // Check if this is an evolution level
+        if (IsAtEvolutionLevel())
+        {
+            OnEvolutionUnlocked();
+        }
     }
     
     /// <summary>

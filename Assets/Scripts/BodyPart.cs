@@ -3,12 +3,7 @@ using System.Collections;
 
 public class BodyPart : MonoBehaviour
 {
-    private Rigidbody rb;
-    [SerializeField] private float positionStrength = 50f;
-    [SerializeField] private float dampingStrength = 10f;
-    [SerializeField] private float rotationSpeed = 10f;
-    [SerializeField] private float maxSpeed = 20f;
-    [SerializeField] private float stoppedDamping = 5f;
+    [SerializeField] private float rotationSpeed = 15f;
     
     // Material changing support
     [SerializeField] private Renderer bodyRenderer;
@@ -17,16 +12,24 @@ public class BodyPart : MonoBehaviour
     // Swallow animation
     private Vector3 baseScale;
     private Coroutine swallowCoroutine;
+    
+    // Reference to the segment in front (closer to head)
+    private Transform leader;
+    private float targetDistance;
+    
+    // Smoothing for natural movement
+    private Vector3 velocity;
+    [SerializeField] private float smoothTime = 0.05f;
 
     private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        if (!rb) rb = gameObject.AddComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
-        
-        rb.linearDamping = 1f;
-        rb.angularDamping = 0.5f;
+        // Remove any Rigidbody that might exist from the old physics-based system
+        // The new constraint-based system doesn't use physics
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            Destroy(rb);
+        }
         
         // Get renderer if not assigned
         if (bodyRenderer == null)
@@ -40,37 +43,93 @@ public class BodyPart : MonoBehaviour
         
         propBlock = new MaterialPropertyBlock();
     }
-
-    public void FollowTarget(Vector3 targetPos, Quaternion targetRot, bool headIsMoving)
+    
+    /// <summary>
+    /// Initialize this body part with its leader (the segment in front of it) and the target distance
+    /// </summary>
+    public void Initialize(Transform leaderTransform, float distance)
     {
-        Vector3 positionError = targetPos - transform.position;
+        leader = leaderTransform;
+        targetDistance = distance;
+    }
+    
+    /// <summary>
+    /// Update the leader reference (used when segments are added/removed)
+    /// </summary>
+    public void SetLeader(Transform newLeader)
+    {
+        leader = newLeader;
+    }
+    
+    /// <summary>
+    /// Get the current leader
+    /// </summary>
+    public Transform GetLeader()
+    {
+        return leader;
+    }
+
+    /// <summary>
+    /// Follow the leader while maintaining exact distance constraint
+    /// </summary>
+    public void FollowLeader()
+    {
+        if (leader == null) return;
         
-        if (!headIsMoving)
+        Vector3 leaderPos = leader.position;
+        Vector3 currentPos = transform.position;
+        
+        // Calculate direction from this segment to the leader
+        Vector3 direction = leaderPos - currentPos;
+        float currentDistance = direction.magnitude;
+        
+        if (currentDistance > 0.001f)
         {
-            rb.AddForce(-rb.linearVelocity * stoppedDamping, ForceMode.Acceleration);
+            direction /= currentDistance; // Normalize
             
-            if (positionError.magnitude > 0.05f)
-            {
-                Vector3 weakForce = positionError * (positionStrength * 0.2f);
-                rb.AddForce(weakForce, ForceMode.Acceleration);
-            }
-        }
-        else
-        {
-            Vector3 targetVelocity = positionError * positionStrength;
-            Vector3 velocityError = targetVelocity - rb.linearVelocity;
+            // Calculate the target position at exactly targetDistance behind the leader
+            Vector3 targetPos = leaderPos - direction * targetDistance;
             
-            Vector3 force = (positionError * positionStrength) + (velocityError * dampingStrength);
-            rb.AddForce(force, ForceMode.Acceleration);
+            // Smoothly move to target position for natural movement
+            transform.position = Vector3.SmoothDamp(currentPos, targetPos, ref velocity, smoothTime);
+            
+            // After smoothing, enforce the distance constraint strictly
+            EnforceDistanceConstraint();
+            
+            // Rotate to face the leader
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
+    }
+    
+    /// <summary>
+    /// Strictly enforce the distance constraint - this prevents overlapping and stretching
+    /// </summary>
+    private void EnforceDistanceConstraint()
+    {
+        if (leader == null) return;
         
-        if (rb.linearVelocity.magnitude > maxSpeed)
+        Vector3 leaderPos = leader.position;
+        Vector3 currentPos = transform.position;
+        
+        Vector3 direction = leaderPos - currentPos;
+        float currentDistance = direction.magnitude;
+        
+        if (currentDistance > 0.001f)
         {
-            rb.linearVelocity = rb.linearVelocity.normalized * maxSpeed;
+            direction /= currentDistance;
+            
+            // Place this segment at exactly targetDistance from the leader
+            transform.position = leaderPos - direction * targetDistance;
         }
-        
-        Quaternion newRot = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime);
-        rb.MoveRotation(newRot);
+    }
+    
+    /// <summary>
+    /// Called during FixedUpdate for physics-based constraint enforcement
+    /// </summary>
+    public void EnforceConstraint()
+    {
+        EnforceDistanceConstraint();
     }
     
     public void SetMaterial(Material newMaterial)

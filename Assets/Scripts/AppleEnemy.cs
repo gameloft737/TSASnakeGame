@@ -40,6 +40,7 @@ public class AppleEnemy : MonoBehaviour
     
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
+    private float baseMaxHealth = 0f; // Will be set from maxHealth on first use
     
     public bool isMetal = false;
     
@@ -68,7 +69,14 @@ public class AppleEnemy : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         agent.updateRotation = false;
         
-        currentHealth = maxHealth;
+        // Ensure base max health is set
+        EnsureBaseHealthInitialized();
+        
+        // Only set currentHealth if it hasn't been set by Initialize
+        if (currentHealth <= 0)
+        {
+            currentHealth = maxHealth;
+        }
         contactDistanceSqr = contactDistance * contactDistance;
         trackingWait = new WaitForSeconds(trackingUpdateInterval);
         
@@ -109,6 +117,62 @@ public class AppleEnemy : MonoBehaviour
         snakeBody = body;
         snakeHealth = health;
         isInitialized = true;
+    }
+    
+    /// <summary>
+    /// Initialize with a health multiplier for wave scaling
+    /// </summary>
+    public void Initialize(SnakeBody body, SnakeHealth health, float healthMultiplier)
+    {
+        snakeBody = body;
+        snakeHealth = health;
+        isInitialized = true;
+        
+        // Ensure baseMaxHealth is set before applying multiplier
+        EnsureBaseHealthInitialized();
+        
+        // Apply health multiplier (only if > 1, otherwise keep base health)
+        if (healthMultiplier > 1f)
+        {
+            maxHealth = baseMaxHealth * healthMultiplier;
+            currentHealth = maxHealth;
+        }
+        else
+        {
+            // Keep at base health for multiplier of 1 or less
+            maxHealth = baseMaxHealth;
+            currentHealth = maxHealth;
+        }
+    }
+    
+    /// <summary>
+    /// Ensures baseMaxHealth is initialized from the serialized maxHealth value
+    /// </summary>
+    private void EnsureBaseHealthInitialized()
+    {
+        if (baseMaxHealth <= 0)
+        {
+            baseMaxHealth = maxHealth;
+        }
+    }
+    
+    /// <summary>
+    /// Set the health multiplier (can be called after spawn)
+    /// </summary>
+    public void SetHealthMultiplier(float multiplier)
+    {
+        EnsureBaseHealthInitialized();
+        
+        if (multiplier > 1f)
+        {
+            maxHealth = baseMaxHealth * multiplier;
+            currentHealth = maxHealth;
+        }
+        else
+        {
+            maxHealth = baseMaxHealth;
+            currentHealth = maxHealth;
+        }
     }
 
     void LateUpdate()

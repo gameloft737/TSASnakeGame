@@ -18,6 +18,9 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private SnakeBody snakeBody;
     [SerializeField] private SnakeHealth snakeHealth;
     
+    [Header("Wave Manager Reference")]
+    [SerializeField] private WaveManager waveManager;
+    
     [Header("Spawn Settings")]
     [SerializeField] private float spawnCheckInterval = 0.25f;
     [SerializeField] private float countSyncInterval = 1.0f; // How often to sync enemy counts
@@ -51,6 +54,7 @@ public class EnemySpawner : MonoBehaviour
     {
         if (!snakeBody) snakeBody = FindFirstObjectByType<SnakeBody>();
         if (!snakeHealth && snakeBody) snakeHealth = snakeBody.GetComponent<SnakeHealth>();
+        if (!waveManager) waveManager = FindFirstObjectByType<WaveManager>();
     }
     
     public void StartWaveSpawning(WaveData waveData)
@@ -265,7 +269,14 @@ public class EnemySpawner : MonoBehaviour
         AppleEnemy appleEnemy = enemy.GetComponent<AppleEnemy>();
         if (appleEnemy)
         {
-            appleEnemy.Initialize(snakeBody, snakeHealth);
+            // Get health multiplier from wave manager
+            float healthMultiplier = 1f;
+            if (waveManager != null)
+            {
+                healthMultiplier = waveManager.GetCurrentHealthMultiplier();
+            }
+            
+            appleEnemy.Initialize(snakeBody, snakeHealth, healthMultiplier);
         }
     }
     

@@ -16,8 +16,11 @@ MonoBehaviour:
   evolutionSystemDescription: Combine with passive abilities to unlock powerful evolutions!
   evolutions:
   - requiredPassivePrefab: {fileID: 412156212217377529, guid: 96fa2d070a10f4645b1edae8d7dd3444, type: 3}
-    requiredPassiveLevel: 0
+    requiredPassiveLevel: 1
     unlockedLevel: 7
     evolutionName: Mega Chomp
     evolutionDescription: Every chomp is a big bite that drops a big bomb on enemies
       near mouth
+    evolutionHeadMaterial: {fileID: 0}
+    evolutionBodyMaterial: {fileID: 0}
+    evolutionAttachment: {fileID: 0}

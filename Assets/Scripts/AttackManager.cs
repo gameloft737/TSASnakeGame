@@ -206,10 +206,34 @@ public class AttackManager : MonoBehaviour
     /// </summary>
     private void ApplyEvolutionVisuals(Attack attack)
     {
-        if (snakeBody == null || attack == null) return;
+        // Try to find snakeBody if not assigned
+        if (snakeBody == null)
+        {
+            snakeBody = GetComponent<SnakeBody>();
+            if (snakeBody == null)
+            {
+                snakeBody = FindFirstObjectByType<SnakeBody>();
+            }
+        }
+        
+        if (snakeBody == null)
+        {
+            Debug.LogWarning("AttackManager: Cannot apply evolution visuals - SnakeBody not found!");
+            return;
+        }
+        
+        if (attack == null)
+        {
+            Debug.LogWarning("AttackManager: Cannot apply evolution visuals - Attack is null!");
+            return;
+        }
         
         EvolutionRequirement evolution = attack.GetCurrentEvolution();
-        if (evolution == null) return;
+        if (evolution == null)
+        {
+            Debug.LogWarning($"AttackManager: No evolution found for {attack.attackName} at level {attack.GetCurrentLevel()}");
+            return;
+        }
         
         // Verify that the evolution is actually unlocked before applying visuals
         AbilityManager abilityManager = FindFirstObjectByType<AbilityManager>();
@@ -225,6 +249,12 @@ public class AttackManager : MonoBehaviour
             }
         }
         
+        // Check if materials are assigned
+        if (evolution.evolutionHeadMaterial == null && evolution.evolutionBodyMaterial == null)
+        {
+            Debug.LogWarning($"Evolution {evolution.evolutionName} has no materials assigned! Please assign evolutionHeadMaterial and/or evolutionBodyMaterial in the EvolutionData asset.");
+        }
+        
         // Apply evolution materials and attachment
         snakeBody.ApplyAttackVariation(
             evolution.evolutionHeadMaterial,
@@ -232,7 +262,9 @@ public class AttackManager : MonoBehaviour
             evolution.evolutionAttachment
         );
         
-        Debug.Log($"Applied evolution visuals for {attack.attackName}: {evolution.evolutionName}");
+        Debug.Log($"Applied evolution visuals for {attack.attackName}: {evolution.evolutionName}" +
+                  $" (Head Material: {(evolution.evolutionHeadMaterial != null ? evolution.evolutionHeadMaterial.name : "none")}" +
+                  $", Body Material: {(evolution.evolutionBodyMaterial != null ? evolution.evolutionBodyMaterial.name : "none")})");
     }
     
     /// <summary>
@@ -240,9 +272,22 @@ public class AttackManager : MonoBehaviour
     /// </summary>
     public void RefreshEvolutionVisuals()
     {
-        if (CurrentAttack != null && CurrentAttack.IsAtEvolutionLevel())
+        Debug.Log($"RefreshEvolutionVisuals called. CurrentAttack: {(CurrentAttack != null ? CurrentAttack.attackName : "null")}");
+        
+        if (CurrentAttack == null)
         {
+            Debug.LogWarning("RefreshEvolutionVisuals: No current attack!");
+            return;
+        }
+        
+        if (CurrentAttack.IsAtEvolutionLevel())
+        {
+            Debug.Log($"CurrentAttack {CurrentAttack.attackName} is at evolution level {CurrentAttack.GetCurrentLevel()}");
             ApplyEvolutionVisuals(CurrentAttack);
+        }
+        else
+        {
+            Debug.Log($"CurrentAttack {CurrentAttack.attackName} is NOT at evolution level (level {CurrentAttack.GetCurrentLevel()})");
         }
     }
 

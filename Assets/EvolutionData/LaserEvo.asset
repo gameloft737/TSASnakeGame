@@ -16,7 +16,7 @@ MonoBehaviour:
   evolutionSystemDescription: Combine with passive abilities to unlock powerful evolutions!
   evolutions:
   - requiredPassivePrefab: {fileID: 8371761886178093558, guid: 00f646ccfa20c85418e8b8a95f602511, type: 3}
-    requiredPassiveLevel: 0
+    requiredPassiveLevel: 1
     unlockedLevel: 7
     evolutionName: Big Fat Laser
     evolutionDescription: double laser yay (edit in laser evo)

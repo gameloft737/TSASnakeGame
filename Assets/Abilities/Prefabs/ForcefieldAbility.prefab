@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6395561616418431865}
-  - component: {fileID: 1530744267269883125}
+  - component: {fileID: 925817595478814320}
   m_Layer: 0
   m_Name: ForcefieldAbility
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1530744267269883125
+--- !u!114 &925817595478814320
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,20 +41,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 4147873560298843179}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b3ab81171635dd42987e3f4f5719d58, type: 3}
+  m_Script: {fileID: 11500000, guid: 8e44cde3ec4e05749b98d2aa80be374a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   currentLevel: 1
   maxLevel: 6
   upgradeData: {fileID: 11400000, guid: ada32d1f719fd26408c1a53387014ec8, type: 2}
-  baseOrbitCount: 2
-  baseOrbitRadius: 3
-  baseRotationSpeed: 180
-  baseDamage: 15
-  baseDamageCooldown: 0.5
-  orbitingObjectPrefab: {fileID: 919132149155446097, guid: 18b253297daa2af43bf84f937e396ef5, type: 3}
-  objectScale: 0.5
-  orbitColor: {r: 1, g: 0.8, b: 0.2, a: 1}
+  baseRadius: 3
+  baseDamage: 10
+  baseDamageInterval: 0.5
+  forceFieldVisualPrefab: {fileID: 919132149155446097, guid: 7d0ec1db347059e44b0308990bdc4338, type: 3}
+  forceFieldColor: {r: 0.3, g: 0.7, b: 1, a: 0.4}
   showDebugGizmos: 1
-  hitSound: {fileID: 0}
+  visualYOffset: -0.5
+  visualThickness: 0.2
+  damageSound: {fileID: 0}
   audioSource: {fileID: 0}

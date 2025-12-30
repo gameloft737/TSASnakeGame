@@ -292,6 +292,15 @@ public class WaveManager : MonoBehaviour
         return 1f;
     }
     
+    public float GetCurrentHealthMultiplier()
+    {
+        if (useInfiniteWaves && infiniteWaveConfig)
+        {
+            return infiniteWaveConfig.GetHealthMultiplier(currentWaveIndex);
+        }
+        return 1f;
+    }
+    
     public string GetCurrentWaveName()
     {
         if (useInfiniteWaves && infiniteWaveConfig)

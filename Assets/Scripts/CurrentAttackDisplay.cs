@@ -5,6 +5,7 @@ using TMPro;
 /// <summary>
 /// Simple display component for showing the current attack in the side panel.
 /// Formatted to match the DraggableAttackSlot active attack styling.
+/// Automatically updates when the attack changes via AttackManager.OnAttacksChanged event.
 /// </summary>
 public class CurrentAttackDisplay : MonoBehaviour
 {
@@ -21,9 +22,16 @@ public class CurrentAttackDisplay : MonoBehaviour
     [SerializeField] private Color activeSlotColor = new Color(0.3f, 1f, 0.3f, 1f); // Green for active attack (matches DraggableAttackSlot)
     [SerializeField] private Color normalColor = new Color(0.8f, 0.8f, 0.8f, 1f); // Normal slot color (matches DraggableAttackSlot)
     [SerializeField] private Color maxLevelColor = new Color(0.8f, 0.6f, 0.1f, 0.8f); // Gold for max level
+    [SerializeField] private Color emptySlotColor = new Color(0.4f, 0.4f, 0.4f, 0.5f); // Gray for no attack
     
     [Header("Display Mode")]
     [SerializeField] private bool showAsActive = true; // Whether to show this as the active attack (with green highlight)
+    [SerializeField] private bool autoUpdate = true; // Whether to automatically subscribe to AttackManager events
+    
+    [Header("References")]
+    [SerializeField] private AttackManager attackManager; // Optional: will auto-find if not assigned
+    
+    private Attack currentDisplayedAttack;
     
     private void Awake()
     {
@@ -42,6 +50,116 @@ public class CurrentAttackDisplay : MonoBehaviour
             activeIndicator = transform.Find("ActiveIndicator")?.GetComponent<Image>();
         if (levelProgressBar == null)
             levelProgressBar = GetComponentInChildren<Slider>();
+    }
+    
+    private void Start()
+    {
+        // Auto-find AttackManager if not assigned
+        if (attackManager == null)
+        {
+            attackManager = FindFirstObjectByType<AttackManager>();
+        }
+        
+        // Initial update
+        if (autoUpdate)
+        {
+            RefreshDisplay();
+        }
+    }
+    
+    private void OnEnable()
+    {
+        // Subscribe to attack changes
+        if (autoUpdate)
+        {
+            AttackManager.OnAttacksChanged += OnAttacksChanged;
+        }
+    }
+    
+    private void OnDisable()
+    {
+        // Unsubscribe from attack changes
+        AttackManager.OnAttacksChanged -= OnAttacksChanged;
+    }
+    
+    /// <summary>
+    /// Called when attacks change in the AttackManager
+    /// </summary>
+    private void OnAttacksChanged()
+    {
+        RefreshDisplay();
+    }
+    
+    /// <summary>
+    /// Refreshes the display with the current attack from AttackManager
+    /// </summary>
+    public void RefreshDisplay()
+    {
+        if (attackManager == null)
+        {
+            attackManager = FindFirstObjectByType<AttackManager>();
+        }
+        
+        if (attackManager != null)
+        {
+            Attack currentAttack = attackManager.GetCurrentAttack();
+            if (currentAttack != null)
+            {
+                Initialize(currentAttack, showAsActive);
+                currentDisplayedAttack = currentAttack;
+            }
+            else
+            {
+                ShowEmpty();
+                currentDisplayedAttack = null;
+            }
+        }
+        else
+        {
+            ShowEmpty();
+            currentDisplayedAttack = null;
+        }
+    }
+    
+    /// <summary>
+    /// Shows an empty state when no attack is equipped
+    /// </summary>
+    private void ShowEmpty()
+    {
+        if (iconImage != null)
+        {
+            iconImage.enabled = false;
+        }
+        
+        if (nameText != null)
+        {
+            nameText.text = "No Attack";
+        }
+        
+        if (levelText != null)
+        {
+            levelText.text = "";
+        }
+        
+        if (statsText != null)
+        {
+            statsText.text = "Select an attack";
+        }
+        
+        if (backgroundImage != null)
+        {
+            backgroundImage.color = emptySlotColor;
+        }
+        
+        if (activeIndicator != null)
+        {
+            activeIndicator.gameObject.SetActive(false);
+        }
+        
+        if (levelProgressBar != null)
+        {
+            levelProgressBar.value = 0;
+        }
     }
     
     /// <summary>

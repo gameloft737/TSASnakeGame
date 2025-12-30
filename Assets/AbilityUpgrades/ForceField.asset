@@ -18,52 +18,52 @@ MonoBehaviour:
   abilityType: 1
   levels:
   - levelName: Level 1
-    description: Damages enemies within range every 0.5 seconds for 8 damage
-    damage: 8
+    description: Creates a protective force field that damages enemies on contact for 10 damage
+    damage: 10
     cooldown: 0.5
     duration: 0
     customStats:
     - statName: radius
-      value: 4
+      value: 3
   - levelName: Level 2
-    description: Increased damage and slightly larger radius
+    description: Slightly larger force field radius
     damage: 12
     cooldown: 0.45
     duration: 0
     customStats:
     - statName: radius
-      value: 4.5
+      value: 4
   - levelName: Level 3
-    description: More damage and faster tick rate
-    damage: 16
+    description: Expanded force field coverage
+    damage: 14
     cooldown: 0.4
     duration: 0
     customStats:
     - statName: radius
       value: 5
   - levelName: Level 4
-    description: Significantly increased damage and radius
-    damage: 22
+    description: Large force field with moderate damage
+    damage: 16
     cooldown: 0.35
     duration: 0
     customStats:
     - statName: radius
-      value: 5.5
+      value: 7
   - levelName: Level 5
-    description: Powerful aura with large radius
-    damage: 30
+    description: Massive force field radius
+    damage: 18
     cooldown: 0.3
     duration: 0
     customStats:
     - statName: radius
-      value: 6
+      value: 9
   - levelName: Level 6
-    description: Maximum power - devastating aura
-    damage: 40
+    description: Maximum radius force field - covers a huge area
+    damage: 20
     cooldown: 0.25
     duration: 0
     customStats:
     - statName: radius
-      value: 7
+      value: 12
   maxLevel: 6
   evolutionData: {fileID: 0}
