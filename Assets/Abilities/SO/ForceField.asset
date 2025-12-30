@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
-  m_Name: Lightning
+  m_Name: ForceField
   m_EditorClassIdentifier: 
-  abilityName: Lightning Strike
-  description: ability so description
-  icon: {fileID: 21300000, guid: 0e14c15ee9c137042acbb3fdb7e0a478, type: 3}
-  abilityPrefab: {fileID: 4014072926787019236, guid: 2063e2efed0fa76498ddece8b7c51660, type: 3}
+  abilityName: Force Field
+  description: Creates a damaging aura around you that hurts nearby enemies
+  icon: {fileID: 0}
+  abilityPrefab: {fileID: 4147873560298843179, guid: 8b0f646b337b29d4abb01a98f10f6a95, type: 3}
   abilityType: 1
   maxLevel: 6
-  upgradeData: {fileID: 11400000, guid: 12b79528e92a8474f8d50c4da5418973, type: 2}
+  upgradeData: {fileID: 11400000, guid: ada32d1f719fd26408c1a53387014ec8, type: 2}

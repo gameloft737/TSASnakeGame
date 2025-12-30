@@ -38,9 +38,6 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private Transform currentAttackContainer;
     [SerializeField] private GameObject currentAttackDisplayPrefab;
     
-    [Header("Attack Reorder Panel")]
-    [SerializeField] private AttackReorderPanel attackReorderPanel;
-    
     [Header("References")]
     [SerializeField] private AttackManager attackManager;
     [SerializeField] private WaveManager waveManager;
@@ -115,24 +112,11 @@ public class AttackSelectionUI : MonoBehaviour
         SpawnButtons();
         PopulateCurrentAbilities();
         PopulateCurrentAttack();
-        RefreshAttackReorderPanel();
         if (dofRoutine != null) StopCoroutine(dofRoutine);
         dofRoutine = StartCoroutine(LerpDOF(true));
         FreezeAllEntities();
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-    }
-    
-    /// <summary>
-    /// Refresh the attack reorder panel to show current attacks
-    /// </summary>
-    private void RefreshAttackReorderPanel()
-    {
-        if (attackReorderPanel != null)
-        {
-            attackReorderPanel.gameObject.SetActive(true);
-            attackReorderPanel.RefreshSlots();
-        }
     }
     
     public void ShowDeathScreen(bool show)
@@ -173,14 +157,128 @@ public class AttackSelectionUI : MonoBehaviour
         selectedAbility = null;
         selectedFallback = FallbackOption.None;
 
-        List<object> upgradeableOptions = GetUpgradeableOptions();
-        if (upgradeableOptions.Count == 0) { SpawnFallbackButtons(); return; }
+        // Check if this is the first attack selection (player has no attack yet)
+        bool isFirstSelection = attackManager == null || attackManager.GetAttackCount() == 0;
         
-        List<object> selectedOptions = GetRandomOptions(upgradeableOptions, optionsToShow);
+        if (isFirstSelection)
+        {
+            // First selection: Show only 3 attack options (no abilities)
+            SpawnFirstSelectionButtons();
+        }
+        else
+        {
+            // Subsequent selections: Show active abilities and current attack upgrade only
+            SpawnSubsequentSelectionButtons();
+        }
+    }
+    
+    /// <summary>
+    /// Spawns buttons for the first attack selection (3 attack options only)
+    /// </summary>
+    private void SpawnFirstSelectionButtons()
+    {
+        List<Attack> availableAttacks = new List<Attack>();
+        
+        // Get all possible attacks
+        if (possibleAttacks != null && possibleAttacks.Count > 0)
+        {
+            foreach (Attack attack in possibleAttacks)
+            {
+                if (attack != null)
+                {
+                    availableAttacks.Add(attack);
+                }
+            }
+        }
+        
+        if (availableAttacks.Count == 0)
+        {
+            SpawnFallbackButtons();
+            return;
+        }
+        
+        // Select 3 random attacks
+        List<Attack> selectedAttacks = new List<Attack>();
+        List<Attack> pool = new List<Attack>(availableAttacks);
+        
+        for (int i = 0; i < 3 && pool.Count > 0; i++)
+        {
+            int randomIndex = UnityEngine.Random.Range(0, pool.Count);
+            selectedAttacks.Add(pool[randomIndex]);
+            pool.RemoveAt(randomIndex);
+        }
+        
+        // Spawn buttons for selected attacks
+        foreach (Attack attack in selectedAttacks)
+        {
+            SpawnAttackButton(attack);
+        }
+    }
+    
+    /// <summary>
+    /// Spawns buttons for subsequent selections (active abilities + current attack upgrade only)
+    /// </summary>
+    private void SpawnSubsequentSelectionButtons()
+    {
+        List<object> options = new List<object>();
+        
+        // Add current attack upgrade if available
+        Attack currentAttack = attackManager?.GetCurrentAttack();
+        if (currentAttack != null && currentAttack.CanUpgrade())
+        {
+            options.Add(currentAttack);
+        }
+        
+        // Add active abilities only (not passive)
+        bool activeSlotsFull = abilityManager != null && !abilityManager.CanAddActiveAbility();
+        
+        foreach (AbilitySO abilitySO in possibleAbilities)
+        {
+            if (abilitySO == null) continue;
+            
+            // Only include active abilities
+            if (abilitySO.abilityType != AbilityType.Active) continue;
+            
+            int currentLevel = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0;
+            bool hasAbility = currentLevel > 0;
+            
+            if (hasAbility)
+            {
+                // Can upgrade if not at max level
+                if (currentLevel < abilitySO.maxLevel)
+                {
+                    options.Add(abilitySO);
+                }
+            }
+            else
+            {
+                // Can add new active ability if slots available
+                if (!activeSlotsFull)
+                {
+                    options.Add(abilitySO);
+                }
+            }
+        }
+        
+        if (options.Count == 0)
+        {
+            SpawnFallbackButtons();
+            return;
+        }
+        
+        // Select random options up to optionsToShow
+        List<object> selectedOptions = GetRandomOptions(options, optionsToShow);
+        
         foreach (object option in selectedOptions)
         {
-            if (option is Attack attack) SpawnAttackButton(attack);
-            else if (option is AbilitySO abilitySO) SpawnAbilityButton(abilitySO);
+            if (option is Attack attack)
+            {
+                SpawnAttackButton(attack);
+            }
+            else if (option is AbilitySO abilitySO)
+            {
+                SpawnAbilityButton(abilitySO);
+            }
         }
     }
     
@@ -213,67 +311,6 @@ public class AttackSelectionUI : MonoBehaviour
         if (button != null) { button.onClick.RemoveAllListeners(); button.onClick.AddListener(() => OnFallbackSelected(fallbackType)); }
     }
     
-    private List<object> GetUpgradeableOptions()
-    {
-        List<object> options = new List<object>();
-        
-        // Use possibleAttacks if populated, otherwise fall back to attackManager.attacks
-        List<Attack> attacksToCheck = new List<Attack>();
-        if (possibleAttacks != null && possibleAttacks.Count > 0)
-        {
-            attacksToCheck = possibleAttacks;
-        }
-        else if (attackManager != null && attackManager.attacks != null && attackManager.attacks.Count > 0)
-        {
-            attacksToCheck = attackManager.attacks;
-        }
-        
-        bool canAddMoreAttacks = attackManager != null && attackManager.CanAddAttack();
-        int ownedAttackCount = attackManager != null ? attackManager.GetAttackCount() : 0;
-        
-        Debug.Log($"[AttackSelectionUI] Checking {attacksToCheck.Count} attacks, owned={ownedAttackCount}, canAddMore={canAddMoreAttacks}");
-        
-        foreach (Attack attack in attacksToCheck)
-        {
-            if (attack == null) continue;
-            
-            bool ownsThisAttack = attackManager != null && attackManager.HasAttack(attack);
-            
-            // If player owns this attack, check if it can be upgraded
-            if (ownsThisAttack)
-            {
-                if (attack.CanUpgrade())
-                {
-                    Debug.Log($"[AttackSelectionUI] Adding attack (can upgrade): {attack.attackName}");
-                    options.Add(attack);
-                }
-            }
-            // If player doesn't own this attack and has room for more, add it as an option
-            else if (canAddMoreAttacks)
-            {
-                Debug.Log($"[AttackSelectionUI] Adding attack (new, slots available): {attack.attackName}");
-                options.Add(attack);
-            }
-        }
-        
-        bool passiveSlotsFull = abilityManager != null && !abilityManager.CanAddPassiveAbility();
-        bool activeSlotsFull = abilityManager != null && !abilityManager.CanAddActiveAbility();
-        
-        foreach (AbilitySO abilitySO in possibleAbilities)
-        {
-            if (abilitySO == null) continue;
-            int currentLevel = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0;
-            bool hasAbility = currentLevel > 0;
-            
-            if (hasAbility) { if (currentLevel < abilitySO.maxLevel) options.Add(abilitySO); }
-            else
-            {
-                if (abilitySO.abilityType == AbilityType.Passive && !passiveSlotsFull) options.Add(abilitySO);
-                else if (abilitySO.abilityType == AbilityType.Active && !activeSlotsFull) options.Add(abilitySO);
-            }
-        }
-        return options;
-    }
     
     private List<object> GetRandomOptions(List<object> available, int count)
     {
@@ -528,17 +565,13 @@ public class AttackSelectionUI : MonoBehaviour
                     selectedAttack.TryUpgrade();
                     Debug.Log($"Upgraded attack: {selectedAttack.attackName}");
                 }
-                
-                // Don't automatically switch to this attack - let player keep their current active attack
             }
             else
             {
-                // Player doesn't own this attack - add it to their collection
-                // The attack will be added to the end of the list, not made active
+                // First attack selection - add the attack as the player's only attack
                 if (attackManager.AddAttack(selectedAttack))
                 {
-                    Debug.Log($"Added new attack: {selectedAttack.attackName}");
-                    // Don't switch to the new attack - keep the current active attack
+                    Debug.Log($"Selected first attack: {selectedAttack.attackName}");
                 }
             }
         }

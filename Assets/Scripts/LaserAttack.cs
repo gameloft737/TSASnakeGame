@@ -335,7 +335,7 @@ public class LaserAttack : Attack
 
                 if (isDamaging && currentTarget != null)
                 {
-                    currentTarget.TakeDamage(damage * Time.deltaTime);
+                    currentTarget.TakeDamage(GetDamage());
                 }
             }
             else
@@ -391,7 +391,7 @@ public class LaserAttack : Attack
 
                 if (isDamaging && currentTarget != null)
                 {
-                    currentTarget.TakeDamage(damage * Time.deltaTime);
+                    currentTarget.TakeDamage(GetDamage());
                 }
             }
             else

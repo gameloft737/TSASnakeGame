@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
-  m_Name: Range
+  m_Name: Regen
   m_EditorClassIdentifier: 
-  abilityName: Range
-  description: Increase range by 20%
-  icon: {fileID: 0}
-  abilityPrefab: {fileID: 4207583943138578996, guid: 07c763164f4c6e6429e98a945612637a, type: 3}
+  abilityName: Regeneration
+  description: Heal 0.5 HP per second
+  icon: {fileID: 21300000, guid: a19b0fb2aa17b1c4881b6987ccd6c493, type: 3}
+  abilityPrefab: {fileID: 1577351419451060289, guid: 960819189910b98468cbe6afb117c1bc, type: 3}
   abilityType: 0
   maxLevel: 5
   upgradeData: {fileID: 0}

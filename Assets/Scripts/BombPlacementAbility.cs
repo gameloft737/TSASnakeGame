@@ -117,8 +117,8 @@ public class BombPlacementAbility : BaseAbility
         {
             BodyPart part = bodyParts[i];
             
-            // Instantiate bomb at body part position
-            GameObject bomb = Instantiate(bombPrefab, part.transform.position, Quaternion.identity);
+            // Instantiate bomb at body part position with matching rotation
+            GameObject bomb = Instantiate(bombPrefab, part.transform.position, part.transform.rotation);
             Bomb bombComponent = bomb.GetComponent<Bomb>();
             bombComponent.damage = damage;
             
@@ -128,6 +128,10 @@ public class BombPlacementAbility : BaseAbility
             
             // Parent to body part so it follows
             bomb.transform.SetParent(part.transform);
+            
+            // Reset local position and rotation to ensure proper alignment
+            bomb.transform.localPosition = Vector3.zero;
+            bomb.transform.localRotation = Quaternion.identity;
             
             activeBombs.Add(bomb);
         }

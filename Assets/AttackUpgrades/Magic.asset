@@ -18,135 +18,135 @@ MonoBehaviour:
   levels:
   - levelName: Level 1
     description: Fires 1 slow orb with weak homing
-    damage: 8
-    range: 20
-    minFuelToActivate: 30
-    fuelRechargeRate: 15
-    burstFuelCost: 25
+    damage: 5
+    range: 18
+    minFuelToActivate: 35
+    fuelRechargeRate: 12
+    burstFuelCost: 30
     continuousDrainRate: 0
     customStats:
     - statName: projectileCount
       value: 1
+    - statName: projectileSpeed
+      value: 8
+    - statName: homingStrength
+      value: 3
+    - statName: targetingRange
+      value: 18
+    - statName: spreadAngle
+      value: 0
+  - levelName: Level 2
+    description: Fires 1 faster orb with improved homing
+    damage: 8
+    range: 20
+    minFuelToActivate: 33
+    fuelRechargeRate: 14
+    burstFuelCost: 28
+    continuousDrainRate: 0
+    customStats:
+    - statName: projectileCount
+      value: 1
+    - statName: projectileSpeed
+      value: 9
+    - statName: homingStrength
+      value: 4
+    - statName: targetingRange
+      value: 20
+    - statName: spreadAngle
+      value: 0
+  - levelName: Level 3
+    description: Fires 2 orbs with good homing
+    damage: 10
+    range: 22
+    minFuelToActivate: 31
+    fuelRechargeRate: 16
+    burstFuelCost: 26
+    continuousDrainRate: 0
+    customStats:
+    - statName: projectileCount
+      value: 2
     - statName: projectileSpeed
       value: 10
     - statName: homingStrength
       value: 5
     - statName: targetingRange
-      value: 20
+      value: 22
     - statName: spreadAngle
-      value: 0
-  - levelName: Level 2
-    description: Fires 1 faster orb with improved homing
-    damage: 12
-    range: 24
-    minFuelToActivate: 28
-    fuelRechargeRate: 17
-    burstFuelCost: 23
+      value: 20
+  - levelName: Level 4
+    description: Fires 2 fast orbs with strong homing
+    damage: 14
+    range: 26
+    minFuelToActivate: 29
+    fuelRechargeRate: 18
+    burstFuelCost: 24
     continuousDrainRate: 0
     customStats:
     - statName: projectileCount
-      value: 1
+      value: 2
     - statName: projectileSpeed
       value: 12
     - statName: homingStrength
       value: 7
     - statName: targetingRange
-      value: 24
-    - statName: spreadAngle
-      value: 0
-  - levelName: Level 3
-    description: Fires 2 orbs with good homing
-    damage: 16
-    range: 28
-    minFuelToActivate: 26
-    fuelRechargeRate: 19
-    burstFuelCost: 21
-    continuousDrainRate: 0
-    customStats:
-    - statName: projectileCount
-      value: 2
-    - statName: projectileSpeed
-      value: 14
-    - statName: homingStrength
-      value: 9
-    - statName: targetingRange
-      value: 28
-    - statName: spreadAngle
-      value: 20
-  - levelName: Level 4
-    description: Fires 2 fast orbs with strong homing
-    damage: 22
-    range: 32
-    minFuelToActivate: 24
-    fuelRechargeRate: 21
-    burstFuelCost: 19
-    continuousDrainRate: 0
-    customStats:
-    - statName: projectileCount
-      value: 2
-    - statName: projectileSpeed
-      value: 16
-    - statName: homingStrength
-      value: 11
-    - statName: targetingRange
-      value: 32
+      value: 26
     - statName: spreadAngle
       value: 25
   - levelName: Level 5
     description: Fires 3 fast orbs with excellent homing
-    damage: 30
-    range: 36
-    minFuelToActivate: 22
-    fuelRechargeRate: 23
-    burstFuelCost: 17
+    damage: 18
+    range: 30
+    minFuelToActivate: 27
+    fuelRechargeRate: 20
+    burstFuelCost: 22
     continuousDrainRate: 0
     customStats:
     - statName: projectileCount
       value: 3
     - statName: projectileSpeed
-      value: 18
+      value: 14
     - statName: homingStrength
-      value: 13
+      value: 9
     - statName: targetingRange
-      value: 36
+      value: 30
     - statName: spreadAngle
       value: 30
   - levelName: Level 6
     description: Fires 4 rapid orbs with perfect homing
-    damage: 40
-    range: 42
-    minFuelToActivate: 20
-    fuelRechargeRate: 25
-    burstFuelCost: 15
+    damage: 25
+    range: 35
+    minFuelToActivate: 25
+    fuelRechargeRate: 22
+    burstFuelCost: 20
     continuousDrainRate: 0
     customStats:
     - statName: projectileCount
       value: 4
     - statName: projectileSpeed
-      value: 20
+      value: 16
     - statName: homingStrength
-      value: 15
+      value: 11
     - statName: targetingRange
-      value: 42
+      value: 35
     - statName: spreadAngle
       value: 40
   - levelName: Level 7 - Arcane Barrage
     description: EVOLUTION - Unleashes 6 piercing arcane orbs with devastating power
-    damage: 60
-    range: 50
-    minFuelToActivate: 15
-    fuelRechargeRate: 30
-    burstFuelCost: 12
+    damage: 35
+    range: 42
+    minFuelToActivate: 22
+    fuelRechargeRate: 25
+    burstFuelCost: 18
     continuousDrainRate: 0
     customStats:
     - statName: projectileCount
       value: 6
     - statName: projectileSpeed
-      value: 25
+      value: 18
     - statName: homingStrength
-      value: 20
+      value: 14
     - statName: targetingRange
-      value: 50
+      value: 42
     - statName: spreadAngle
       value: 60
   maxLevel: 7

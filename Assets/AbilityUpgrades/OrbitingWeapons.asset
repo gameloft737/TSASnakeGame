@@ -1,0 +1,93 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f58b0c76f8afbb74390e1fdfdb66d050, type: 3}
+  m_Name: OrbitingWeapons
+  m_EditorClassIdentifier: 
+  abilityName: Orbiting Weapons
+  abilityDescription: Spinning weapons orbit around you, damaging enemies on contact
+  abilityIcon: {fileID: 0}
+  abilityType: 1
+  levels:
+  - levelName: Level 1
+    description: 2 orbiting weapons dealing 12 damage each
+    damage: 12
+    cooldown: 0.5
+    duration: 0
+    customStats:
+    - statName: orbitCount
+      value: 2
+    - statName: orbitRadius
+      value: 3
+    - statName: rotationSpeed
+      value: 180
+  - levelName: Level 2
+    description: 3 orbiting weapons with increased damage
+    damage: 15
+    cooldown: 0.45
+    duration: 0
+    customStats:
+    - statName: orbitCount
+      value: 3
+    - statName: orbitRadius
+      value: 3.5
+    - statName: rotationSpeed
+      value: 200
+  - levelName: Level 3
+    description: 4 orbiting weapons spinning faster
+    damage: 18
+    cooldown: 0.4
+    duration: 0
+    customStats:
+    - statName: orbitCount
+      value: 4
+    - statName: orbitRadius
+      value: 4
+    - statName: rotationSpeed
+      value: 220
+  - levelName: Level 4
+    description: 5 orbiting weapons with larger orbit
+    damage: 22
+    cooldown: 0.35
+    duration: 0
+    customStats:
+    - statName: orbitCount
+      value: 5
+    - statName: orbitRadius
+      value: 4.5
+    - statName: rotationSpeed
+      value: 250
+  - levelName: Level 5
+    description: 6 orbiting weapons - deadly ring of destruction
+    damage: 28
+    cooldown: 0.3
+    duration: 0
+    customStats:
+    - statName: orbitCount
+      value: 6
+    - statName: orbitRadius
+      value: 5
+    - statName: rotationSpeed
+      value: 280
+  - levelName: Level 6
+    description: 8 orbiting weapons - ultimate spinning death
+    damage: 35
+    cooldown: 0.25
+    duration: 0
+    customStats:
+    - statName: orbitCount
+      value: 8
+    - statName: orbitRadius
+      value: 5.5
+    - statName: rotationSpeed
+      value: 320
+  maxLevel: 6
+  evolutionData: {fileID: 0}

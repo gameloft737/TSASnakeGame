@@ -8,15 +8,8 @@ public class AttackManager : MonoBehaviour
     public static event Action OnAttacksChanged;
     
     [Header("Attack Settings")]
-    [Tooltip("Attacks the player currently owns. First attack (index 0) is the active one. Leave empty to start with no attacks.")]
+    [Tooltip("The player's single attack. Player can only have one attack that they upgrade.")]
     public List<Attack> attacks = new List<Attack>();
-    
-    [Header("Attack Limits")]
-    [SerializeField] private int maxAttacks = 4;
-    
-    [Header("Startup")]
-    [Tooltip("If true, clears all attacks on game start so player starts with none.")]
-    [SerializeField] private bool clearAttacksOnStart = true;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -24,7 +17,7 @@ public class AttackManager : MonoBehaviour
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
 
-    // The active attack is always the first one (index 0)
+    // The player's single attack
     private Attack CurrentAttack => attacks.Count > 0 ? attacks[0] : null;
     
     private bool isHoldingAttack = false;
@@ -47,20 +40,8 @@ public class AttackManager : MonoBehaviour
             snakeBody = GetComponent<SnakeBody>();
         }
         
-        // Clear attacks on start if configured (so player starts with no attacks)
-        if (clearAttacksOnStart)
-        {
-            ClearAllAttacks();
-        }
-        else
-        {
-            // Apply initial variation and set as current attack
-            ApplyCurrentVariation();
-            if (CurrentAttack != null)
-            {
-                CurrentAttack.SetAsCurrentAttack();
-            }
-        }
+        // Always start with no attack - player selects their attack after wave 1
+        ClearAllAttacks();
     }
 
     private void Update()
@@ -102,124 +83,24 @@ public class AttackManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Moves an attack to the first slot, making it the active attack
-    /// </summary>
-    public void SetActiveAttack(int index)
-    {
-        if (index <= 0 || index >= attacks.Count) return;
-        
-        if (isHoldingAttack && CurrentAttack != null)
-        {
-            CurrentAttack.StopUsing();
-            isHoldingAttack = false;
-        }
-
-        // Move the attack at index to position 0
-        Attack attackToActivate = attacks[index];
-        attacks.RemoveAt(index);
-        attacks.Insert(0, attackToActivate);
-        
-        ApplyCurrentVariation();
-        if (CurrentAttack != null)
-        {
-            CurrentAttack.SetAsCurrentAttack();
-        }
-        
-        OnAttacksChanged?.Invoke();
-    }
-    
-    /// <summary>
-    /// Swaps two attacks in the list
-    /// </summary>
-    public void SwapAttacks(int indexA, int indexB)
-    {
-        if (indexA < 0 || indexA >= attacks.Count || indexB < 0 || indexB >= attacks.Count) return;
-        if (indexA == indexB) return;
-        
-        if (isHoldingAttack && CurrentAttack != null)
-        {
-            CurrentAttack.StopUsing();
-            isHoldingAttack = false;
-        }
-        
-        Attack temp = attacks[indexA];
-        attacks[indexA] = attacks[indexB];
-        attacks[indexB] = temp;
-        
-        // If we swapped something into position 0, update the active attack
-        if (indexA == 0 || indexB == 0)
-        {
-            ApplyCurrentVariation();
-            if (CurrentAttack != null)
-            {
-                CurrentAttack.SetAsCurrentAttack();
-            }
-        }
-        
-        OnAttacksChanged?.Invoke();
-    }
-    
-    /// <summary>
-    /// Moves an attack from one index to another
-    /// </summary>
-    public void MoveAttack(int fromIndex, int toIndex)
-    {
-        if (fromIndex < 0 || fromIndex >= attacks.Count || toIndex < 0 || toIndex >= attacks.Count) return;
-        if (fromIndex == toIndex) return;
-        
-        if (isHoldingAttack && CurrentAttack != null)
-        {
-            CurrentAttack.StopUsing();
-            isHoldingAttack = false;
-        }
-        
-        Attack attackToMove = attacks[fromIndex];
-        attacks.RemoveAt(fromIndex);
-        attacks.Insert(toIndex, attackToMove);
-        
-        // If position 0 changed, update the active attack
-        if (fromIndex == 0 || toIndex == 0)
-        {
-            ApplyCurrentVariation();
-            if (CurrentAttack != null)
-            {
-                CurrentAttack.SetAsCurrentAttack();
-            }
-        }
-        
-        OnAttacksChanged?.Invoke();
-    }
-
-    /// <summary>
-    /// Adds a new attack to the player's collection
+    /// Sets the player's attack (can only have one attack)
     /// </summary>
     public bool AddAttack(Attack newAttack)
     {
         if (newAttack == null) return false;
         
-        // Check if already owned
-        if (attacks.Contains(newAttack))
+        // Player can only have one attack
+        if (attacks.Count > 0)
         {
-            Debug.Log($"Already own attack: {newAttack.attackName}");
-            return false;
-        }
-        
-        // Check max limit
-        if (attacks.Count >= maxAttacks)
-        {
-            Debug.LogWarning($"Cannot add attack {newAttack.attackName}: max attacks ({maxAttacks}) reached!");
+            Debug.LogWarning($"Player already has an attack: {attacks[0].attackName}. Cannot add {newAttack.attackName}");
             return false;
         }
         
         attacks.Add(newAttack);
-        Debug.Log($"Added attack: {newAttack.attackName}. Total attacks: {attacks.Count}");
+        Debug.Log($"Set player attack: {newAttack.attackName}");
         
-        // If this is the first attack, make it active
-        if (attacks.Count == 1)
-        {
-            ApplyCurrentVariation();
-            CurrentAttack?.SetAsCurrentAttack();
-        }
+        ApplyCurrentVariation();
+        CurrentAttack?.SetAsCurrentAttack();
         
         OnAttacksChanged?.Invoke();
         return true;
@@ -234,11 +115,11 @@ public class AttackManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Checks if a new attack can be added
+    /// Checks if a new attack can be added (only if player has no attack)
     /// </summary>
     public bool CanAddAttack()
     {
-        return attacks.Count < maxAttacks;
+        return attacks.Count == 0;
     }
     
     /// <summary>
@@ -255,37 +136,6 @@ public class AttackManager : MonoBehaviour
         attacks.Clear();
         Debug.Log("Cleared all attacks");
         OnAttacksChanged?.Invoke();
-    }
-    
-    /// <summary>
-    /// Gets the maximum number of attacks allowed
-    /// </summary>
-    public int GetMaxAttacks() => maxAttacks;
-    
-    /// <summary>
-    /// Legacy method - sets the attack at index as active by moving it to position 0
-    /// </summary>
-    public void SetAttackIndex(int index)
-    {
-        SetActiveAttack(index);
-    }
-
-    public void NextAttack()
-    {
-        // Cycle through attacks by moving the first one to the end
-        if (attacks.Count > 1)
-        {
-            MoveAttack(0, attacks.Count - 1);
-        }
-    }
-
-    public void PreviousAttack()
-    {
-        // Cycle through attacks by moving the last one to the front
-        if (attacks.Count > 1)
-        {
-            MoveAttack(attacks.Count - 1, 0);
-        }
     }
     
     /// <summary>
@@ -386,34 +236,6 @@ public class AttackManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Manually apply a specific variation from an attack.
-    /// Only applies attachment objects for regular attacks.
-    /// Material changes are only applied for evolution attacks.
-    /// </summary>
-    public void ApplyVariation(int attackIndex)
-    {
-        if (snakeBody == null || attackIndex < 0 || attackIndex >= attacks.Count) return;
-        
-        Attack attack = attacks[attackIndex];
-        AttackVariation variation = attack.GetVisualVariation();
-        
-        // Check if this attack is at an evolution level
-        if (attack.IsAtEvolutionLevel())
-        {
-            // Apply evolution visuals (including materials)
-            ApplyEvolutionVisuals(attack);
-        }
-        else
-        {
-            // For non-evolution attacks, only apply attachment (no material changes)
-            if (variation != null)
-            {
-                snakeBody.ApplyAttackVariation(null, null, variation.attachmentObject);
-            }
-        }
-    }
-    
-    /// <summary>
     /// Forces application of evolution visuals for the current attack if it's evolved
     /// </summary>
     public void RefreshEvolutionVisuals()
@@ -426,7 +248,7 @@ public class AttackManager : MonoBehaviour
 
     public Attack GetCurrentAttack() => CurrentAttack;
     
-    public int GetCurrentAttackIndex() => 0; // Active attack is always at index 0
+    public int GetCurrentAttackIndex() => 0; // Only one attack, always at index 0
     
     public Attack GetAttackAtIndex(int index)
     {
