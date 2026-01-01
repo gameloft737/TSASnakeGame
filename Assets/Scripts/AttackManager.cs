@@ -16,7 +16,7 @@ public class AttackManager : MonoBehaviour
     
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
-
+[SerializeField] private GameObject fuelObj;
     // The player's single attack
     private Attack CurrentAttack => attacks.Count > 0 ? attacks[0] : null;
     
@@ -26,6 +26,7 @@ public class AttackManager : MonoBehaviour
 
     private void Start()
     {
+        fuelObj.SetActive(false);
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -89,6 +90,7 @@ public class AttackManager : MonoBehaviour
     {
         if (newAttack == null) return false;
         
+        fuelObj.SetActive(true);
         // Player can only have one attack
         if (attacks.Count > 0)
         {

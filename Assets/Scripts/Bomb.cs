@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Bomb that explodes when touched by an apple, killing all apples in radius
+/// Has an arming delay to prevent immediate explosions after placement
 /// </summary>
 public class Bomb : MonoBehaviour
 {
@@ -26,6 +27,7 @@ public class Bomb : MonoBehaviour
     
     public float damage;
     private bool hasExploded = false;
+    private bool isArmed = false; // Bomb can't explode until armed
     private Collider bombCollider;
 
     private void Start()
@@ -43,9 +45,25 @@ public class Bomb : MonoBehaviour
         StartCoroutine(ProximityDetectionRoutine());
     }
 
+    /// <summary>
+    /// Arms the bomb after a delay. Bomb can't explode until armed.
+    /// </summary>
+    public void ArmBomb(float delay)
+    {
+        StartCoroutine(ArmAfterDelay(delay));
+    }
+
+    private IEnumerator ArmAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        isArmed = true;
+        Debug.Log($"Bomb armed at {transform.position}");
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log($"Bomb OnTriggerEnter: {other.gameObject.name}");
+        // Check if bomb is armed before allowing explosion
+        if (!isArmed) return;
         
         // Check if an apple touched the bomb
         if (!hasExploded && other.GetComponentInParent<AppleEnemy>() != null)
@@ -57,7 +75,8 @@ public class Bomb : MonoBehaviour
     
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log($"Bomb OnCollisionEnter: {collision.gameObject.name}");
+        // Check if bomb is armed before allowing explosion
+        if (!isArmed) return;
         
         // Check if an apple touched the bomb (backup for non-trigger colliders)
         if (!hasExploded && collision.gameObject.GetComponentInParent<AppleEnemy>() != null)
@@ -77,19 +96,23 @@ public class Bomb : MonoBehaviour
         
         while (!hasExploded)
         {
-            // Check for apples within trigger radius
-            Collider[] nearbyColliders = Physics.OverlapSphere(transform.position, triggerRadius, appleLayer);
-            
-            if (nearbyColliders.Length > 0)
+            // Only check proximity if bomb is armed
+            if (isArmed)
             {
-                foreach (Collider col in nearbyColliders)
+                // Check for apples within trigger radius
+                Collider[] nearbyColliders = Physics.OverlapSphere(transform.position, triggerRadius, appleLayer);
+                
+                if (nearbyColliders.Length > 0)
                 {
-                    AppleEnemy apple = col.GetComponentInParent<AppleEnemy>();
-                    if (apple != null)
+                    foreach (Collider col in nearbyColliders)
                     {
-                        Debug.Log($"Bomb triggered by apple via proximity detection! Apple: {apple.gameObject.name}");
-                        Explode();
-                        yield break;
+                        AppleEnemy apple = col.GetComponentInParent<AppleEnemy>();
+                        if (apple != null)
+                        {
+                            Debug.Log($"Bomb triggered by apple via proximity detection! Apple: {apple.gameObject.name}");
+                            Explode();
+                            yield break;
+                        }
                     }
                 }
             }
@@ -151,20 +174,32 @@ public class Bomb : MonoBehaviour
         // Destroy the bomb AFTER the longest delay + a small buffer
         Destroy(gameObject, maxDeathDelay + 0.1f);
     }
+    
     private IEnumerator KillAppleAfterDelay(AppleEnemy apple, float delay)
     {
         yield return new WaitForSeconds(delay);
         
         if (apple != null)
         {
-            Debug.Log("ffffffffffffffffffffffffffffffff");
             apple.TakeDamage(damage);
         }
     }
 
     private void OnDrawGizmosSelected()
     {
+        // Draw explosion radius
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, explosionRadius);
+        
+        // Draw trigger radius
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, triggerRadius);
+        
+        // Draw armed/unarmed state
+        if (Application.isPlaying)
+        {
+            Gizmos.color = isArmed ? Color.green : Color.grey;
+            Gizmos.DrawSphere(transform.position, 0.5f);
+        }
     }
 }

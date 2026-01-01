@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 /// <summary>
-/// Places bombs on every other body part (excluding first and last 3)
+/// Places bombs on every other body part (excluding first 3)
 /// Bombs respawn after a cooldown period when all bombs have exploded
 /// </summary>
 public class BombPlacementAbility : BaseAbility
@@ -11,6 +11,7 @@ public class BombPlacementAbility : BaseAbility
     [Header("Bomb Settings")]
     [SerializeField] private GameObject bombPrefab;
     [SerializeField] private float defaultRespawnCooldown = 10f; // Default cooldown if no upgrade data
+    [SerializeField] private float bombArmDelay = 5f; // Bombs can't explode for this many seconds after placement
     
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
@@ -98,29 +99,37 @@ public class BombPlacementAbility : BaseAbility
         
         int totalParts = bodyParts.Count;
 
-        // Need at least 7 parts (3 + 1 + 3) to place any bombs
-        if (totalParts < 7)
+        // Need at least 4 parts (3 safe + 1 for bomb) to place any bombs
+        if (totalParts < 4)
         {
             Debug.Log("BombPlacementAbility: Not enough body parts to place bombs!");
             return;
         }
 
-        // Calculate starting position based on level (higher level = closer to head)
-        // Level 1: Start from 4th from last
-        // Level 2: Start from 5th from last (closer to head)
-        // Level 3: Start from 6th from last (even closer to head)
-        int startIndex = totalParts - (3 + currentLevel); // Dynamically adjust based on level
-        int endIndex = 3; // Stop before first 3 (tail area)
+        // Only safe zone is the first 3 segments (tail area, indices 0, 1, 2)
+        int startIndex = 3; // Start right after the safe zone
+        int endIndex = totalParts - 1; // Go all the way to the last segment
 
-        // Place bombs with gap of 3 between them (every 4th segment)
-        for (int i = startIndex; i > endIndex; i -= 4)
+        // Calculate spacing between bombs based on level
+        // Level 1: Every 3rd segment (gap of 2)
+        // Level 2: Every 2nd segment (gap of 1)
+        // Level 3+: Every segment (no gap)
+        int spacing = Mathf.Max(1, 4 - currentLevel); // 3, 2, 1, 1, 1...
+
+        // Place bombs with calculated spacing
+        for (int i = startIndex; i <= endIndex; i += spacing)
         {
             BodyPart part = bodyParts[i];
             
             // Instantiate bomb at body part position with matching rotation
             GameObject bomb = Instantiate(bombPrefab, part.transform.position, part.transform.rotation);
             Bomb bombComponent = bomb.GetComponent<Bomb>();
-            bombComponent.damage = damage;
+            if (bombComponent != null)
+            {
+                bombComponent.damage = damage;
+                // Arm the bomb after delay
+                bombComponent.ArmBomb(bombArmDelay);
+            }
             
             // Subscribe to bomb explosion event
             BombExplosionNotifier notifier = bomb.AddComponent<BombExplosionNotifier>();
@@ -138,7 +147,7 @@ public class BombPlacementAbility : BaseAbility
 
         hasPlacedBombs = true;
         bombsExploded = 0; // Reset counter
-        Debug.Log($"BombPlacementAbility: Placed {activeBombs.Count} bombs at level {currentLevel}!");
+        Debug.Log($"BombPlacementAbility: Placed {activeBombs.Count} bombs at level {currentLevel} with spacing {spacing}!");
     }
 
     /// <summary>
@@ -198,7 +207,7 @@ public class BombPlacementAbility : BaseAbility
     public bool IsWaitingToRespawn() => isWaitingToRespawn;
 
     /// <summary>
-    /// Levels up the ability and repositions bombs closer to head
+    /// Levels up the ability and places bombs more densely
     /// </summary>
     public override bool LevelUp()
     {
@@ -211,7 +220,7 @@ public class BombPlacementAbility : BaseAbility
         currentLevel++;
         Debug.Log($"{GetType().Name} leveled up to {currentLevel}!");
         
-        // Clear existing bombs and reposition
+        // Clear existing bombs and reposition with new spacing
         ClearBombs();
         hasPlacedBombs = false;
         PlaceBombs();

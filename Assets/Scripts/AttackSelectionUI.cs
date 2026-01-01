@@ -66,6 +66,8 @@ public class AttackSelectionUI : MonoBehaviour
     private AbilitySO selectedAbility = null;
     private FallbackOption selectedFallback = FallbackOption.None;
     private bool isUIOpen = false;
+    private bool isTransitioning = false;
+    private Coroutine currentTransition = null;
     private const float ANIM_TIME = 0.66f;
     
     private enum FallbackOption { None, Heal, SpeedBoost }
@@ -90,6 +92,7 @@ public class AttackSelectionUI : MonoBehaviour
         if (deathScreenPanel) deathScreenPanel.SetActive(false);
         if (dof) dof.active = false;
         isUIOpen = false;
+        isTransitioning = false;
     }
 
     private void FindReferences()
@@ -105,16 +108,32 @@ public class AttackSelectionUI : MonoBehaviour
 
     public void ShowAttackSelection(AttackManager manager)
     {
-        if (isUIOpen) return;
+        if (isUIOpen || isTransitioning) return;
         if (abilityCollector != null && abilityCollector.IsUIOpen()) return;
         
         attackManager = manager;
-        StartCoroutine(OpenUI());
+        
+        if (currentTransition != null)
+        {
+            StopCoroutine(currentTransition);
+            currentTransition = null;
+        }
+        
+        currentTransition = StartCoroutine(OpenUI());
     }
     
     private IEnumerator OpenUI()
     {
+        isTransitioning = true;
         isUIOpen = true;
+        
+        // Force animator state immediately
+        if (uiAnimator)
+        {
+            uiAnimator.SetBool(openBool, true);
+            // Force update to ensure state is applied
+            uiAnimator.Update(0f);
+        }
         
         FreezeAllEntities();
         if (cameraManager) cameraManager.SwitchToPauseCamera();
@@ -124,13 +143,21 @@ public class AttackSelectionUI : MonoBehaviour
         PopulateCurrentAbilities();
         PopulateCurrentAttack();
         
-        if (uiAnimator) uiAnimator.SetBool(openBool, true);
         StartCoroutine(DOFLerp(true));
         
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
         
         yield return new WaitForSecondsRealtime(ANIM_TIME);
+        
+        isTransitioning = false;
+        currentTransition = null;
+        
+        // Double-check animator state after animation completes
+        if (uiAnimator && isUIOpen)
+        {
+            uiAnimator.SetBool(openBool, true);
+        }
     }
     
     public void ShowDeathScreen(bool show)
@@ -161,6 +188,10 @@ public class AttackSelectionUI : MonoBehaviour
             dof.gaussianEnd.value = Mathf.Lerp(enable ? 0f : targetEnd, endVal, p);
             yield return null;
         }
+        
+        // Ensure final values are set
+        dof.gaussianStart.value = end;
+        dof.gaussianEnd.value = endVal;
         
         if (!enable) dof.active = false;
     }
@@ -472,13 +503,31 @@ public class AttackSelectionUI : MonoBehaviour
         }
     }
 
-    private void OnContinueClicked() { StartCoroutine(CloseUI()); }
+    private void OnContinueClicked() 
+    { 
+        if (isTransitioning) return;
+        
+        if (currentTransition != null)
+        {
+            StopCoroutine(currentTransition);
+        }
+        
+        currentTransition = StartCoroutine(CloseUI()); 
+    }
 
     private IEnumerator CloseUI()
     {
+        isTransitioning = true;
+        
         ApplySelection();
         
-        if (uiAnimator) uiAnimator.SetBool(openBool, false);
+        // Force animator state immediately
+        if (uiAnimator)
+        {
+            uiAnimator.SetBool(openBool, false);
+            uiAnimator.Update(0f);
+        }
+        
         StartCoroutine(DOFLerp(false));
         
         yield return new WaitForSecondsRealtime(ANIM_TIME);
@@ -510,6 +559,14 @@ public class AttackSelectionUI : MonoBehaviour
         frozenEnemies.Clear();
         
         isUIOpen = false;
+        isTransitioning = false;
+        currentTransition = null;
+        
+        // Final check to ensure animator is in correct state
+        if (uiAnimator)
+        {
+            uiAnimator.SetBool(openBool, false);
+        }
     }
     
     private void ApplySelection()

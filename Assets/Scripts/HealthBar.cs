@@ -52,23 +52,6 @@ public class HealthBar : MonoBehaviour
         UpdateHealthText();
     }
 
-    private void Update()
-    {
-        // Read health percentage from animator if available
-        if (animator != null)
-        {
-            float animatorValue = animator.GetFloat(animatorParameterName);
-            
-            // Only update if the animator value has changed
-            if (Mathf.Abs(animatorValue - currentHealthPercentage) > 0.001f)
-            {
-                // When animator drives the value, we need to recalculate current health
-                storedCurrentHealth = animatorValue * storedMaxHealth;
-                UpdateHealthBarDirect(animatorValue);
-            }
-        }
-    }
-
     public void UpdateHealthBar(float currentHealth, float maxHealth)
     {
         if (maxHealth <= 0)
@@ -102,7 +85,7 @@ public class HealthBar : MonoBehaviour
             fillImage.color = healthGradient.Evaluate(healthPercentage);
         }
         
-        // Update animator parameter
+        // Update animator parameter (write-only)
         if (animator != null)
         {
             animator.SetFloat(animatorParameterName, healthPercentage);
