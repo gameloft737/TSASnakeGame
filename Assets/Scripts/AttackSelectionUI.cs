@@ -45,6 +45,7 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private PlayerMovement playerMovement;
     [SerializeField] private MouseLookAt mouseLookAt;
     [SerializeField] private SnakeHealth snakeHealth;
+    [SerializeField] private AbilityCollector abilityCollector;
     
     [Header("Selection Pool")]
     [SerializeField] private List<Attack> possibleAttacks = new List<Attack>();
@@ -55,12 +56,8 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private float healAmount = 50f;
     [SerializeField] private float speedBoostMultiplier = 1.5f;
     [SerializeField] private float speedBoostDuration = 10f;
-    
-    [Header("Post-Selection")]
-    [SerializeField] private float enemyFreezeDelayAfterClose = 0.5f;
 
     [Header("DOF Settings")]
-    [SerializeField] private float blurTime = 0.4f;
     [SerializeField] private float targetStart = 3f;
     [SerializeField] private float targetEnd = 10f;
     
@@ -68,7 +65,8 @@ public class AttackSelectionUI : MonoBehaviour
     private Attack selectedAttack = null;
     private AbilitySO selectedAbility = null;
     private FallbackOption selectedFallback = FallbackOption.None;
-    private Coroutine dofRoutine;
+    private bool isUIOpen = false;
+    private const float ANIM_TIME = 0.66f;
     
     private enum FallbackOption { None, Heal, SpeedBoost }
     
@@ -90,6 +88,8 @@ public class AttackSelectionUI : MonoBehaviour
         if (continueButton) continueButton.onClick.AddListener(OnContinueClicked);
         HideUI();
         if (deathScreenPanel) deathScreenPanel.SetActive(false);
+        if (dof) dof.active = false;
+        isUIOpen = false;
     }
 
     private void FindReferences()
@@ -100,23 +100,37 @@ public class AttackSelectionUI : MonoBehaviour
         if (!playerMovement) playerMovement = FindFirstObjectByType<PlayerMovement>();
         if (!mouseLookAt) mouseLookAt = FindFirstObjectByType<MouseLookAt>();
         if (!snakeHealth) snakeHealth = FindFirstObjectByType<SnakeHealth>();
+        if (!abilityCollector) abilityCollector = FindFirstObjectByType<AbilityCollector>();
     }
 
     public void ShowAttackSelection(AttackManager manager)
     {
+        if (isUIOpen) return;
+        if (abilityCollector != null && abilityCollector.IsUIOpen()) return;
+        
         attackManager = manager;
+        StartCoroutine(OpenUI());
+    }
+    
+    private IEnumerator OpenUI()
+    {
+        isUIOpen = true;
+        
+        FreezeAllEntities();
         if (cameraManager) cameraManager.SwitchToPauseCamera();
         if (nonUI) nonUI.SetActive(false);
-        if (selectionPanel) selectionPanel.SetActive(true);
-        if (uiAnimator) uiAnimator.SetBool(openBool, true);
+        
         SpawnButtons();
         PopulateCurrentAbilities();
         PopulateCurrentAttack();
-        if (dofRoutine != null) StopCoroutine(dofRoutine);
-        dofRoutine = StartCoroutine(LerpDOF(true));
-        FreezeAllEntities();
+        
+        if (uiAnimator) uiAnimator.SetBool(openBool, true);
+        StartCoroutine(DOFLerp(true));
+        
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+        
+        yield return new WaitForSecondsRealtime(ANIM_TIME);
     }
     
     public void ShowDeathScreen(bool show)
@@ -126,23 +140,28 @@ public class AttackSelectionUI : MonoBehaviour
         if (nonUI) nonUI.SetActive(!show);
         if (show && deathAnimator) deathAnimator.SetTrigger(deathTrigger);
     }
+    
+    public bool IsUIOpen() => isUIOpen;
 
-    private IEnumerator LerpDOF(bool enable)
+    private IEnumerator DOFLerp(bool enable)
     {
         if (!dof) yield break;
+        
         dof.active = true;
-        float startStart = dof.gaussianStart.value;
-        float startEnd = dof.gaussianEnd.value;
-        float endStart = enable ? targetStart : 0f;
-        float endEnd = enable ? targetEnd : 0f;
+        float start = enable ? 0f : targetStart;
+        float end = enable ? targetStart : 0f;
+        float endVal = enable ? targetEnd : 0f;
+        
         float t = 0f;
-        while (t < 1f)
+        while (t < ANIM_TIME)
         {
-            t += Time.unscaledDeltaTime / blurTime;
-            dof.gaussianStart.value = Mathf.Lerp(startStart, endStart, Mathf.Clamp01(t));
-            dof.gaussianEnd.value = Mathf.Lerp(startEnd, endEnd, Mathf.Clamp01(t));
+            t += Time.unscaledDeltaTime;
+            float p = t / ANIM_TIME;
+            dof.gaussianStart.value = Mathf.Lerp(start, end, p);
+            dof.gaussianEnd.value = Mathf.Lerp(enable ? 0f : targetEnd, endVal, p);
             yield return null;
         }
+        
         if (!enable) dof.active = false;
     }
     
@@ -157,37 +176,21 @@ public class AttackSelectionUI : MonoBehaviour
         selectedAbility = null;
         selectedFallback = FallbackOption.None;
 
-        // Check if this is the first attack selection (player has no attack yet)
         bool isFirstSelection = attackManager == null || attackManager.GetAttackCount() == 0;
         
-        if (isFirstSelection)
-        {
-            // First selection: Show only 3 attack options (no abilities)
-            SpawnFirstSelectionButtons();
-        }
-        else
-        {
-            // Subsequent selections: Show active abilities and current attack upgrade only
-            SpawnSubsequentSelectionButtons();
-        }
+        if (isFirstSelection) SpawnFirstSelectionButtons();
+        else SpawnSubsequentSelectionButtons();
     }
     
-    /// <summary>
-    /// Spawns buttons for the first attack selection (3 attack options only)
-    /// </summary>
     private void SpawnFirstSelectionButtons()
     {
         List<Attack> availableAttacks = new List<Attack>();
         
-        // Get all possible attacks
         if (possibleAttacks != null && possibleAttacks.Count > 0)
         {
             foreach (Attack attack in possibleAttacks)
             {
-                if (attack != null)
-                {
-                    availableAttacks.Add(attack);
-                }
+                if (attack != null) availableAttacks.Add(attack);
             }
         }
         
@@ -197,7 +200,6 @@ public class AttackSelectionUI : MonoBehaviour
             return;
         }
         
-        // Select 3 random attacks
         List<Attack> selectedAttacks = new List<Attack>();
         List<Attack> pool = new List<Attack>(availableAttacks);
         
@@ -208,35 +210,27 @@ public class AttackSelectionUI : MonoBehaviour
             pool.RemoveAt(randomIndex);
         }
         
-        // Spawn buttons for selected attacks
         foreach (Attack attack in selectedAttacks)
         {
             SpawnAttackButton(attack);
         }
     }
     
-    /// <summary>
-    /// Spawns buttons for subsequent selections (active abilities + current attack upgrade only)
-    /// </summary>
     private void SpawnSubsequentSelectionButtons()
     {
         List<object> options = new List<object>();
         
-        // Add current attack upgrade if available
         Attack currentAttack = attackManager?.GetCurrentAttack();
         if (currentAttack != null && currentAttack.CanUpgrade())
         {
             options.Add(currentAttack);
         }
         
-        // Add active abilities only (not passive)
         bool activeSlotsFull = abilityManager != null && !abilityManager.CanAddActiveAbility();
         
         foreach (AbilitySO abilitySO in possibleAbilities)
         {
             if (abilitySO == null) continue;
-            
-            // Only include active abilities
             if (abilitySO.abilityType != AbilityType.Active) continue;
             
             int currentLevel = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0;
@@ -244,19 +238,11 @@ public class AttackSelectionUI : MonoBehaviour
             
             if (hasAbility)
             {
-                // Can upgrade if not at max level
-                if (currentLevel < abilitySO.maxLevel)
-                {
-                    options.Add(abilitySO);
-                }
+                if (currentLevel < abilitySO.maxLevel) options.Add(abilitySO);
             }
             else
             {
-                // Can add new active ability if slots available
-                if (!activeSlotsFull)
-                {
-                    options.Add(abilitySO);
-                }
+                if (!activeSlotsFull) options.Add(abilitySO);
             }
         }
         
@@ -266,19 +252,12 @@ public class AttackSelectionUI : MonoBehaviour
             return;
         }
         
-        // Select random options up to optionsToShow
         List<object> selectedOptions = GetRandomOptions(options, optionsToShow);
         
         foreach (object option in selectedOptions)
         {
-            if (option is Attack attack)
-            {
-                SpawnAttackButton(attack);
-            }
-            else if (option is AbilitySO abilitySO)
-            {
-                SpawnAbilityButton(abilitySO);
-            }
+            if (option is Attack attack) SpawnAttackButton(attack);
+            else if (option is AbilitySO abilitySO) SpawnAbilityButton(abilitySO);
         }
     }
     
@@ -310,7 +289,6 @@ public class AttackSelectionUI : MonoBehaviour
         Button button = buttonObj.GetComponent<Button>();
         if (button != null) { button.onClick.RemoveAllListeners(); button.onClick.AddListener(() => OnFallbackSelected(fallbackType)); }
     }
-    
     
     private List<object> GetRandomOptions(List<object> available, int count)
     {
@@ -384,12 +362,10 @@ public class AttackSelectionUI : MonoBehaviour
         AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
         if (attackButton != null)
         {
-            // Use the new ability initialization method
             attackButton.InitializeWithAbility(abilitySO, currentLevel, this, false);
         }
         else
         {
-            // Fallback to manual setup if no AttackButton component
             SetupAbilityButtonManual(buttonObj, abilitySO, currentLevel);
         }
     }
@@ -408,7 +384,6 @@ public class AttackSelectionUI : MonoBehaviour
         if (nameText != null) nameText.text = abilitySO.abilityName;
         if (levelText != null) levelText.text = isNew ? "(NEW) " : $"(Lvl {nextLevel}) ";
         
-        // Get description from upgrade data if available
         if (descriptionText != null)
         {
             string levelDescription = abilitySO.GetDescriptionForLevel(nextLevel);
@@ -426,7 +401,6 @@ public class AttackSelectionUI : MonoBehaviour
             }
         }
         
-        // Set icon from AbilitySO or its upgrade data
         if (iconImage != null)
         {
             if (abilitySO.icon != null)
@@ -460,7 +434,7 @@ public class AttackSelectionUI : MonoBehaviour
         }
     }
 
-    private void HideUI() { if (selectionPanel) selectionPanel.SetActive(false); if (dof) dof.active = false; }
+    private void HideUI() { }
 
     public void OnAttackButtonClicked(int attackIndex) { if (attackIndex >= 0 && attackIndex < possibleAttacks.Count) OnAttackSelected(possibleAttacks[attackIndex]); }
     
@@ -498,31 +472,26 @@ public class AttackSelectionUI : MonoBehaviour
         }
     }
 
-    private void OnContinueClicked() { StartCoroutine(CloseSequence()); }
+    private void OnContinueClicked() { StartCoroutine(CloseUI()); }
 
-    private IEnumerator CloseSequence()
+    private IEnumerator CloseUI()
     {
-        // Apply selection first
         ApplySelection();
         
-        // Close UI animation
         if (uiAnimator) uiAnimator.SetBool(openBool, false);
-        if (dofRoutine != null) StopCoroutine(dofRoutine);
-        dofRoutine = StartCoroutine(LerpDOF(false));
-        yield return dofRoutine;
+        StartCoroutine(DOFLerp(false));
         
-        if (selectionPanel) selectionPanel.SetActive(false);
+        yield return new WaitForSecondsRealtime(ANIM_TIME);
+        
         if (cameraManager) cameraManager.SwitchToNormalCamera();
         ClearCurrentAbilityDisplays();
         ClearCurrentAttackDisplay();
         if (nonUI) nonUI.SetActive(true);
         
-        // Unfreeze player controls but keep enemies frozen for a moment
         if (playerMovement) playerMovement.enabled = true;
         if (mouseLookAt) mouseLookAt.enabled = true;
         if (attackManager) attackManager.SetFrozen(false);
         
-        // Unfreeze abilities
         foreach (BaseAbility ability in frozenAbilities)
         {
             if (ability) ability.enabled = true;
@@ -532,21 +501,15 @@ public class AttackSelectionUI : MonoBehaviour
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
         
-        // Notify wave manager
         if (waveManager) waveManager.OnAttackSelected();
         
-        // Keep enemies frozen for a short delay to give player time to react
-        if (enemyFreezeDelayAfterClose > 0)
-        {
-            yield return new WaitForSeconds(enemyFreezeDelayAfterClose);
-        }
-        
-        // Now unfreeze enemies
         foreach (AppleEnemy enemy in frozenEnemies)
         {
             if (enemy) enemy.SetFrozen(false);
         }
         frozenEnemies.Clear();
+        
+        isUIOpen = false;
     }
     
     private void ApplySelection()
@@ -559,20 +522,11 @@ public class AttackSelectionUI : MonoBehaviour
             
             if (ownsAttack)
             {
-                // Player owns this attack - try to upgrade it
-                if (selectedAttack.CanUpgrade())
-                {
-                    selectedAttack.TryUpgrade();
-                    Debug.Log($"Upgraded attack: {selectedAttack.attackName}");
-                }
+                if (selectedAttack.CanUpgrade()) selectedAttack.TryUpgrade();
             }
             else
             {
-                // First attack selection - add the attack as the player's only attack
-                if (attackManager.AddAttack(selectedAttack))
-                {
-                    Debug.Log($"Selected first attack: {selectedAttack.attackName}");
-                }
+                attackManager.AddAttack(selectedAttack);
             }
         }
     }
@@ -603,22 +557,11 @@ public class AttackSelectionUI : MonoBehaviour
         {
             if (!ability) continue;
             
-            // First try to get the AbilitySO from the AbilityManager's stored mapping
             AbilitySO matchingSO = abilityManager.GetAbilitySO(ability);
+            if (matchingSO == null) matchingSO = FindAbilitySOForAbility(ability);
             
-            // Fallback to searching possible abilities if not found in mapping
-            if (matchingSO == null)
-            {
-                matchingSO = FindAbilitySOForAbility(ability);
-            }
-            
-            // Determine if this is a passive or active ability
-            // Default to passive if no SO found (safer default)
             bool isPassive = matchingSO == null || matchingSO.abilityType == AbilityType.Passive;
             
-            Debug.Log($"[AttackSelectionUI] Ability: {ability.gameObject.name}, SO: {(matchingSO != null ? matchingSO.abilityName : "null")}, Type: {(matchingSO != null ? matchingSO.abilityType.ToString() : "unknown")}, isPassive: {isPassive}");
-            
-            // Choose the appropriate container and prefab based on ability type
             Transform targetContainer = isPassive ? passiveAbilitiesContainer : activeAbilitiesContainer;
             GameObject prefab = isPassive ? passiveAbilityDisplayPrefab : activeAbilityDisplayPrefab;
             List<GameObject> displayList = isPassive ? spawnedPassiveAbilityDisplays : spawnedActiveAbilityDisplays;
@@ -637,15 +580,12 @@ public class AttackSelectionUI : MonoBehaviour
         if (!ability) return null;
         string abilityName = ability.gameObject.name;
         
-        // First search in possibleAbilities
         foreach (AbilitySO so in possibleAbilities)
         {
             if (so && so.abilityPrefab && abilityName.Contains(so.abilityPrefab.name))
                 return so;
         }
         
-        // Fallback: search in AbilityCollector's available abilities
-        AbilityCollector abilityCollector = FindFirstObjectByType<AbilityCollector>();
         if (abilityCollector != null)
         {
             List<AbilitySO> availableAbilities = abilityCollector.GetAvailableAbilities();
@@ -664,11 +604,9 @@ public class AttackSelectionUI : MonoBehaviour
     
     private void ClearCurrentAbilityDisplays()
     {
-        // Clear passive ability displays
         foreach (var d in spawnedPassiveAbilityDisplays) if (d) Destroy(d);
         spawnedPassiveAbilityDisplays.Clear();
         
-        // Clear active ability displays
         foreach (var d in spawnedActiveAbilityDisplays) if (d) Destroy(d);
         spawnedActiveAbilityDisplays.Clear();
     }
@@ -694,7 +632,6 @@ public class AttackSelectionUI : MonoBehaviour
         frozenEnemies.Clear();
         frozenAbilities.Clear();
         
-        // Freeze all enemies using their SetFrozen method
         foreach (AppleEnemy enemy in FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None))
         {
             if (enemy)
@@ -704,14 +641,10 @@ public class AttackSelectionUI : MonoBehaviour
             }
         }
         
-        // Freeze player movement and look
         if (playerMovement) playerMovement.enabled = false;
         if (mouseLookAt) mouseLookAt.enabled = false;
-        
-        // Freeze attack manager
         if (attackManager) attackManager.SetFrozen(true);
         
-        // Freeze abilities
         if (abilityManager)
         {
             foreach (BaseAbility ability in abilityManager.GetActiveAbilities())
@@ -727,28 +660,22 @@ public class AttackSelectionUI : MonoBehaviour
     
     private void UnfreezeAllEntities()
     {
-        // This method is now only used for immediate unfreezing (e.g., on death)
-        // The CloseSequence handles the delayed unfreeze for normal selection
-        
-        // Unfreeze all enemies
         foreach (AppleEnemy enemy in frozenEnemies)
         {
             if (enemy) enemy.SetFrozen(false);
         }
         frozenEnemies.Clear();
         
-        // Unfreeze player movement and look
         if (playerMovement) playerMovement.enabled = true;
         if (mouseLookAt) mouseLookAt.enabled = true;
-        
-        // Unfreeze attack manager
         if (attackManager) attackManager.SetFrozen(false);
         
-        // Unfreeze abilities
         foreach (BaseAbility ability in frozenAbilities)
         {
             if (ability) ability.enabled = true;
         }
         frozenAbilities.Clear();
+        
+        isUIOpen = false;
     }
 }

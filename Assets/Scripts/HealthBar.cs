@@ -1,20 +1,26 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class HealthBar : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private Slider healthSlider;
+    [SerializeField] private Image fillImage;
+    [SerializeField] private Animator animator; // Optional: Animator component
+    [SerializeField] private TextMeshProUGUI healthText; // Health text display
     
-    [Header("Visual Settings (Optional)")]
-    [SerializeField] private Image fillImage; // Optional: The fill image to change color
-    [SerializeField] private Color fullHealthColor = Color.green;
-    [SerializeField] private Color lowHealthColor = Color.red;
-    [SerializeField] private float lowHealthThreshold = 0.3f;
-    [SerializeField] private bool smoothTransition = true;
-    [SerializeField] private float transitionSpeed = 5f;
+    [Header("Visual Settings")]
+    [SerializeField] private Gradient healthGradient = new Gradient();
+    [SerializeField] private string animatorParameterName = "HealthPercentage";
     
-    private float targetValue;
+    [Header("Text Settings")]
+    [SerializeField] private bool showHealthText = true;
+    [SerializeField] private bool showDecimals = false; // If true, shows "80.5/100.0"
+    
+    private float currentHealthPercentage = 1f;
+    private float storedCurrentHealth = 100f;
+    private float storedMaxHealth = 100f;
 
     private void Start()
     {
@@ -23,53 +29,100 @@ public class HealthBar : MonoBehaviour
         {
             healthSlider.minValue = 0f;
             healthSlider.maxValue = 1f;
-            healthSlider.value = 1f; // Start at full health
+            healthSlider.value = 1f;
         }
         else
         {
             Debug.LogError("HealthBar: Slider is not assigned!");
         }
         
-        targetValue = 1f;
+        // Set initial color from gradient
+        if (fillImage != null)
+        {
+            fillImage.color = healthGradient.Evaluate(1f);
+        }
+        
+        // Set initial animator value
+        if (animator != null)
+        {
+            animator.SetFloat(animatorParameterName, 1f);
+        }
+        
+        currentHealthPercentage = 1f;
+        UpdateHealthText();
     }
 
     private void Update()
     {
-        if (smoothTransition && healthSlider != null)
+        // Read health percentage from animator if available
+        if (animator != null)
         {
-            // Smoothly lerp to target value
-            healthSlider.value = Mathf.Lerp(healthSlider.value, targetValue, Time.deltaTime * transitionSpeed);
+            float animatorValue = animator.GetFloat(animatorParameterName);
+            
+            // Only update if the animator value has changed
+            if (Mathf.Abs(animatorValue - currentHealthPercentage) > 0.001f)
+            {
+                // When animator drives the value, we need to recalculate current health
+                storedCurrentHealth = animatorValue * storedMaxHealth;
+                UpdateHealthBarDirect(animatorValue);
+            }
         }
     }
 
-    public void UpdateHealthBar(float healthPercentage)
+    public void UpdateHealthBar(float currentHealth, float maxHealth)
     {
-        if (healthSlider == null)
+        if (maxHealth <= 0)
         {
-            Debug.LogError("HealthBar: Slider is not assigned!");
+            Debug.LogWarning("HealthBar: maxHealth must be greater than 0!");
             return;
         }
         
-        targetValue = healthPercentage;
+        // Store the actual health values for text display
+        storedCurrentHealth = currentHealth;
+        storedMaxHealth = maxHealth;
         
-        if (!smoothTransition)
+        float healthPercentage = Mathf.Clamp01(currentHealth / maxHealth);
+        UpdateHealthBarDirect(healthPercentage);
+    }
+    
+    private void UpdateHealthBarDirect(float healthPercentage)
+    {
+        healthPercentage = Mathf.Clamp01(healthPercentage);
+        currentHealthPercentage = healthPercentage;
+        
+        // Update slider
+        if (healthSlider != null)
         {
-            healthSlider.value = targetValue;
+            healthSlider.value = healthPercentage;
         }
         
-        // Optional: Update fill color if fill image is assigned
+        // Update fill color using gradient
         if (fillImage != null)
         {
-            if (healthPercentage <= lowHealthThreshold)
-            {
-                fillImage.color = lowHealthColor;
-            }
-            else
-            {
-                // Lerp between low and full health colors
-                float colorT = (healthPercentage - lowHealthThreshold) / (1f - lowHealthThreshold);
-                fillImage.color = Color.Lerp(lowHealthColor, fullHealthColor, colorT);
-            }
+            fillImage.color = healthGradient.Evaluate(healthPercentage);
+        }
+        
+        // Update animator parameter
+        if (animator != null)
+        {
+            animator.SetFloat(animatorParameterName, healthPercentage);
+        }
+        
+        // Update health text
+        UpdateHealthText();
+    }
+    
+    private void UpdateHealthText()
+    {
+        if (!showHealthText || healthText == null) return;
+        
+        if (showDecimals)
+        {
+            healthText.text = $"{storedCurrentHealth:F1}/{storedMaxHealth:F1}";
+        }
+        else
+        {
+            healthText.text = $"{Mathf.CeilToInt(storedCurrentHealth)}/{Mathf.CeilToInt(storedMaxHealth)}";
         }
     }
 }

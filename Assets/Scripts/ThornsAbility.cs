@@ -33,6 +33,7 @@ public class ThornsAbility : BaseAbility
     private bool hasInitialized = false;
     private float lastDamageTime = 0f;
     private float damageCooldown = 0.1f; // Prevent multiple reflections from same damage instance
+    private float previousHealth = 0f;
 
     private void OnEnable()
     {
@@ -86,6 +87,7 @@ public class ThornsAbility : BaseAbility
         if (snakeHealth != null)
         {
             snakeHealth.onHealthChanged.AddListener(OnHealthChanged);
+            previousHealth = snakeHealth.GetCurrentHealth();
         }
         
         if (snakeBody != null && snakeBody.bodyParts != null && snakeBody.bodyParts.Count > 0)
@@ -195,20 +197,30 @@ public class ThornsAbility : BaseAbility
     /// <summary>
     /// Called when the snake's health changes (takes damage)
     /// </summary>
-    private void OnHealthChanged(float healthPercent)
+    private void OnHealthChanged(float currentHealth, float maxHealth)
     {
-        // Check if this is damage (not healing) and we're not on cooldown
-        if (Time.time - lastDamageTime < damageCooldown) return;
+        // Check if health decreased (damage was taken)
+        if (currentHealth < previousHealth)
+        {
+            // Check if we're not on cooldown
+            if (Time.time - lastDamageTime >= damageCooldown)
+            {
+                // Calculate actual damage taken
+                float damageTaken = previousHealth - currentHealth;
+                
+                // Find nearby enemies and reflect damage
+                ReflectDamageToNearbyEnemies(damageTaken);
+                lastDamageTime = Time.time;
+            }
+        }
         
-        // Find nearby enemies that could have caused the damage
-        ReflectDamageToNearbyEnemies();
-        lastDamageTime = Time.time;
+        previousHealth = currentHealth;
     }
 
     /// <summary>
     /// Reflects damage to all enemies currently in contact with body parts
     /// </summary>
-    private void ReflectDamageToNearbyEnemies()
+    private void ReflectDamageToNearbyEnemies(float damageTaken)
     {
         if (snakeBody == null || snakeBody.bodyParts == null) return;
         
@@ -235,10 +247,8 @@ public class ThornsAbility : BaseAbility
                 
                 if (distanceSqr <= radiusSqr)
                 {
-                    // Calculate reflected damage
-                    // We estimate the damage based on typical enemy damage range
-                    float estimatedDamage = 10f; // Average enemy damage
-                    float reflectedDamage = (estimatedDamage * reflectPercent) + bonusDamage;
+                    // Calculate reflected damage based on actual damage taken
+                    float reflectedDamage = (damageTaken * reflectPercent) + bonusDamage;
                     
                     enemy.TakeDamage(reflectedDamage);
                     damagedEnemies.Add(enemy);
@@ -260,7 +270,7 @@ public class ThornsAbility : BaseAbility
                 audioSource.PlayOneShot(reflectSound, 0.5f);
             }
             
-            Debug.Log($"ThornsAbility: Reflected damage to {damagedEnemies.Count} enemies!");
+            Debug.Log($"ThornsAbility: Reflected {(damageTaken * reflectPercent) + bonusDamage:F1} damage to {damagedEnemies.Count} enemies!");
         }
     }
 

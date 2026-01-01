@@ -8,6 +8,7 @@ public class InstantDeathTrigger : MonoBehaviour
     
     [Header("References")]
     [SerializeField] private SnakeHealth snakeHealth;
+    [SerializeField] private WaveManager waveManager;
     [SerializeField] private Transform raycastOrigin;
     
     [Header("Raycast Settings")]
@@ -15,10 +16,12 @@ public class InstantDeathTrigger : MonoBehaviour
     [SerializeField] private float rayDistance = 10f;
     
     [Header("Immunity Settings")]
-    [SerializeField] private float immunityDuration = 2f;
+    [SerializeField] private float postDeathImmunityDuration = 2f;
+    [SerializeField] private float postRespawnImmunityDuration = 1f;
     
     private bool hasImmunity = false;
     private float immunityTimer = 0f;
+    private float currentImmunityDuration = 0f;
 
     private void Start()
     {
@@ -27,10 +30,57 @@ public class InstantDeathTrigger : MonoBehaviour
             snakeHealth = FindFirstObjectByType<SnakeHealth>();
         }
         
+        if (waveManager == null)
+        {
+            waveManager = FindFirstObjectByType<WaveManager>();
+        }
+        
         if (raycastOrigin == null)
         {
             raycastOrigin = transform;
         }
+        
+        // Subscribe to death event to grant immunity
+        if (snakeHealth != null)
+        {
+            snakeHealth.onDeath.AddListener(OnSnakeDeath);
+        }
+        
+        // Subscribe to wave start to grant immunity on respawn
+        if (waveManager != null)
+        {
+            waveManager.OnWaveStarted.AddListener(OnWaveStarted);
+        }
+        
+        // Grant initial immunity at start
+        GrantImmunity(postRespawnImmunityDuration);
+    }
+    
+    private void OnDestroy()
+    {
+        if (snakeHealth != null)
+        {
+            snakeHealth.onDeath.RemoveListener(OnSnakeDeath);
+        }
+        
+        if (waveManager != null)
+        {
+            waveManager.OnWaveStarted.RemoveListener(OnWaveStarted);
+        }
+    }
+    
+    private void OnSnakeDeath()
+    {
+        // Grant immunity when snake dies
+        GrantImmunity(postDeathImmunityDuration);
+        Debug.Log($"[InstantDeathTrigger] Death immunity granted for {postDeathImmunityDuration}s");
+    }
+    
+    private void OnWaveStarted(int waveIndex)
+    {
+        // Grant immunity when wave starts (after respawn)
+        GrantImmunity(postRespawnImmunityDuration);
+        Debug.Log($"[InstantDeathTrigger] Respawn immunity granted for {postRespawnImmunityDuration}s");
     }
 
     private void FixedUpdate()
@@ -40,17 +90,34 @@ public class InstantDeathTrigger : MonoBehaviour
         {
             immunityTimer += Time.fixedDeltaTime;
             
-            if (immunityTimer >= immunityDuration)
+            if (immunityTimer >= currentImmunityDuration)
             {
                 // Check if still hitting snake
                 if (!IsHittingSnake())
                 {
                     hasImmunity = false;
                     immunityTimer = 0f;
+                    Debug.Log("[InstantDeathTrigger] Immunity expired");
+                }
+                else
+                {
+                    // Still hitting snake, keep immunity until they move away
+                    Debug.Log("[InstantDeathTrigger] Immunity duration reached but still hitting snake");
                 }
             }
             
             return; // Skip damage check while immune
+        }
+        
+        // Additional safety: don't check during death/respawn
+        if (snakeHealth != null && !snakeHealth.IsAlive())
+        {
+            return;
+        }
+        
+        if (waveManager != null && !waveManager.IsWaveActive())
+        {
+            return;
         }
         
         // Check for collision and trigger death
@@ -75,6 +142,8 @@ public class InstantDeathTrigger : MonoBehaviour
     
     private void TriggerDeath(Vector3 hitPoint)
     {
+        Debug.Log("[InstantDeathTrigger] Triggering instant death!");
+        
         if (particlePrefab != null)
         {
             Vector3 spawnPosition = hitPoint + particleOffset;
@@ -86,9 +155,14 @@ public class InstantDeathTrigger : MonoBehaviour
             snakeHealth.TakeDamage(snakeHealth.GetMaxHealth());
         }
         
-        // Start immunity after death
+        // Immunity will be granted by OnSnakeDeath() callback
+    }
+    
+    private void GrantImmunity(float duration)
+    {
         hasImmunity = true;
         immunityTimer = 0f;
+        currentImmunityDuration = duration;
     }
     
     private void OnDrawGizmos()
@@ -102,12 +176,5 @@ public class InstantDeathTrigger : MonoBehaviour
         Gizmos.DrawLine(start, end);
         Gizmos.DrawWireSphere(start, 0.1f);
         Gizmos.DrawWireSphere(end, 0.2f);
-    }
-    
-    public void OnNewRound()
-    {
-        // Grant immunity at the start of a new round
-        hasImmunity = true;
-        immunityTimer = 0f;
     }
 }

@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: EnergyEmpty
-  m_Shader: {fileID: -6465566751694194690, guid: 1b2a789b0ffe81d46824557de47056a0, type: 3}
+  m_Shader: {fileID: 10770, guid: 0000000000000000f000000000000000, type: 0}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -59,13 +59,17 @@ Material:
     - _TilingY: 0
     - _UIMaskSoftnessX: 1
     - _UIMaskSoftnessY: 1
+    - _UseUIAlphaClip: 0
     m_Colors:
     - _ClipRect: {r: 0, g: 0, b: 0, a: 0}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _Color1: {r: 0.7529412, g: 0.9411765, b: 1, a: 0}
     - _Color2: {r: 0.7528302, g: 0.9402064, b: 1, a: 0}
     - _HighlightColor: {r: 1, g: 1, b: 1, a: 0}
+    - _LightningColor: {r: 0, g: 0.784471, b: 1, a: 0}
     - _MainColor: {r: 0, g: 0.80077195, b: 1, a: 0}
     - _NoiseScale: {r: 5, g: 5, b: 0, a: 0}
     - _Tiling: {r: 13.27, g: -78.99, b: 0, a: 0}
+    - _TilingSparks: {r: 1, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -68,6 +68,12 @@ public class WaveManager : MonoBehaviour
         }
     }
     
+    public void StartCurrentWave()
+    {
+        // Just restart the wave without incrementing or showing attack selection
+        StartWave();
+    }
+    
     private void StartInfiniteWave()
     {
         if (!infiniteWaveConfig)
@@ -179,18 +185,16 @@ public class WaveManager : MonoBehaviour
 
     public void ResetCurrentWave()
     {
+        // Clear enemies but DON'T show attack selection - used for death
         if (enemySpawner) enemySpawner.ClearAllEnemies();
         
-        waveActive = false;
-        inChoicePhase = true;
+        // Don't change waveActive or inChoicePhase here
+        // Let StartCurrentWave() handle setting the proper states
         
         SetPlayerMovement(false);
         SetAttacksPaused(true);
         
-        if (attackSelectionUI && attackManager)
-        {
-            attackSelectionUI.ShowAttackSelection(attackManager);
-        }
+        // Don't show attack selection UI on death
     }
 
     private void SetPlayerMovement(bool enabled)

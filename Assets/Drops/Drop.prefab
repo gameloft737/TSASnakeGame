@@ -80,16 +80,15 @@ MonoBehaviour:
   lifetimeAfterGround: 20
   groundedCheckTime: 1
   stillThreshold: 0.1
-  possibleAbilities:
-  - {fileID: 11400000, guid: 7ce0a957bc4177045a6234dd1d22743d, type: 2}
-  - {fileID: 11400000, guid: 2498db1d9656d6d42af29e11aad91085, type: 2}
-  - {fileID: 11400000, guid: 85ea48cefd3d6504cbe02dbffac537b8, type: 2}
+  collectionRadius: 2
   uiContainer: {fileID: 0}
   animator: {fileID: 3652362532516767670}
+  openBool: IsOpen
   openTrigger: Open
   closeTrigger: Close
-  selectedAbility: {fileID: 0}
-  isGrounded: 0
+  useBoolAnimation: 0
+  pulseSpeed: 2
+  pulseAmount: 0.1
 --- !u!65 &6602790965563107022
 BoxCollider:
   m_ObjectHideFlags: 0

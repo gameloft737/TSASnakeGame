@@ -23,16 +23,20 @@ public class SnakeHealth : MonoBehaviour
     [SerializeField] private CameraManager cameraManager;
     
     [Header("Events")]
-    public UnityEvent<float> onHealthChanged;
+    public UnityEvent<float, float> onHealthChanged; // currentHealth, maxHealth
     public UnityEvent onDeath;
     
     private bool isDead = false;
     
-    private void Start()
+    private void Awake()
     {
+        // Initialize health early so it's ready when listeners subscribe
         UpdateMaxHealth();
         currentHealth = maxHealth;
-        
+    }
+    
+    private void Start()
+    {
         // Subscribe to stat changes
         if (PlayerStats.Instance != null)
         {
@@ -68,21 +72,34 @@ public class SnakeHealth : MonoBehaviour
         {
             cameraManager = FindFirstObjectByType<CameraManager>();
         }
+        
+        // Invoke initial health state after all listeners have had a chance to subscribe
+        StartCoroutine(InvokeInitialHealthNextFrame());
+    }
+    
+    private IEnumerator InvokeInitialHealthNextFrame()
+    {
+        // Wait one frame to ensure all Start() methods have run and listeners are subscribed
+        yield return null;
+        onHealthChanged?.Invoke(currentHealth, maxHealth);
     }
     
     public void TakeDamage(float damage)
     {
         if (isDead) return;
         
-        // Don't take damage if we're in choice phase or death screen is showing
+        // Don't take damage if we're in choice phase
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
+        
+        // Don't take damage if wave is not active (during transitions)
+        if (waveManager != null && !waveManager.IsWaveActive()) return;
         
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
         
         Debug.Log($"Snake took {damage:F1} damage! Health: {currentHealth:F1}/{maxHealth}");
         
-        onHealthChanged?.Invoke(GetHealthPercentage());
+        onHealthChanged?.Invoke(currentHealth, maxHealth);
         
         if (currentHealth <= 0)
         {
@@ -102,7 +119,7 @@ public class SnakeHealth : MonoBehaviour
         
         Debug.Log($"Snake healed {amount:F1}! Health: {currentHealth:F1}/{maxHealth}");
         
-        onHealthChanged?.Invoke(GetHealthPercentage());
+        onHealthChanged?.Invoke(currentHealth, maxHealth);
     }
     
     private void UpdateMaxHealth()
@@ -123,7 +140,7 @@ public class SnakeHealth : MonoBehaviour
         if (maxHealth > oldMaxHealth)
         {
             currentHealth += (maxHealth - oldMaxHealth);
-            onHealthChanged?.Invoke(GetHealthPercentage());
+            onHealthChanged?.Invoke(currentHealth, maxHealth);
         }
     }
     
@@ -171,15 +188,27 @@ public class SnakeHealth : MonoBehaviour
         UpdateMaxHealth();
         currentHealth = maxHealth;
         isDead = false;
-        onHealthChanged?.Invoke(GetHealthPercentage());
+        onHealthChanged?.Invoke(currentHealth, maxHealth);
         
-        // Trigger wave reset (which shows attack selection)
+        // Switch back to gameplay camera
+        if (cameraManager != null)
+        {
+            cameraManager.SwitchToNormalCamera();
+        }
+        
+        // Reset the current wave (clears enemies, stops movement/attacks)
         if (waveManager != null)
         {
             waveManager.ResetCurrentWave();
         }
         
-        Debug.Log("Level reset - wave will restart after attack selection!");
+        // Now start the wave again (enables movement/attacks, starts spawning)
+        if (waveManager != null)
+        {
+            waveManager.StartCurrentWave();
+        }
+        
+        Debug.Log("Level reset - wave restarting immediately!");
     }
     
     public float GetHealthPercentage()
