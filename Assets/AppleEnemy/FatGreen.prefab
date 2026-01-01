@@ -263,7 +263,7 @@ MonoBehaviour:
   trackingUpdateInterval: 0.1
   rotationSpeed: 20
   minVelocityForRotation: 0.1
-  contactTimeBeforeBiting: 0
+  contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
   minDamage: 1
   maxDamage: 5

@@ -99,25 +99,54 @@ public class BombPlacementAbility : BaseAbility
         
         int totalParts = bodyParts.Count;
 
-        // Need at least 4 parts (3 safe + 1 for bomb) to place any bombs
-        if (totalParts < 4)
+        // Need at least 7 parts (3 near head + 3 tapered tail + 1 for bomb) to place any bombs
+        if (totalParts < 7)
         {
             Debug.Log("BombPlacementAbility: Not enough body parts to place bombs!");
             return;
         }
 
-        // Only safe zone is the first 3 segments (tail area, indices 0, 1, 2)
-        int startIndex = 3; // Start right after the safe zone
-        int endIndex = totalParts - 1; // Go all the way to the last segment
+        // Safe zones:
+        // - First 3 segments near the head (indices 0, 1, 2)
+        // - Last 3 segments are tapered tail (indices totalParts-3, totalParts-2, totalParts-1)
+        int startIndex = 3; // Start right after the head safe zone
+        int endIndex = totalParts - 4; // Stop before the tapered tail segments
+        int availableSlots = endIndex - startIndex + 1;
 
-        // Calculate spacing between bombs based on level
-        // Level 1: Every 3rd segment (gap of 2)
-        // Level 2: Every 2nd segment (gap of 1)
-        // Level 3+: Every segment (no gap)
-        int spacing = Mathf.Max(1, 4 - currentLevel); // 3, 2, 1, 1, 1...
+        // Calculate number of bombs based on level
+        // Level 1: 3 bombs, scaling up to Level 6: 5 bombs
+        // Formula: 3 + (level - 1) * 0.4, clamped between 3 and 5
+        int bombCount = Mathf.Clamp(3 + Mathf.FloorToInt((currentLevel - 1) * 0.4f), 3, 5);
+        
+        // Don't place more bombs than available slots
+        bombCount = Mathf.Min(bombCount, availableSlots);
+        
+        if (bombCount <= 0)
+        {
+            Debug.Log("BombPlacementAbility: Not enough slots for bombs!");
+            return;
+        }
 
-        // Place bombs with calculated spacing
-        for (int i = startIndex; i <= endIndex; i += spacing)
+        // Calculate indices to place bombs evenly distributed
+        List<int> bombIndices = new List<int>();
+        if (bombCount == 1)
+        {
+            // Place single bomb in the middle
+            bombIndices.Add(startIndex + availableSlots / 2);
+        }
+        else
+        {
+            // Distribute bombs evenly across available slots
+            for (int i = 0; i < bombCount; i++)
+            {
+                float t = (float)i / (bombCount - 1);
+                int index = startIndex + Mathf.RoundToInt(t * (availableSlots - 1));
+                bombIndices.Add(index);
+            }
+        }
+
+        // Place bombs at calculated indices
+        foreach (int i in bombIndices)
         {
             BodyPart part = bodyParts[i];
             
@@ -147,7 +176,7 @@ public class BombPlacementAbility : BaseAbility
 
         hasPlacedBombs = true;
         bombsExploded = 0; // Reset counter
-        Debug.Log($"BombPlacementAbility: Placed {activeBombs.Count} bombs at level {currentLevel} with spacing {spacing}!");
+        Debug.Log($"BombPlacementAbility: Placed {activeBombs.Count} bombs at level {currentLevel}!");
     }
 
     /// <summary>

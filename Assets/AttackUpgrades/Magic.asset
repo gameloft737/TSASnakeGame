@@ -17,62 +17,62 @@ MonoBehaviour:
   attackIcon: {fileID: 21300000, guid: e6313500ebac1b846bdf2250ac366e92, type: 3}
   levels:
   - levelName: Level 1
-    description: Fires 1 slow orb with weak homing
-    damage: 5
-    range: 18
-    minFuelToActivate: 35
-    fuelRechargeRate: 12
-    burstFuelCost: 30
-    continuousDrainRate: 0
-    customStats:
-    - statName: projectileCount
-      value: 1
-    - statName: projectileSpeed
-      value: 8
-    - statName: homingStrength
-      value: 3
-    - statName: targetingRange
-      value: 18
-    - statName: spreadAngle
-      value: 0
-  - levelName: Level 2
-    description: Fires 1 faster orb with improved homing
-    damage: 8
-    range: 20
-    minFuelToActivate: 33
-    fuelRechargeRate: 14
-    burstFuelCost: 28
-    continuousDrainRate: 0
-    customStats:
-    - statName: projectileCount
-      value: 1
-    - statName: projectileSpeed
-      value: 9
-    - statName: homingStrength
-      value: 4
-    - statName: targetingRange
-      value: 20
-    - statName: spreadAngle
-      value: 0
-  - levelName: Level 3
-    description: Fires 2 orbs with good homing
+    description: Fires 1 orb with decent homing
     damage: 10
     range: 22
-    minFuelToActivate: 31
-    fuelRechargeRate: 16
-    burstFuelCost: 26
+    minFuelToActivate: 30
+    fuelRechargeRate: 15
+    burstFuelCost: 25
     continuousDrainRate: 0
     customStats:
     - statName: projectileCount
-      value: 2
+      value: 1
     - statName: projectileSpeed
-      value: 10
+      value: 12
     - statName: homingStrength
       value: 5
     - statName: targetingRange
       value: 22
     - statName: spreadAngle
-      value: 20
+      value: 0
+  - levelName: Level 2
+    description: Fires 1 fast orb with strong homing
+    damage: 15
+    range: 25
+    minFuelToActivate: 28
+    fuelRechargeRate: 17
+    burstFuelCost: 23
+    continuousDrainRate: 0
+    customStats:
+    - statName: projectileCount
+      value: 1
+    - statName: projectileSpeed
+      value: 14
+    - statName: homingStrength
+      value: 7
+    - statName: targetingRange
+      value: 25
+    - statName: spreadAngle
+      value: 0
+  - levelName: Level 3
+    description: Fires 2 fast orbs with excellent homing
+    damage: 18
+    range: 28
+    minFuelToActivate: 26
+    fuelRechargeRate: 19
+    burstFuelCost: 21
+    continuousDrainRate: 0
+    customStats:
+    - statName: projectileCount
+      value: 2
+    - statName: projectileSpeed
+      value: 15
+    - statName: homingStrength
+      value: 8
+    - statName: targetingRange
+      value: 28
+    - statName: spreadAngle
+      value: 25
   - levelName: Level 4
     description: Fires 2 fast orbs with strong homing
     damage: 14

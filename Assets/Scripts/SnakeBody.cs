@@ -14,6 +14,20 @@ public class SnakeBody : MonoBehaviour
     [Header("Constraint Settings")]
     [SerializeField] private int constraintIterations = 3; // More iterations = more stable but slower
     
+    [Header("Growth Settings")]
+    [Tooltip("Base number of apples needed to add a segment")]
+    [SerializeField] private int baseApplesPerSegment = 5;
+    [Tooltip("Multiplier applied to the threshold after each segment is added (e.g., 1.2 means 20% more apples needed each time)")]
+    [SerializeField] private float growthMultiplier = 1.2f;
+    [Tooltip("Maximum apples required for a segment (caps the multiplier effect)")]
+    [SerializeField] private int maxApplesPerSegment = 50;
+    
+    // Growth tracking
+    private int totalApplesEaten = 0;
+    private int applesForCurrentSegment = 0;
+    private int currentApplesThreshold;
+    private int segmentsAddedFromApples = 0;
+    
     // Material system
     [SerializeField] private Renderer headRenderer;
     private GameObject currentAttachment;
@@ -22,8 +36,21 @@ public class SnakeBody : MonoBehaviour
     
     public static event Action OnBodyPartsInitialized;
     
+    private void OnEnable()
+    {
+        AppleEnemy.OnAppleDied += OnAppleEaten;
+    }
+    
+    private void OnDisable()
+    {
+        AppleEnemy.OnAppleDied -= OnAppleEaten;
+    }
+    
     void Start()
     {
+        // Initialize the growth threshold
+        currentApplesThreshold = baseApplesPerSegment;
+        
         // Set static references for AppleEnemy optimization
         SnakeHealth health = GetComponent<SnakeHealth>();
         AppleEnemy.SetSnakeReferences(this, health);
@@ -67,6 +94,66 @@ public class SnakeBody : MonoBehaviour
         }
         
         OnBodyPartsInitialized?.Invoke();
+    }
+    
+    /// <summary>
+    /// Called when an apple enemy dies. Tracks apples eaten and adds segments accordingly.
+    /// </summary>
+    private void OnAppleEaten(AppleEnemy apple)
+    {
+        totalApplesEaten++;
+        applesForCurrentSegment++;
+        
+        // Check if we've eaten enough apples to add a segment
+        if (applesForCurrentSegment >= currentApplesThreshold)
+        {
+            // Add a segment
+            IncreaseSize(1);
+            segmentsAddedFromApples++;
+            
+            Debug.Log($"[SnakeBody] Added segment from eating apples! Total segments from apples: {segmentsAddedFromApples}, Total apples eaten: {totalApplesEaten}");
+            
+            // Reset counter for next segment
+            applesForCurrentSegment = 0;
+            
+            // Calculate new threshold with multiplier (capped at max)
+            int newThreshold = Mathf.RoundToInt(currentApplesThreshold * growthMultiplier);
+            currentApplesThreshold = Mathf.Min(newThreshold, maxApplesPerSegment);
+            
+            Debug.Log($"[SnakeBody] Next segment requires {currentApplesThreshold} apples");
+        }
+    }
+    
+    /// <summary>
+    /// Gets the current progress towards the next segment (0 to 1)
+    /// </summary>
+    public float GetGrowthProgress()
+    {
+        return (float)applesForCurrentSegment / currentApplesThreshold;
+    }
+    
+    /// <summary>
+    /// Gets the number of apples needed for the next segment
+    /// </summary>
+    public int GetApplesNeededForNextSegment()
+    {
+        return currentApplesThreshold - applesForCurrentSegment;
+    }
+    
+    /// <summary>
+    /// Gets the total number of apples eaten
+    /// </summary>
+    public int GetTotalApplesEaten()
+    {
+        return totalApplesEaten;
+    }
+    
+    /// <summary>
+    /// Gets the number of segments added from eating apples
+    /// </summary>
+    public int GetSegmentsFromApples()
+    {
+        return segmentsAddedFromApples;
     }
 
     public void OnAdd(InputAction.CallbackContext context)
@@ -129,11 +216,61 @@ public class SnakeBody : MonoBehaviour
             // Set up the leader - new segment follows the previous last segment
             bodyPartComponent.Initialize(lastSegment, segmentSpacing);
             
-            // Capture scale before adding to list
-            bodyPartComponent.CaptureBaseScale();
-            
             bodyParts.Add(bodyPartComponent);
             bodyLength++;
+        }
+        
+        // Reapply tail taper to maintain the tapered look
+        ApplyTailTaper();
+    }
+    
+    /// <summary>
+    /// Applies tapered scaling to the last 3 segments of the snake tail.
+    /// Called after adding new segments to maintain the tapered appearance.
+    /// </summary>
+    private void ApplyTailTaper()
+    {
+        if (bodyParts.Count == 0) return;
+        
+        // Tail scales: smallest at the very end, getting bigger toward the head
+        float[] tailScales = { 0.5f, 0.7f, 0.85f };
+        
+        // Apply taper to the last 3 segments (or fewer if snake is shorter)
+        int segmentsToTaper = Mathf.Min(3, bodyParts.Count);
+        
+        for (int i = 0; i < segmentsToTaper; i++)
+        {
+            // Index from the end of the list
+            int partIndex = bodyParts.Count - 1 - i;
+            BodyPart part = bodyParts[partIndex];
+            
+            if (part != null)
+            {
+                Vector3 scale = part.transform.localScale;
+                // Reset to default scale first (in case it was previously tapered differently)
+                scale.x = 1f;
+                // Apply the taper scale based on distance from tail
+                scale.x = tailScales[i];
+                part.transform.localScale = scale;
+                
+                // Update the base scale so animations work correctly
+                part.CaptureBaseScale();
+            }
+        }
+        
+        // Reset any segments that were previously tapered but are no longer in the tail zone
+        // This handles the case where the 4th-from-end segment was previously the 3rd-from-end
+        if (bodyParts.Count > 3)
+        {
+            int fourthFromEnd = bodyParts.Count - 4;
+            BodyPart part = bodyParts[fourthFromEnd];
+            if (part != null)
+            {
+                Vector3 scale = part.transform.localScale;
+                scale.x = 1f; // Reset to full size
+                part.transform.localScale = scale;
+                part.CaptureBaseScale();
+            }
         }
     }
     
