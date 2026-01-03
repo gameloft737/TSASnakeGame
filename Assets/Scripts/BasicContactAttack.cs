@@ -57,10 +57,12 @@ public class BasicContactAttack : MonoBehaviour
             if (instantKill)
             {
                 trackedEnemy.Die();
+                SoundManager.Play("Bite", gameObject);
             }
             else
             {
                 trackedEnemy.TakeDamage(damage);
+                SoundManager.Play("Bite", gameObject);
             }
             trackedEnemy = null; // Clear reference after attacking
         }
@@ -77,10 +79,12 @@ public class BasicContactAttack : MonoBehaviour
             if (instantKill)
             {
                 enemy.Die();
+                SoundManager.Play("Bite", gameObject);
             }
             else
             {
                 enemy.TakeDamage(damage);
+                SoundManager.Play("Bite", gameObject);
             }
         }
     }

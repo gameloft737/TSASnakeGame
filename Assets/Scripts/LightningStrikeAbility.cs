@@ -20,8 +20,7 @@ public class LightningStrikeAbility : BaseAbility
     [SerializeField] private Color lightningColor = new Color(0.5f, 0.8f, 1f, 1f); // Light blue
     
     [Header("Audio")]
-    [SerializeField] private AudioClip strikeSound;
-    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private string strikeSoundName = "lightning_strike";
     
     // Custom stat names for upgrade data
     private const string STAT_STRIKE_COUNT = "strikeCount";
@@ -42,17 +41,7 @@ public class LightningStrikeAbility : BaseAbility
             playerTransform = player.transform;
         }
         
-        // Get or add audio source
-        if (audioSource == null)
-        {
-            audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
-            {
-                audioSource = gameObject.AddComponent<AudioSource>();
-                audioSource.playOnAwake = false;
-                audioSource.spatialBlend = 0f; // 2D sound
-            }
-        }
+
     }
     
     protected override void Update()
@@ -177,10 +166,7 @@ public class LightningStrikeAbility : BaseAbility
         }
         
         // Play strike sound
-        if (strikeSound != null && audioSource != null)
-        {
-            audioSource.PlayOneShot(strikeSound);
-        }
+        SoundManager.Play(strikeSoundName, gameObject);
     }
     
     /// <summary>
