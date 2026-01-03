@@ -19,10 +19,6 @@ public class AttackButton : MonoBehaviour
     [Header("Colors")]
     [SerializeField] private Color normalColor = Color.white;
     [SerializeField] private Color selectedColor = Color.green;
-    [SerializeField] private Color maxLevelColor = Color.yellow;
-    [SerializeField] private Color newColor = new Color(0.5f, 0.8f, 1f); // Light blue for new attacks
-    [SerializeField] private Color passiveAbilityColor = new Color(0.5f, 0.8f, 1f); // Light blue for passive abilities
-    [SerializeField] private Color activeAbilityColor = new Color(1f, 0.6f, 0.6f); // Light red for active abilities
     
     private Attack attack;
     private AbilitySO abilitySO;
@@ -31,6 +27,10 @@ public class AttackButton : MonoBehaviour
     private AttackSelectionUI selectionUI;
     private Button button;
     private bool isAbilityMode = false;
+    private bool isSwapMode = false;
+    private Color customNormalColor;
+    private Color customSelectedColor;
+    private bool useCustomColors = false;
     
     private void Awake()
     {
@@ -49,6 +49,15 @@ public class AttackButton : MonoBehaviour
             backgroundImage = GetComponent<Image>();
         if (newIndicator == null)
             newIndicator = transform.Find("NewIndicator")?.gameObject;
+            
+        // Set button color block to use only normal and pressed
+        if (button != null)
+        {
+            ColorBlock colors = button.colors;
+            colors.highlightedColor = colors.normalColor;
+            colors.selectedColor = colors.normalColor;
+            button.colors = colors;
+        }
     }
     
     /// <summary>
@@ -59,7 +68,9 @@ public class AttackButton : MonoBehaviour
         this.attack = attack;
         this.attackIndex = attackIndex;
         this.selectionUI = selectionUI;
-        this.playerOwnsAttack = false; // Will be set by InitializeWithOwnership
+        this.playerOwnsAttack = false;
+        this.isSwapMode = false;
+        this.useCustomColors = false;
         
         UpdateDisplay(isSelected);
         
@@ -82,6 +93,8 @@ public class AttackButton : MonoBehaviour
         this.attackIndex = attackIndex;
         this.selectionUI = selectionUI;
         this.playerOwnsAttack = ownsAttack;
+        this.isSwapMode = false;
+        this.useCustomColors = false;
         
         UpdateDisplay(isSelected);
         
@@ -103,6 +116,8 @@ public class AttackButton : MonoBehaviour
         this.currentAbilityLevel = currentLevel;
         this.selectionUI = selectionUI;
         this.isAbilityMode = true;
+        this.isSwapMode = false;
+        this.useCustomColors = false;
         
         UpdateAbilityDisplay(isSelected);
         
@@ -112,6 +127,16 @@ public class AttackButton : MonoBehaviour
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(OnAbilityButtonClicked);
         }
+    }
+    
+    /// <summary>
+    /// Set custom colors for this button (used for swaps and new attacks)
+    /// </summary>
+    public void SetCustomColors(Color normal, Color selected)
+    {
+        this.customNormalColor = normal;
+        this.customSelectedColor = selected;
+        this.useCustomColors = true;
     }
     
     /// <summary>
@@ -193,25 +218,16 @@ public class AttackButton : MonoBehaviour
             }
         }
         
-        // Set background color
+        // Set background color - only normal or selected
         if (backgroundImage != null)
         {
             if (isSelected)
             {
-                backgroundImage.color = selectedColor;
-            }
-            else if (isNew)
-            {
-                backgroundImage.color = abilitySO.abilityType == AbilityType.Passive ? passiveAbilityColor : activeAbilityColor;
-            }
-            else if (!canUpgrade)
-            {
-                backgroundImage.color = maxLevelColor;
+                backgroundImage.color = useCustomColors ? customSelectedColor : selectedColor;
             }
             else
             {
-                backgroundImage.color = abilitySO.abilityType == AbilityType.Passive ?
-                    new Color(0.7f, 0.9f, 1f) : new Color(1f, 0.8f, 0.8f);
+                backgroundImage.color = useCustomColors ? customNormalColor : normalColor;
             }
         }
         
@@ -335,24 +351,16 @@ public class AttackButton : MonoBehaviour
             }
         }
         
-        // Set background color based on selection, new status, and upgrade status
+        // Set background color - only normal or selected
         if (backgroundImage != null)
         {
             if (isSelected)
             {
-                backgroundImage.color = selectedColor;
-            }
-            else if (isNew)
-            {
-                backgroundImage.color = newColor;
-            }
-            else if (!canUpgrade)
-            {
-                backgroundImage.color = maxLevelColor;
+                backgroundImage.color = useCustomColors ? customSelectedColor : selectedColor;
             }
             else
             {
-                backgroundImage.color = normalColor;
+                backgroundImage.color = useCustomColors ? customNormalColor : normalColor;
             }
         }
         

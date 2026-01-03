@@ -46,11 +46,23 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private MouseLookAt mouseLookAt;
     [SerializeField] private SnakeHealth snakeHealth;
     [SerializeField] private AbilityCollector abilityCollector;
+    [SerializeField] private XPManager xpManager;
     
     [Header("Selection Pool")]
     [SerializeField] private List<Attack> possibleAttacks = new List<Attack>();
     [SerializeField] private List<AbilitySO> possibleAbilities = new List<AbilitySO>();
     [SerializeField] private int optionsToShow = 3;
+    [SerializeField] private GameObject swapAttackButtonPrefab;
+    
+    [Header("Attack Swap Settings")]
+    [SerializeField] private int minLevelForSwap = 5;
+    [SerializeField] [Range(0f, 1f)] private float swapChance = 0.33f;
+    [SerializeField] private Color swapNormalColor = new Color(0.8f, 0.5f, 1f);
+    [SerializeField] private Color swapSelectedColor = Color.green;
+    
+    [Header("New Attack Colors")]
+    [SerializeField] private Color newAttackNormalColor = new Color(1f, 0.8f, 0.5f);
+    [SerializeField] private Color newAttackSelectedColor = Color.green;
     
     [Header("Fallback Options")]
     [SerializeField] private float healAmount = 50f;
@@ -65,6 +77,7 @@ public class AttackSelectionUI : MonoBehaviour
     private Attack selectedAttack = null;
     private AbilitySO selectedAbility = null;
     private FallbackOption selectedFallback = FallbackOption.None;
+    private Attack selectedSwapAttack = null;
     private bool isUIOpen = false;
     private bool isTransitioning = false;
     private Coroutine currentTransition = null;
@@ -82,6 +95,7 @@ public class AttackSelectionUI : MonoBehaviour
     private Dictionary<GameObject, Attack> buttonToAttack = new Dictionary<GameObject, Attack>();
     private Dictionary<GameObject, AbilitySO> buttonToAbility = new Dictionary<GameObject, AbilitySO>();
     private Dictionary<GameObject, FallbackOption> buttonToFallback = new Dictionary<GameObject, FallbackOption>();
+    private Dictionary<GameObject, Attack> buttonToSwapAttack = new Dictionary<GameObject, Attack>();
     
     private void Start()
     {
@@ -104,6 +118,7 @@ public class AttackSelectionUI : MonoBehaviour
         if (!mouseLookAt) mouseLookAt = FindFirstObjectByType<MouseLookAt>();
         if (!snakeHealth) snakeHealth = FindFirstObjectByType<SnakeHealth>();
         if (!abilityCollector) abilityCollector = FindFirstObjectByType<AbilityCollector>();
+        if (!xpManager) xpManager = FindFirstObjectByType<XPManager>();
     }
 
     public void ShowAttackSelection(AttackManager manager)
@@ -127,11 +142,9 @@ public class AttackSelectionUI : MonoBehaviour
         isTransitioning = true;
         isUIOpen = true;
         
-        // Force animator state immediately
         if (uiAnimator)
         {
             uiAnimator.SetBool(openBool, true);
-            // Force update to ensure state is applied
             uiAnimator.Update(0f);
         }
         
@@ -153,7 +166,6 @@ public class AttackSelectionUI : MonoBehaviour
         isTransitioning = false;
         currentTransition = null;
         
-        // Double-check animator state after animation completes
         if (uiAnimator && isUIOpen)
         {
             uiAnimator.SetBool(openBool, true);
@@ -189,7 +201,6 @@ public class AttackSelectionUI : MonoBehaviour
             yield return null;
         }
         
-        // Ensure final values are set
         dof.gaussianStart.value = end;
         dof.gaussianEnd.value = endVal;
         
@@ -203,9 +214,11 @@ public class AttackSelectionUI : MonoBehaviour
         buttonToAttack.Clear();
         buttonToAbility.Clear();
         buttonToFallback.Clear();
+        buttonToSwapAttack.Clear();
         selectedAttack = null;
         selectedAbility = null;
         selectedFallback = FallbackOption.None;
+        selectedSwapAttack = null;
 
         bool isFirstSelection = attackManager == null || attackManager.GetAttackCount() == 0;
         
@@ -252,9 +265,23 @@ public class AttackSelectionUI : MonoBehaviour
         List<object> options = new List<object>();
         
         Attack currentAttack = attackManager?.GetCurrentAttack();
-        if (currentAttack != null && currentAttack.CanUpgrade())
+        
+        // Check if we should offer an attack swap
+        bool shouldOfferSwap = ShouldOfferAttackSwap(currentAttack);
+        
+        if (currentAttack != null && currentAttack.CanUpgrade() && !shouldOfferSwap)
         {
             options.Add(currentAttack);
+        }
+        
+        // Add attack swap option if applicable
+        if (shouldOfferSwap)
+        {
+            Attack swapOption = GetRandomSwapAttack(currentAttack);
+            if (swapOption != null)
+            {
+                options.Add(new AttackSwapOption { swapToAttack = swapOption });
+            }
         }
         
         bool activeSlotsFull = abilityManager != null && !abilityManager.CanAddActiveAbility();
@@ -262,18 +289,37 @@ public class AttackSelectionUI : MonoBehaviour
         foreach (AbilitySO abilitySO in possibleAbilities)
         {
             if (abilitySO == null) continue;
-            if (abilitySO.abilityType != AbilityType.Active) continue;
             
             int currentLevel = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0;
             bool hasAbility = currentLevel > 0;
             
             if (hasAbility)
             {
-                if (currentLevel < abilitySO.maxLevel) options.Add(abilitySO);
+                // Player has this ability - only offer if can upgrade
+                if (currentLevel < abilitySO.maxLevel)
+                {
+                    options.Add(abilitySO);
+                }
             }
             else
             {
-                if (!activeSlotsFull) options.Add(abilitySO);
+                // Player doesn't have this ability - check slot availability based on type
+                if (abilitySO.abilityType == AbilityType.Active)
+                {
+                    if (!activeSlotsFull)
+                    {
+                        options.Add(abilitySO);
+                    }
+                }
+                else if (abilitySO.abilityType == AbilityType.Passive)
+                {
+                    // Check passive slot availability
+                    bool passiveSlotsFull = abilityManager != null && !abilityManager.CanAddPassiveAbility();
+                    if (!passiveSlotsFull)
+                    {
+                        options.Add(abilitySO);
+                    }
+                }
             }
         }
         
@@ -289,6 +335,70 @@ public class AttackSelectionUI : MonoBehaviour
         {
             if (option is Attack attack) SpawnAttackButton(attack);
             else if (option is AbilitySO abilitySO) SpawnAbilityButton(abilitySO);
+            else if (option is AttackSwapOption swapOption) SpawnSwapAttackButton(swapOption.swapToAttack);
+        }
+    }
+    
+    private bool ShouldOfferAttackSwap(Attack currentAttack)
+    {
+        if (currentAttack == null) return false;
+        if (xpManager == null) return false;
+        if (possibleAttacks == null || possibleAttacks.Count <= 1) return false;
+        
+        int playerLevel = xpManager.GetCurrentLevel();
+        if (playerLevel < minLevelForSwap) return false;
+        
+        return Random.value < swapChance;
+    }
+    
+    private Attack GetRandomSwapAttack(Attack currentAttack)
+    {
+        List<Attack> availableSwaps = new List<Attack>();
+        
+        foreach (Attack attack in possibleAttacks)
+        {
+            if (attack != null && attack != currentAttack)
+            {
+                availableSwaps.Add(attack);
+            }
+        }
+        
+        if (availableSwaps.Count == 0) return null;
+        
+        return availableSwaps[Random.Range(0, availableSwaps.Count)];
+    }
+    
+    private void SpawnSwapAttackButton(Attack swapToAttack)
+    {
+        // Use swap-specific prefab if available, otherwise fall back to regular
+        GameObject prefabToUse = swapAttackButtonPrefab != null ? swapAttackButtonPrefab : attackButtonPrefab;
+        
+        GameObject buttonObj = Instantiate(prefabToUse, attackButtonContainer);
+        spawnedButtons.Add(buttonObj);
+        buttonToSwapAttack[buttonObj] = swapToAttack;
+        
+        Attack currentAttack = attackManager.GetCurrentAttack();
+        int currentLevel = currentAttack != null ? currentAttack.GetCurrentLevel() : 1;
+        int targetLevel = Mathf.Min(currentLevel, swapToAttack.GetMaxLevel());
+        
+        // Get the AttackButton component and initialize it properly
+        AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
+        if (attackButton)
+        {
+            // Initialize as if the player doesn't own this attack (ownsAttack = false)
+            // This will show it as "new" with the attack's normal name, level, and description
+            attackButton.InitializeWithOwnership(swapToAttack, possibleAttacks.IndexOf(swapToAttack), this, false, false);
+            
+            // Set custom swap colors
+            attackButton.SetCustomColors(swapNormalColor, swapSelectedColor);
+        }
+        
+        // Override the button click to use swap selection
+        Button button = buttonObj.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => OnSwapAttackSelected(swapToAttack));
         }
     }
     
@@ -346,6 +456,12 @@ public class AttackSelectionUI : MonoBehaviour
         if (attackButton)
         {
             attackButton.InitializeWithOwnership(attack, possibleAttacks.IndexOf(attack), this, false, ownsAttack);
+            
+            // Set custom colors for new attacks
+            if (!ownsAttack)
+            {
+                attackButton.SetCustomColors(newAttackNormalColor, newAttackSelectedColor);
+            }
         }
         else
         {
@@ -469,36 +585,48 @@ public class AttackSelectionUI : MonoBehaviour
 
     public void OnAttackButtonClicked(int attackIndex) { if (attackIndex >= 0 && attackIndex < possibleAttacks.Count) OnAttackSelected(possibleAttacks[attackIndex]); }
     
-    public void OnAttackSelected(Attack attack) { selectedAttack = attack; selectedAbility = null; selectedFallback = FallbackOption.None; UpdateButtonSelections(); }
+    public void OnAttackSelected(Attack attack) { selectedAttack = attack; selectedAbility = null; selectedFallback = FallbackOption.None; selectedSwapAttack = null; UpdateButtonSelections(); }
     
-    public void OnAbilitySelected(AbilitySO abilitySO) { selectedAbility = abilitySO; selectedAttack = null; selectedFallback = FallbackOption.None; UpdateButtonSelections(); }
+    public void OnAbilitySelected(AbilitySO abilitySO) { selectedAbility = abilitySO; selectedAttack = null; selectedFallback = FallbackOption.None; selectedSwapAttack = null; UpdateButtonSelections(); }
     
-    private void OnFallbackSelected(FallbackOption fallback) { selectedFallback = fallback; selectedAttack = null; selectedAbility = null; UpdateButtonSelections(); }
+    private void OnFallbackSelected(FallbackOption fallback) { selectedFallback = fallback; selectedAttack = null; selectedAbility = null; selectedSwapAttack = null; UpdateButtonSelections(); }
+    
+    private void OnSwapAttackSelected(Attack swapAttack) { selectedSwapAttack = swapAttack; selectedAttack = null; selectedAbility = null; selectedFallback = FallbackOption.None; UpdateButtonSelections(); }
     
     private void UpdateButtonSelections()
     {
         foreach (var buttonObj in spawnedButtons)
         {
-            Image bgImage = buttonObj.GetComponent<Image>();
-            if (bgImage == null) continue;
+            AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
             
             if (buttonToAttack.ContainsKey(buttonObj))
             {
                 Attack attack = buttonToAttack[buttonObj];
-                if (attack == selectedAttack) bgImage.color = Color.green;
-                else { bool isNew = attackManager == null || !attackManager.HasAttack(attack); bgImage.color = isNew ? new Color(1f, 0.8f, 0.5f) : Color.white; }
+                bool isSelected = attack == selectedAttack;
+                if (attackButton) attackButton.SetSelected(isSelected);
             }
             else if (buttonToAbility.ContainsKey(buttonObj))
             {
                 AbilitySO abilitySO = buttonToAbility[buttonObj];
-                if (abilitySO == selectedAbility) bgImage.color = Color.green;
-                else { int lvl = abilityManager != null ? abilityManager.GetAbilityLevel(abilitySO.abilityPrefab) : 0; bool isNew = lvl == 0; bgImage.color = abilitySO.abilityType == AbilityType.Passive ? (isNew ? new Color(0.5f, 0.8f, 1f) : new Color(0.7f, 0.9f, 1f)) : (isNew ? new Color(1f, 0.6f, 0.6f) : new Color(1f, 0.8f, 0.8f)); }
+                bool isSelected = abilitySO == selectedAbility;
+                if (attackButton) attackButton.SetSelected(isSelected);
+            }
+            else if (buttonToSwapAttack.ContainsKey(buttonObj))
+            {
+                Attack swapAttack = buttonToSwapAttack[buttonObj];
+                bool isSelected = swapAttack == selectedSwapAttack;
+                if (attackButton) attackButton.SetSelected(isSelected);
             }
             else if (buttonToFallback.ContainsKey(buttonObj))
             {
+                // Fallback buttons still use manual color setting since they don't use AttackButton
                 FallbackOption fallback = buttonToFallback[buttonObj];
-                if (fallback == selectedFallback) bgImage.color = Color.green;
-                else bgImage.color = fallback == FallbackOption.Heal ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 1f, 0.5f);
+                Image bgImage = buttonObj.GetComponent<Image>();
+                if (bgImage != null)
+                {
+                    if (fallback == selectedFallback) bgImage.color = Color.green;
+                    else bgImage.color = fallback == FallbackOption.Heal ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 1f, 0.5f);
+                }
             }
         }
     }
@@ -521,7 +649,6 @@ public class AttackSelectionUI : MonoBehaviour
         
         ApplySelection();
         
-        // Force animator state immediately
         if (uiAnimator)
         {
             uiAnimator.SetBool(openBool, false);
@@ -562,7 +689,6 @@ public class AttackSelectionUI : MonoBehaviour
         isTransitioning = false;
         currentTransition = null;
         
-        // Final check to ensure animator is in correct state
         if (uiAnimator)
         {
             uiAnimator.SetBool(openBool, false);
@@ -572,6 +698,7 @@ public class AttackSelectionUI : MonoBehaviour
     private void ApplySelection()
     {
         if (selectedFallback != FallbackOption.None) { ApplyFallbackOption(); return; }
+        if (selectedSwapAttack != null) { ApplyAttackSwap(); return; }
         if (selectedAbility != null && abilityManager != null) { abilityManager.AddAbility(selectedAbility.abilityPrefab, selectedAbility); return; }
         if (selectedAttack != null && attackManager != null)
         {
@@ -586,6 +713,40 @@ public class AttackSelectionUI : MonoBehaviour
                 attackManager.AddAttack(selectedAttack);
             }
         }
+    }
+    
+    private void ApplyAttackSwap()
+    {
+        if (selectedSwapAttack == null || attackManager == null) return;
+        
+        Attack currentAttack = attackManager.GetCurrentAttack();
+        if (currentAttack == null) return;
+        
+        int currentLevel = currentAttack.GetCurrentLevel();
+        int maxSwapLevel = selectedSwapAttack.GetMaxLevel();
+        int targetLevel = Mathf.Min(currentLevel, maxSwapLevel);
+        
+        // Clear the current attack
+        attackManager.ClearAllAttacks();
+        
+        // Add the new attack
+        attackManager.AddAttack(selectedSwapAttack);
+        
+        // Upgrade it to the target level (level 1 is base, so upgrade targetLevel - 1 times)
+        for (int i = 1; i < targetLevel; i++)
+        {
+            if (selectedSwapAttack.CanUpgrade())
+            {
+                selectedSwapAttack.TryUpgrade();
+            }
+            else
+            {
+                Debug.LogWarning($"Could not upgrade {selectedSwapAttack.attackName} to level {i + 1}");
+                break;
+            }
+        }
+        
+        Debug.Log($"Swapped attack to {selectedSwapAttack.attackName} at level {selectedSwapAttack.GetCurrentLevel()}");
     }
     
     private void ApplyFallbackOption()
@@ -734,5 +895,10 @@ public class AttackSelectionUI : MonoBehaviour
         frozenAbilities.Clear();
         
         isUIOpen = false;
+    }
+    
+    private class AttackSwapOption
+    {
+        public Attack swapToAttack;
     }
 }
