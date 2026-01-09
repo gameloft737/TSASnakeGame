@@ -192,19 +192,8 @@ public class LaserAttack : Attack
 
     protected override void OnHoldUpdate()
     {
-        // Update X rotation based on mouse input when aiming
-        if (cameraManager != null && cameraManager.IsAiming() && mouseLookAt != null)
-        {
-            Vector2 smoothedInput = mouseLookAt.GetSmoothedLookInput();
-            // Negate the Y input to invert control
-            targetXRotation -= smoothedInput.y * mouseSensitivity;
-            targetXRotation = Mathf.Clamp(targetXRotation, minXRotation, maxXRotation);
-        }
-        else
-        {
-            // Return to neutral when not aiming
-            targetXRotation = Mathf.Lerp(targetXRotation, 0f, 5f * Time.deltaTime);
-        }
+        // Return to neutral (aim camera removed)
+        targetXRotation = Mathf.Lerp(targetXRotation, 0f, 5f * Time.deltaTime);
         
         // Calculate the rotated direction from aimReference
         Vector3 rotatedDirection = aimReference.forward;

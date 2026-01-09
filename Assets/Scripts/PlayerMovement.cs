@@ -33,6 +33,10 @@ public class PlayerMovement : MonoBehaviour
     [Header("Camera Reference")]
     [SerializeField] private CameraManager cameraManager;
     [SerializeField] private bool useMouseInAimMode = true; // Toggle which camera mode uses mouse
+    
+    [Header("Classic Mode Settings")]
+    [SerializeField] private float gridCellSize = 1f;
+    [SerializeField] private float classicMoveInterval = 0.15f; // Time between grid moves
 
     private Rigidbody rb;
     [SerializeField]private bool isGrounded;
@@ -41,10 +45,15 @@ public class PlayerMovement : MonoBehaviour
     private Vector2 lookInput; // Mouse/look input
     private Vector2 smoothedLookInput; // Smoothed mouse input
     private Vector3 surfaceNormal = Vector3.up;
-    private float aimStartTime; // Track when aiming started
-    private bool wasAiming; // Track previous aim state
     private bool isFrozen = false; // Whether the player is frozen (for ability selection)
     private Vector3 frozenVelocity; // Store velocity when frozen
+    
+    // Classic mode state
+    private bool isClassicMode = false;
+    private Vector2Int classicDirection = Vector2Int.up; // Current movement direction
+    private Vector2Int nextClassicDirection = Vector2Int.up; // Queued direction
+    private float classicMoveTimer = 0f;
+    private Vector2Int lastInputDirection = Vector2Int.zero;
 
     void Start()
     {
@@ -69,7 +78,16 @@ public class PlayerMovement : MonoBehaviour
         CheckGround();
         AlignToSurface();
         SmoothMouseInput();
-        HandleRotation();
+        
+        if (isClassicMode)
+        {
+            HandleClassicModeRotation();
+        }
+        else
+        {
+            HandleRotation();
+        }
+        
         UpdateWeaponRotation();
     }
 
@@ -81,6 +99,141 @@ public class PlayerMovement : MonoBehaviour
         HandleMovement();
         ApplyGroundFriction();
     }
+    
+    #region Classic Mode
+    
+    /// <summary>
+    /// Enables or disables classic mode (smooth movement but restricted to 4 cardinal directions)
+    /// </summary>
+    public void SetClassicMode(bool enabled, float cellSize = 1f, float moveInterval = 0.15f)
+    {
+        isClassicMode = enabled;
+        
+        if (enabled)
+        {
+            // Snap orientation to nearest cardinal direction
+            SnapOrientationToCardinal();
+            Debug.Log("[PlayerMovement] Classic mode enabled - movement restricted to 4 directions");
+        }
+        else
+        {
+            Debug.Log("[PlayerMovement] Classic mode disabled");
+        }
+    }
+    
+    public bool IsClassicMode() => isClassicMode;
+    
+    /// <summary>
+    /// Snaps the orientation to the nearest cardinal direction (N, E, S, W)
+    /// </summary>
+    private void SnapOrientationToCardinal()
+    {
+        if (orientation == null) return;
+        
+        // Get current forward direction
+        Vector3 forward = orientation.forward;
+        forward.y = 0;
+        forward.Normalize();
+        
+        // Find nearest cardinal direction
+        Vector3[] cardinals = { Vector3.forward, Vector3.right, Vector3.back, Vector3.left };
+        Vector3 nearest = cardinals[0];
+        float maxDot = -1f;
+        
+        foreach (var dir in cardinals)
+        {
+            float dot = Vector3.Dot(forward, dir);
+            if (dot > maxDot)
+            {
+                maxDot = dot;
+                nearest = dir;
+            }
+        }
+        
+        // Snap to that direction
+        orientation.rotation = Quaternion.LookRotation(nearest, Vector3.up);
+    }
+    
+    /// <summary>
+    /// In classic mode, handles absolute direction input like classic Snake
+    /// W/Up = North, S/Down = South, A/Left = West, D/Right = East
+    /// Holding a direction key also boosts speed (like holding W in normal mode)
+    /// </summary>
+    private void HandleClassicModeRotation()
+    {
+        if (orientation == null) return;
+        
+        Vector3 newDirection = Vector3.zero;
+        bool isHoldingDirection = false;
+        
+        if (Keyboard.current != null)
+        {
+            // Check for direction input - absolute directions like classic Snake
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
+            {
+                newDirection = Vector3.forward; // North
+                isHoldingDirection = true;
+            }
+            else if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
+            {
+                newDirection = Vector3.back; // South
+                isHoldingDirection = true;
+            }
+            else if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
+            {
+                newDirection = Vector3.left; // West
+                isHoldingDirection = true;
+            }
+            else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+            {
+                newDirection = Vector3.right; // East
+                isHoldingDirection = true;
+            }
+        }
+        
+        // In classic mode, holding any direction key gives speed boost (like holding W in normal mode)
+        moveForward = isHoldingDirection;
+        
+        // If a direction was pressed, check if it's valid (not reversing)
+        if (newDirection != Vector3.zero)
+        {
+            Vector3 currentDir = orientation.forward;
+            currentDir.y = 0;
+            currentDir.Normalize();
+            
+            // Don't allow reversing direction (can't go back on yourself)
+            float dot = Vector3.Dot(currentDir, newDirection);
+            if (dot > -0.9f) // Allow if not directly opposite
+            {
+                // Set the new direction
+                orientation.rotation = Quaternion.LookRotation(newDirection, Vector3.up);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Gets the current cardinal direction the snake is facing
+    /// </summary>
+    public Vector2Int GetClassicDirection()
+    {
+        if (orientation == null) return Vector2Int.up;
+        
+        Vector3 forward = orientation.forward;
+        forward.y = 0;
+        forward.Normalize();
+        
+        // Determine which cardinal direction we're closest to
+        if (Mathf.Abs(forward.z) > Mathf.Abs(forward.x))
+        {
+            return forward.z > 0 ? Vector2Int.up : Vector2Int.down;
+        }
+        else
+        {
+            return forward.x > 0 ? Vector2Int.right : Vector2Int.left;
+        }
+    }
+    
+    #endregion
 
     private void ApplyGravity()
     {
@@ -155,54 +308,20 @@ public class PlayerMovement : MonoBehaviour
 
         float rotation = 0f;
         
-        // Check if we're aiming
-        bool isAiming = cameraManager != null && cameraManager.IsAiming();
+        // Determine if we should use mouse based on settings (aim camera removed)
+        bool shouldUseMouse = !useMouseInAimMode;
         
-        // Detect when we start aiming
-        if (isAiming && !wasAiming)
+        if (shouldUseMouse)
         {
-            aimStartTime = Time.time;
-            smoothedLookInput = Vector2.zero; // Reset smoothing when entering aim mode
-        }
-        wasAiming = isAiming;
-        
-        // Determine if we should use mouse based on mode and settings
-        bool shouldUseMouse = (isAiming && useMouseInAimMode) || (!isAiming && !useMouseInAimMode);
-        
-        if (isAiming)
-        {
-            // Check if enough time has passed since starting to aim
-            float timeSinceAimStart = Time.time - aimStartTime;
-            if (timeSinceAimStart >= aimInputDelay)
-            {
-                if (shouldUseMouse)
-                {
-                    // Use BOTH keyboard AND mouse input
-                    float mouseRotation = smoothedLookInput.x * mouseSensitivity;
-                    float keyboardRotation = rotationInput * rotationSpeed * Time.deltaTime;
-                    rotation = mouseRotation + keyboardRotation;
-                }
-                else
-                {
-                    // Use ONLY keyboard input
-                    rotation = rotationInput * rotationSpeed * Time.deltaTime;
-                }
-            }
+            // Use BOTH keyboard AND mouse input
+            float mouseRotation = smoothedLookInput.x * mouseSensitivity;
+            float keyboardRotation = rotationInput * rotationSpeed * Time.deltaTime;
+            rotation = mouseRotation + keyboardRotation;
         }
         else
         {
-            if (shouldUseMouse)
-            {
-                // Use BOTH keyboard AND mouse input
-                float mouseRotation = smoothedLookInput.x * mouseSensitivity;
-                float keyboardRotation = rotationInput * rotationSpeed * Time.deltaTime;
-                rotation = mouseRotation + keyboardRotation;
-            }
-            else
-            {
-                // Use ONLY keyboard input
-                rotation = rotationInput * rotationSpeed * Time.deltaTime;
-            }
+            // Use ONLY keyboard input
+            rotation = rotationInput * rotationSpeed * Time.deltaTime;
         }
         
         orientation.Rotate(Vector3.up, rotation, Space.Self);

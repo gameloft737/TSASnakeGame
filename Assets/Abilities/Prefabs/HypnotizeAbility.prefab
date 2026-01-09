@@ -51,6 +51,9 @@ MonoBehaviour:
   baseConversionRange: 15
   baseConversionCooldown: 10
   attachmentToShow: {fileID: 0}
+  attachmentObjectName: hypnotize
+  attachmentObjectTag: Tools
+  searchInPlayerChildren: 1
   allyMaterial: {fileID: -5354028657143720620, guid: fe88ab7c154ca074190477d968c9c111, type: 3}
   allyTintColor: {r: 0.5, g: 1, b: 0.5, a: 1}
   allyDamageMultiplier: 1

@@ -33,20 +33,8 @@ public class MouseLookAt : MonoBehaviour
 
     private void ApplyRotation()
     {
-        // Only rotate when aiming
-        if (cameraManager != null && cameraManager.IsAiming())
-        {
-            // Use vertical mouse movement (Y axis) to affect X rotation
-            targetXRotation += smoothedLookInput.y * mouseSensitivity;
-            
-            // Clamp the rotation between min and max values
-            targetXRotation = Mathf.Clamp(targetXRotation, minXRotation, maxXRotation);
-        }
-        else
-        {
-            // When not aiming, return to neutral position
-            targetXRotation = Mathf.Lerp(targetXRotation, 0f, 5f * Time.deltaTime);
-        }
+        // Always return to neutral position (aim camera removed)
+        targetXRotation = Mathf.Lerp(targetXRotation, 0f, 5f * Time.deltaTime);
         
         // Apply the rotation (only affecting X axis)
         transform.localRotation = Quaternion.Euler(targetXRotation, 0f, 0f);

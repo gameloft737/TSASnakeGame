@@ -142,6 +142,12 @@ public class AttackSelectionUI : MonoBehaviour
         isTransitioning = true;
         isUIOpen = true;
         
+        // Notify ClassicModeManager that menu is opening
+        if (ClassicModeManager.Instance != null)
+        {
+            ClassicModeManager.Instance.OnMenuOpened();
+        }
+        
         if (uiAnimator)
         {
             uiAnimator.SetBool(openBool, true);
@@ -659,18 +665,18 @@ public class AttackSelectionUI : MonoBehaviour
         
         yield return new WaitForSecondsRealtime(ANIM_TIME);
         
-        if (cameraManager) cameraManager.SwitchToNormalCamera();
+        // Don't switch camera here - let ClassicModeManager handle it
         ClearCurrentAbilityDisplays();
         ClearCurrentAttackDisplay();
         if (nonUI) nonUI.SetActive(true);
         
-        if (playerMovement) playerMovement.enabled = true;
-        if (mouseLookAt) mouseLookAt.enabled = true;
+        if (playerMovement) playerMovement.SetFrozen(false);
+        if (mouseLookAt) mouseLookAt.SetFrozen(false);
         if (attackManager) attackManager.SetFrozen(false);
         
         foreach (BaseAbility ability in frozenAbilities)
         {
-            if (ability) ability.enabled = true;
+            if (ability) ability.SetFrozen(false);
         }
         frozenAbilities.Clear();
         
@@ -692,6 +698,17 @@ public class AttackSelectionUI : MonoBehaviour
         if (uiAnimator)
         {
             uiAnimator.SetBool(openBool, false);
+        }
+        
+        // Notify ClassicModeManager that menu is closing - it will restore the correct camera
+        if (ClassicModeManager.Instance != null)
+        {
+            ClassicModeManager.Instance.OnMenuClosed();
+        }
+        else if (cameraManager)
+        {
+            // Fallback if no ClassicModeManager - switch to normal camera
+            cameraManager.SwitchToNormalCamera();
         }
     }
     
@@ -859,8 +876,8 @@ public class AttackSelectionUI : MonoBehaviour
             }
         }
         
-        if (playerMovement) playerMovement.enabled = false;
-        if (mouseLookAt) mouseLookAt.enabled = false;
+        if (playerMovement) playerMovement.SetFrozen(true);
+        if (mouseLookAt) mouseLookAt.SetFrozen(true);
         if (attackManager) attackManager.SetFrozen(true);
         
         if (abilityManager)
@@ -869,7 +886,7 @@ public class AttackSelectionUI : MonoBehaviour
             {
                 if (ability)
                 {
-                    ability.enabled = false;
+                    ability.SetFrozen(true);
                     frozenAbilities.Add(ability);
                 }
             }
@@ -884,13 +901,13 @@ public class AttackSelectionUI : MonoBehaviour
         }
         frozenEnemies.Clear();
         
-        if (playerMovement) playerMovement.enabled = true;
-        if (mouseLookAt) mouseLookAt.enabled = true;
+        if (playerMovement) playerMovement.SetFrozen(false);
+        if (mouseLookAt) mouseLookAt.SetFrozen(false);
         if (attackManager) attackManager.SetFrozen(false);
         
         foreach (BaseAbility ability in frozenAbilities)
         {
-            if (ability) ability.enabled = true;
+            if (ability) ability.SetFrozen(false);
         }
         frozenAbilities.Clear();
         

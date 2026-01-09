@@ -6,15 +6,24 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Manages switching between the normal 3D snake game and classic 2D top-down snake mode.
-/// Toggle with right-click (or configured input).
-/// 
+/// Toggle with Tab key (configurable).
+///
 /// SETUP INSTRUCTIONS:
 /// 1. Create an empty GameObject in your scene and name it "ClassicModeManager"
 /// 2. Add this script to that GameObject
-/// 3. The script will automatically find references to PlayerMovement, SnakeBody, CameraManager, etc.
-/// 4. Optionally assign custom prefabs for classic apples and body segments
-/// 5. Adjust grid settings (size, width, height, origin) as needed
-/// 6. Right-click to toggle between normal and classic mode during gameplay
+/// 3. Create a Cinemachine Camera for top-down view (see README for camera setup)
+/// 4. Assign the top-down camera to the "Top Down Camera" field
+/// 5. Press Tab to toggle between normal and classic mode during gameplay
+///
+/// CAMERA SETUP (do this in Unity Editor):
+/// 1. GameObject > Cinemachine > Cinemachine Camera
+/// 2. Name it "TopDownCamera"
+/// 3. Set Position to (0, 50, 0) and Rotation to (90, 0, 0)
+/// 4. Add CinemachineFollow component
+/// 5. Set Tracking Target to your snake head
+/// 6. Set Follow Offset to (0, 50, 0)
+/// 7. In Tracker Settings, set Binding Mode to "World Space"
+/// 8. Assign this camera to ClassicModeManager's "Top Down Camera" field
 /// </summary>
 public class ClassicModeManager : MonoBehaviour
 {
@@ -24,47 +33,40 @@ public class ClassicModeManager : MonoBehaviour
     [Header("Grid Settings")]
     [Tooltip("Size of each grid cell in world units")]
     [SerializeField] private float gridCellSize = 1f;
-    [Tooltip("Number of cells wide")]
-    [SerializeField] private int gridWidth = 20;
-    [Tooltip("Number of cells tall")]
-    [SerializeField] private int gridHeight = 20;
-    [Tooltip("World position of the grid's bottom-left corner")]
-    [SerializeField] private Vector3 gridOrigin = Vector3.zero;
-    
-    [Header("Classic Mode Settings")]
     [Tooltip("Time between snake movements (lower = faster)")]
     [SerializeField] private float classicMoveInterval = 0.15f;
-    [Tooltip("Starting length of the snake in classic mode")]
-    [SerializeField] private int initialSnakeLength = 3;
-    [Tooltip("Number of apples on screen at once")]
-    [SerializeField] private int applesInClassicMode = 3;
+    [Tooltip("Time between enemy movements (lower = faster)")]
+    [SerializeField] private float enemyMoveInterval = 0.3f;
     
-    [Header("Camera References")]
+    [Header("Camera References (REQUIRED - Create manually in Editor)")]
+    [Tooltip("Assign your top-down Cinemachine camera here")]
     [SerializeField] private CinemachineCamera topDownCamera;
     [SerializeField] private CameraManager cameraManager;
     
     [Header("References")]
     [SerializeField] private PlayerMovement playerMovement;
-    [SerializeField] private SnakeBody snakeBody;
     [SerializeField] private EnemySpawner enemySpawner;
     [SerializeField] private Transform snakeHead;
     
-    [Header("Classic Mode Prefabs (Optional)")]
-    [Tooltip("Custom prefab for classic mode apples. If null, a simple red sphere is created.")]
-    [SerializeField] private GameObject classicApplePrefab;
-    [Tooltip("Custom prefab for classic mode body segments. If null, a simple cube is created.")]
-    [SerializeField] private GameObject classicBodySegmentPrefab;
-    [Tooltip("Custom prefab for grid visualization. If null, line renderers are used.")]
-    [SerializeField] private GameObject gridVisualizerPrefab;
+    [Header("Visual Settings")]
+    [Tooltip("Show grid lines in classic mode")]
+    [SerializeField] private bool showGridLines = true;
+    [SerializeField] private Color gridLineColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+    [SerializeField] private float gridLineWidth = 0.02f;
+    [SerializeField] private int gridVisibleRadius = 15; // How many cells around the snake to show
+    
+    [Header("Toggle Key")]
+    [Tooltip("Key to toggle classic mode (default: Tab)")]
+    [SerializeField] private KeyCode toggleKey = KeyCode.Tab;
     
     // State
     private bool isClassicMode = false;
     private bool isTransitioning = false;
+    private bool isMenuOpen = false; // Track if a menu is currently open
     
-    // Classic mode components
-    private ClassicSnakeController classicController;
-    private List<GameObject> classicApples = new List<GameObject>();
+    // Grid visualization
     private GameObject gridVisualizer;
+    private List<LineRenderer> gridLines = new List<LineRenderer>();
     
     // Cached states for restoration
     private Vector3 savedSnakePosition;
@@ -74,6 +76,9 @@ public class ClassicModeManager : MonoBehaviour
     // Input
     private PlayerControls playerControls;
     
+    // Cached enemies for mode switching
+    private List<AppleEnemy> cachedEnemies = new List<AppleEnemy>();
+    
     public static ClassicModeManager Instance { get; private set; }
     
     // Events
@@ -82,10 +87,7 @@ public class ClassicModeManager : MonoBehaviour
     // Properties
     public bool IsClassicMode => isClassicMode;
     public float GridCellSize => gridCellSize;
-    public int GridWidth => gridWidth;
-    public int GridHeight => gridHeight;
-    public Vector3 GridOrigin => gridOrigin;
-    public GameObject ClassicBodySegmentPrefab => classicBodySegmentPrefab;
+    public float ClassicMoveInterval => classicMoveInterval;
     
     private void Awake()
     {
@@ -105,12 +107,12 @@ public class ClassicModeManager : MonoBehaviour
     private void OnEnable()
     {
         playerControls.Enable();
-        playerControls.Snake.Aim.performed += OnToggleClassicMode;
+        // Don't use Aim input - it conflicts with camera toggle
+        // We'll use keyboard input in Update instead
     }
     
     private void OnDisable()
     {
-        playerControls.Snake.Aim.performed -= OnToggleClassicMode;
         playerControls.Disable();
     }
     
@@ -118,21 +120,34 @@ public class ClassicModeManager : MonoBehaviour
     {
         FindReferences();
         
-        classicController = GetComponent<ClassicSnakeController>();
-        if (classicController == null)
-        {
-            classicController = gameObject.AddComponent<ClassicSnakeController>();
-        }
-        classicController.enabled = false;
-        
         if (topDownCamera == null)
         {
-            CreateTopDownCamera();
+            Debug.LogError("[ClassicModeManager] Top Down Camera is not assigned! Please create a Cinemachine camera and assign it.");
+            Debug.LogError("[ClassicModeManager] See the script header comments for camera setup instructions.");
+        }
+        else
+        {
+            // Make sure camera starts inactive
+            topDownCamera.Priority = 0;
         }
         
         if (startInClassicMode)
         {
             EnterClassicMode();
+        }
+    }
+    
+    private void Update()
+    {
+        // Check for toggle key press (only when not in menu and not transitioning)
+        if (Input.GetKeyDown(toggleKey) && !isMenuOpen && !isTransitioning)
+        {
+            ToggleClassicMode();
+        }
+        
+        if (isClassicMode && showGridLines && gridVisualizer != null)
+        {
+            UpdateGridVisualization();
         }
     }
     
@@ -142,34 +157,10 @@ public class ClassicModeManager : MonoBehaviour
             cameraManager = FindFirstObjectByType<CameraManager>();
         if (playerMovement == null)
             playerMovement = FindFirstObjectByType<PlayerMovement>();
-        if (snakeBody == null)
-            snakeBody = FindFirstObjectByType<SnakeBody>();
         if (enemySpawner == null)
             enemySpawner = FindFirstObjectByType<EnemySpawner>();
-        if (snakeHead == null && snakeBody != null)
-            snakeHead = snakeBody.transform;
-    }
-    
-    private void CreateTopDownCamera()
-    {
-        GameObject camObj = new GameObject("ClassicMode_TopDownCamera");
-        topDownCamera = camObj.AddComponent<CinemachineCamera>();
-        
-        Vector3 gridCenter = gridOrigin + new Vector3(gridWidth * gridCellSize / 2f, 0, gridHeight * gridCellSize / 2f);
-        float cameraHeight = Mathf.Max(gridWidth, gridHeight) * gridCellSize * 0.8f;
-        
-        camObj.transform.position = gridCenter + Vector3.up * cameraHeight;
-        camObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-        
-        topDownCamera.Priority = 0;
-        
-        Debug.Log($"[ClassicModeManager] Created top-down camera at height {cameraHeight}");
-    }
-    
-    private void OnToggleClassicMode(InputAction.CallbackContext context)
-    {
-        if (isTransitioning) return;
-        ToggleClassicMode();
+        if (snakeHead == null && playerMovement != null)
+            snakeHead = playerMovement.transform;
     }
     
     public void ToggleClassicMode()
@@ -190,9 +181,13 @@ public class ClassicModeManager : MonoBehaviour
         Debug.Log("[ClassicModeManager] Entering Classic Mode");
         
         SaveCurrentState();
-        DisableNormalMode();
-        SetupClassicMode();
+        EnableClassicModeOnComponents();
         SwitchToTopDownCamera();
+        
+        if (showGridLines)
+        {
+            CreateGridVisualizer();
+        }
         
         isClassicMode = true;
         isTransitioning = false;
@@ -207,9 +202,9 @@ public class ClassicModeManager : MonoBehaviour
         isTransitioning = true;
         Debug.Log("[ClassicModeManager] Exiting Classic Mode");
         
-        CleanupClassicMode();
-        RestoreNormalMode();
+        DisableClassicModeOnComponents();
         SwitchToNormalCamera();
+        CleanupGridVisualizer();
         
         isClassicMode = false;
         isTransitioning = false;
@@ -228,117 +223,78 @@ public class ClassicModeManager : MonoBehaviour
         wasSpawningActive = enemySpawner != null && enemySpawner.IsSpawning();
     }
     
-    private void DisableNormalMode()
+    private void EnableClassicModeOnComponents()
     {
+        // Enable classic mode on player movement
+        // The body segments will naturally follow the head since they already do that
         if (playerMovement != null)
-            playerMovement.SetFrozen(true);
+        {
+            playerMovement.SetClassicMode(true, gridCellSize, classicMoveInterval);
+        }
         
-        if (enemySpawner != null)
-            enemySpawner.StopSpawning();
-        
+        // Enable classic mode on all existing apple enemies
         AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        cachedEnemies.Clear();
         foreach (var enemy in enemies)
-            enemy.SetFrozen(true);
-        
-        if (snakeBody != null)
         {
-            foreach (var part in snakeBody.bodyParts)
+            if (enemy != null && !enemy.IsFrozen())
             {
-                if (part != null)
-                    part.gameObject.SetActive(false);
-            }
-        }
-    }
-    
-    private void SetupClassicMode()
-    {
-        Vector3 startPos = GetGridWorldPosition(gridWidth / 2, gridHeight / 2);
-        if (snakeHead != null)
-        {
-            snakeHead.position = startPos;
-            snakeHead.rotation = Quaternion.identity;
-        }
-        
-        if (classicController != null)
-        {
-            classicController.Initialize(this, snakeHead, gridCellSize, classicMoveInterval, initialSnakeLength);
-            classicController.enabled = true;
-        }
-        
-        CreateGridVisualizer();
-        SpawnClassicApples();
-    }
-    
-    private void CleanupClassicMode()
-    {
-        if (classicController != null)
-        {
-            classicController.enabled = false;
-            classicController.Cleanup();
-        }
-        
-        foreach (var apple in classicApples)
-        {
-            if (apple != null)
-                Destroy(apple);
-        }
-        classicApples.Clear();
-        
-        if (gridVisualizer != null)
-        {
-            Destroy(gridVisualizer);
-            gridVisualizer = null;
-        }
-    }
-    
-    private void RestoreNormalMode()
-    {
-        if (snakeHead != null)
-        {
-            snakeHead.position = savedSnakePosition;
-            snakeHead.rotation = savedSnakeRotation;
-        }
-        
-        if (snakeBody != null)
-        {
-            foreach (var part in snakeBody.bodyParts)
-            {
-                if (part != null)
-                    part.gameObject.SetActive(true);
+                enemy.SetClassicMode(true, gridCellSize, enemyMoveInterval);
+                cachedEnemies.Add(enemy);
             }
         }
         
-        if (playerMovement != null)
-            playerMovement.SetFrozen(false);
+        Debug.Log($"[ClassicModeManager] Enabled classic mode on {cachedEnemies.Count} enemies");
         
+        // Freeze camera manager input
+        if (cameraManager != null)
+        {
+            cameraManager.SetFrozen(true);
+        }
+    }
+    
+    private void DisableClassicModeOnComponents()
+    {
+        // Disable classic mode on player movement
+        if (playerMovement != null)
+        {
+            playerMovement.SetClassicMode(false);
+        }
+        
+        // Disable classic mode on all apple enemies
         AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
         foreach (var enemy in enemies)
-            enemy.SetFrozen(false);
+        {
+            if (enemy != null)
+            {
+                enemy.SetClassicMode(false);
+            }
+        }
         
-        if (wasSpawningActive && enemySpawner != null)
-            enemySpawner.ResumeSpawning();
+        // Unfreeze camera manager input
+        if (cameraManager != null)
+        {
+            cameraManager.SetFrozen(false);
+        }
     }
     
     private void SwitchToTopDownCamera()
     {
         if (topDownCamera != null)
         {
-            Vector3 gridCenter = gridOrigin + new Vector3(gridWidth * gridCellSize / 2f, 0, gridHeight * gridCellSize / 2f);
-            float cameraHeight = Mathf.Max(gridWidth, gridHeight) * gridCellSize * 0.8f;
-            
-            topDownCamera.transform.position = gridCenter + Vector3.up * cameraHeight;
-            topDownCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             topDownCamera.Priority = 100;
             
             if (cameraManager != null)
             {
                 if (cameraManager.normalCam != null)
                     cameraManager.normalCam.Priority = 0;
-                if (cameraManager.aimCam != null)
-                    cameraManager.aimCam.Priority = 0;
                 if (cameraManager.pauseCam != null)
                     cameraManager.pauseCam.Priority = 0;
             }
+        }
+        else
+        {
+            Debug.LogError("[ClassicModeManager] Cannot switch to top-down camera - it's not assigned!");
         }
     }
     
@@ -351,206 +307,165 @@ public class ClassicModeManager : MonoBehaviour
             cameraManager.SwitchToNormalCamera();
     }
     
-    private void CreateGridVisualizer()
+    /// <summary>
+    /// Called when a menu opens (drop collection, attack selection, etc.)
+    /// Temporarily pauses classic mode updates but keeps the mode active
+    /// </summary>
+    public void OnMenuOpened()
     {
-        if (gridVisualizerPrefab != null)
+        isMenuOpen = true;
+        
+        // Lower top-down camera priority so pause camera can take over
+        if (topDownCamera != null)
         {
-            gridVisualizer = Instantiate(gridVisualizerPrefab, gridOrigin, Quaternion.identity);
+            topDownCamera.Priority = 0;
+        }
+        
+        Debug.Log("[ClassicModeManager] Menu opened - lowered top-down camera priority");
+    }
+    
+    /// <summary>
+    /// Called when a menu closes
+    /// Restores the appropriate camera based on whether we're in classic mode
+    /// </summary>
+    public void OnMenuClosed()
+    {
+        isMenuOpen = false;
+        
+        // Restore the correct camera
+        if (isClassicMode)
+        {
+            // Switch back to top-down camera
+            SwitchToTopDownCamera();
+            Debug.Log("[ClassicModeManager] Menu closed - restoring top-down camera");
         }
         else
         {
-            gridVisualizer = new GameObject("GridVisualizer");
-            gridVisualizer.transform.position = gridOrigin;
+            // Switch back to normal camera when not in classic mode
+            SwitchToNormalCamera();
+            Debug.Log("[ClassicModeManager] Menu closed - restoring normal camera");
+        }
+    }
+    
+    /// <summary>
+    /// Returns whether a menu is currently open
+    /// </summary>
+    public bool IsMenuOpen() => isMenuOpen;
+    
+    private void CreateGridVisualizer()
+    {
+        if (gridVisualizer != null) return;
+        
+        gridVisualizer = new GameObject("GridVisualizer");
+        gridVisualizer.transform.position = Vector3.zero;
+        
+        // Create a pool of line renderers for the grid
+        int totalLines = (gridVisibleRadius * 2 + 1) * 2; // Horizontal + Vertical lines
+        
+        for (int i = 0; i < totalLines; i++)
+        {
+            GameObject lineObj = new GameObject($"GridLine_{i}");
+            lineObj.transform.SetParent(gridVisualizer.transform);
             
-            for (int x = 0; x <= gridWidth; x++)
-            {
-                CreateGridLine(
-                    new Vector3(x * gridCellSize, 0.01f, 0),
-                    new Vector3(x * gridCellSize, 0.01f, gridHeight * gridCellSize),
-                    gridVisualizer.transform
-                );
-            }
+            LineRenderer lr = lineObj.AddComponent<LineRenderer>();
+            lr.positionCount = 2;
+            lr.startWidth = gridLineWidth;
+            lr.endWidth = gridLineWidth;
+            lr.material = new Material(Shader.Find("Sprites/Default"));
+            lr.startColor = gridLineColor;
+            lr.endColor = gridLineColor;
+            lr.useWorldSpace = true;
             
-            for (int z = 0; z <= gridHeight; z++)
-            {
-                CreateGridLine(
-                    new Vector3(0, 0.01f, z * gridCellSize),
-                    new Vector3(gridWidth * gridCellSize, 0.01f, z * gridCellSize),
-                    gridVisualizer.transform
-                );
-            }
+            gridLines.Add(lr);
         }
     }
     
-    private void CreateGridLine(Vector3 start, Vector3 end, Transform parent)
+    private void UpdateGridVisualization()
     {
-        GameObject lineObj = new GameObject("GridLine");
-        lineObj.transform.SetParent(parent);
-        lineObj.transform.localPosition = Vector3.zero;
+        if (snakeHead == null || gridLines.Count == 0) return;
         
-        LineRenderer lr = lineObj.AddComponent<LineRenderer>();
-        lr.positionCount = 2;
-        lr.SetPosition(0, gridOrigin + start);
-        lr.SetPosition(1, gridOrigin + end);
-        lr.startWidth = 0.02f;
-        lr.endWidth = 0.02f;
-        lr.material = new Material(Shader.Find("Sprites/Default"));
-        lr.startColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
-        lr.endColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
-    }
-    
-    private void SpawnClassicApples()
-    {
-        for (int i = 0; i < applesInClassicMode; i++)
-        {
-            SpawnClassicApple();
-        }
-    }
-    
-    public void SpawnClassicApple()
-    {
-        int attempts = 0;
-        int maxAttempts = 100;
+        // Get snake's grid position
+        int centerX = Mathf.RoundToInt(snakeHead.position.x / gridCellSize);
+        int centerZ = Mathf.RoundToInt(snakeHead.position.z / gridCellSize);
         
-        while (attempts < maxAttempts)
+        int lineIndex = 0;
+        float gridExtent = gridVisibleRadius * gridCellSize;
+        float y = 0.01f; // Slightly above ground
+        
+        // Vertical lines (along Z axis)
+        for (int x = -gridVisibleRadius; x <= gridVisibleRadius && lineIndex < gridLines.Count; x++)
         {
-            int x = Random.Range(0, gridWidth);
-            int z = Random.Range(0, gridHeight);
-            Vector3 pos = GetGridWorldPosition(x, z);
+            float worldX = (centerX + x) * gridCellSize;
+            float startZ = (centerZ - gridVisibleRadius) * gridCellSize;
+            float endZ = (centerZ + gridVisibleRadius) * gridCellSize;
             
-            if (!IsPositionOccupied(pos))
-            {
-                GameObject apple;
-                if (classicApplePrefab != null)
-                {
-                    apple = Instantiate(classicApplePrefab, pos, Quaternion.identity);
-                }
-                else
-                {
-                    apple = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                    apple.name = "ClassicApple";
-                    apple.transform.position = pos;
-                    apple.transform.localScale = Vector3.one * gridCellSize * 0.8f;
-                    
-                    Renderer renderer = apple.GetComponent<Renderer>();
-                    if (renderer != null)
-                    {
-                        renderer.material = new Material(Shader.Find("Standard"));
-                        renderer.material.color = Color.red;
-                    }
-                    
-                    // Add classic apple component
-                    ClassicApple classicAppleComp = apple.AddComponent<ClassicApple>();
-                    classicAppleComp.Initialize(this);
-                }
-                
-                classicApples.Add(apple);
-                return;
-            }
+            gridLines[lineIndex].SetPosition(0, new Vector3(worldX, y, startZ));
+            gridLines[lineIndex].SetPosition(1, new Vector3(worldX, y, endZ));
+            lineIndex++;
+        }
+        
+        // Horizontal lines (along X axis)
+        for (int z = -gridVisibleRadius; z <= gridVisibleRadius && lineIndex < gridLines.Count; z++)
+        {
+            float worldZ = (centerZ + z) * gridCellSize;
+            float startX = (centerX - gridVisibleRadius) * gridCellSize;
+            float endX = (centerX + gridVisibleRadius) * gridCellSize;
             
-            attempts++;
+            gridLines[lineIndex].SetPosition(0, new Vector3(startX, y, worldZ));
+            gridLines[lineIndex].SetPosition(1, new Vector3(endX, y, worldZ));
+            lineIndex++;
         }
-        
-        Debug.LogWarning("[ClassicModeManager] Could not find empty position for apple");
     }
     
-    public void OnAppleCollected(GameObject apple)
+    private void CleanupGridVisualizer()
     {
-        classicApples.Remove(apple);
-        Destroy(apple);
-        
-        // Grow the snake
-        if (classicController != null)
+        if (gridVisualizer != null)
         {
-            classicController.Grow();
+            Destroy(gridVisualizer);
+            gridVisualizer = null;
         }
-        
-        // Spawn a new apple
-        SpawnClassicApple();
+        gridLines.Clear();
     }
     
-    public Vector3 GetGridWorldPosition(int gridX, int gridZ)
+    /// <summary>
+    /// Registers a newly spawned enemy with classic mode if active
+    /// </summary>
+    public void RegisterEnemy(AppleEnemy enemy)
     {
-        return gridOrigin + new Vector3(
-            gridX * gridCellSize + gridCellSize / 2f,
-            0.5f,
-            gridZ * gridCellSize + gridCellSize / 2f
-        );
-    }
-    
-    public Vector2Int WorldToGridPosition(Vector3 worldPos)
-    {
-        Vector3 localPos = worldPos - gridOrigin;
-        int x = Mathf.FloorToInt(localPos.x / gridCellSize);
-        int z = Mathf.FloorToInt(localPos.z / gridCellSize);
-        return new Vector2Int(
-            Mathf.Clamp(x, 0, gridWidth - 1),
-            Mathf.Clamp(z, 0, gridHeight - 1)
-        );
-    }
-    
-    public bool IsPositionInGrid(int gridX, int gridZ)
-    {
-        return gridX >= 0 && gridX < gridWidth && gridZ >= 0 && gridZ < gridHeight;
-    }
-    
-    public bool IsPositionOccupied(Vector3 worldPos)
-    {
-        // Check if snake head is at this position
-        if (snakeHead != null)
+        if (isClassicMode && enemy != null)
         {
-            float dist = Vector3.Distance(worldPos, snakeHead.position);
-            if (dist < gridCellSize * 0.5f)
-                return true;
+            enemy.SetClassicMode(true, gridCellSize, enemyMoveInterval);
+            cachedEnemies.Add(enemy);
         }
-        
-        // Check classic snake body segments
-        if (classicController != null)
-        {
-            foreach (var segment in classicController.GetBodySegments())
-            {
-                if (segment != null)
-                {
-                    float dist = Vector3.Distance(worldPos, segment.transform.position);
-                    if (dist < gridCellSize * 0.5f)
-                        return true;
-                }
-            }
-        }
-        
-        // Check apples
-        foreach (var apple in classicApples)
-        {
-            if (apple != null)
-            {
-                float dist = Vector3.Distance(worldPos, apple.transform.position);
-                if (dist < gridCellSize * 0.5f)
-                    return true;
-            }
-        }
-        
-        return false;
     }
     
-    public void OnSnakeCollision()
+    /// <summary>
+    /// Unregisters an enemy (called when enemy dies)
+    /// </summary>
+    public void UnregisterEnemy(AppleEnemy enemy)
     {
-        Debug.Log("[ClassicModeManager] Snake collision! Game Over in classic mode.");
-        // You can add game over logic here
-        // For now, just exit classic mode
-        ExitClassicMode();
+        cachedEnemies.Remove(enemy);
     }
     
     private void OnDrawGizmosSelected()
     {
-        // Draw grid bounds
+        // Draw grid cell size indicator
         Gizmos.color = Color.cyan;
-        Vector3 size = new Vector3(gridWidth * gridCellSize, 0.1f, gridHeight * gridCellSize);
-        Vector3 center = gridOrigin + size / 2f;
-        center.y = 0.05f;
-        Gizmos.DrawWireCube(center, size);
+        Vector3 center = snakeHead != null ? snakeHead.position : transform.position;
+        center.y = 0.1f;
         
-        // Draw grid origin
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawSphere(gridOrigin, 0.2f);
+        // Draw a single cell
+        Vector3 cellCenter = new Vector3(
+            Mathf.Round(center.x / gridCellSize) * gridCellSize,
+            0.1f,
+            Mathf.Round(center.z / gridCellSize) * gridCellSize
+        );
+        
+        Gizmos.DrawWireCube(cellCenter, new Vector3(gridCellSize, 0.1f, gridCellSize));
+        
+        // Draw visible radius
+        Gizmos.color = new Color(0, 1, 1, 0.3f);
+        float radius = gridVisibleRadius * gridCellSize;
+        Gizmos.DrawWireCube(cellCenter, new Vector3(radius * 2, 0.1f, radius * 2));
     }
 }

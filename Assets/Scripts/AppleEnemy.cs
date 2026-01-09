@@ -64,6 +64,14 @@ public class AppleEnemy : MonoBehaviour
     private float contactDistanceSqr;
     private WaitForSeconds trackingWait;
     
+    // Classic mode state
+    private bool isClassicMode = false;
+    private Vector3 lastCardinalDirection = Vector3.forward; // Last movement direction (cardinal only)
+    private float classicMoveTimer = 0f;
+    private float classicMoveInterval = 0.3f;
+    private Vector3 classicTargetPosition;
+    private bool hasClassicTarget = false;
+    
     // Knockback state
     private bool isKnockedBack = false;
     private Vector3 knockbackVelocity;
@@ -223,11 +231,69 @@ public class AppleEnemy : MonoBehaviour
                     nearestBodyPart = FindNearestBodyPart();
                     if (nearestBodyPart)
                     {
-                        agent.SetDestination(nearestBodyPart.position);
+                        // In classic mode, restrict to cardinal directions
+                        if (isClassicMode)
+                        {
+                            SetNextCardinalDestination();
+                        }
+                        else
+                        {
+                            agent.SetDestination(nearestBodyPart.position);
+                        }
                     }
                 }
             }
         }
+        
+        // Handle classic mode step-by-step movement
+        if (isClassicMode && !isFrozen && !isDead && !isKnockedBack && !isInContact)
+        {
+            classicMoveTimer += Time.deltaTime;
+            
+            // Check if we've reached our current cardinal target or need a new one
+            if (classicMoveTimer >= classicMoveInterval || !hasClassicTarget || HasReachedClassicTarget())
+            {
+                classicMoveTimer = 0f;
+                SetNextCardinalDestination();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Checks if the enemy has reached its current classic mode target position
+    /// </summary>
+    private bool HasReachedClassicTarget()
+    {
+        if (!hasClassicTarget) return true;
+        
+        Vector3 toTarget = classicTargetPosition - transform.position;
+        toTarget.y = 0;
+        return toTarget.sqrMagnitude < 0.25f; // Within 0.5 units
+    }
+    
+    /// <summary>
+    /// Sets the next cardinal direction destination for classic mode movement
+    /// </summary>
+    private void SetNextCardinalDestination()
+    {
+        nearestBodyPart = FindNearestBodyPart();
+        if (nearestBodyPart == null || !agent.enabled || !agent.isOnNavMesh)
+        {
+            hasClassicTarget = false;
+            return;
+        }
+        
+        // Get the cardinal direction to the target
+        Vector3 cardinalDir = GetCardinalDirectionTo(nearestBodyPart.position);
+        lastCardinalDirection = cardinalDir;
+        
+        // Calculate the next step position (move one "step" in the cardinal direction)
+        float stepDistance = agent.speed * classicMoveInterval * 1.5f; // Move a bit more than one interval's worth
+        classicTargetPosition = transform.position + cardinalDir * stepDistance;
+        classicTargetPosition.y = transform.position.y; // Keep same height
+        
+        hasClassicTarget = true;
+        agent.SetDestination(classicTargetPosition);
     }
     
     void LateUpdate()
@@ -477,7 +543,15 @@ public class AppleEnemy : MonoBehaviour
 
                     if (nearestBodyPart && agent.enabled && agent.isOnNavMesh)
                     {
-                        agent.SetDestination(nearestBodyPart.position);
+                        // In classic mode, use step-by-step cardinal movement
+                        if (isClassicMode)
+                        {
+                            SetNextCardinalDestination();
+                        }
+                        else
+                        {
+                            agent.SetDestination(nearestBodyPart.position);
+                        }
                     }
                 }
 
@@ -503,7 +577,15 @@ public class AppleEnemy : MonoBehaviour
             nearestBodyPart = FindNearestBodyPart();
             if (nearestBodyPart && agent.isOnNavMesh)
             {
-                agent.SetDestination(nearestBodyPart.position);
+                // In classic mode, use step-by-step cardinal movement
+                if (isClassicMode)
+                {
+                    SetNextCardinalDestination();
+                }
+                else
+                {
+                    agent.SetDestination(nearestBodyPart.position);
+                }
             }
         }
         
@@ -682,7 +764,15 @@ public class AppleEnemy : MonoBehaviour
                     nearestBodyPart = FindNearestBodyPart();
                     if (nearestBodyPart)
                     {
-                        agent.SetDestination(nearestBodyPart.position);
+                        // In classic mode, use step-by-step cardinal movement
+                        if (isClassicMode)
+                        {
+                            SetNextCardinalDestination();
+                        }
+                        else
+                        {
+                            agent.SetDestination(nearestBodyPart.position);
+                        }
                     }
                 }
             }
@@ -694,6 +784,68 @@ public class AppleEnemy : MonoBehaviour
     }
 
     public bool IsFrozen() => isFrozen;
+    
+    /// <summary>
+    /// Sets classic mode - restricts movement to cardinal directions only (no diagonals)
+    /// Uses step-by-step movement in cardinal directions like classic Snake
+    /// </summary>
+    public void SetClassicMode(bool enabled, float cellSize = 1f, float moveInterval = 0.3f)
+    {
+        isClassicMode = enabled;
+        classicMoveInterval = moveInterval;
+        classicMoveTimer = 0f;
+        hasClassicTarget = false;
+        
+        if (enabled)
+        {
+            // Immediately set a cardinal destination
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                SetNextCardinalDestination();
+            }
+            Debug.Log($"[AppleEnemy] Classic mode enabled - movement restricted to 4 directions");
+        }
+        else
+        {
+            // Resume normal pathfinding
+            if (agent != null && agent.enabled && agent.isOnNavMesh)
+            {
+                nearestBodyPart = FindNearestBodyPart();
+                if (nearestBodyPart != null)
+                {
+                    agent.SetDestination(nearestBodyPart.position);
+                }
+            }
+            Debug.Log($"[AppleEnemy] Classic mode disabled");
+        }
+    }
+    
+    /// <summary>
+    /// Gets a cardinal direction (N, E, S, W) from a target position
+    /// </summary>
+    private Vector3 GetCardinalDirectionTo(Vector3 targetPosition)
+    {
+        Vector3 direction = targetPosition - transform.position;
+        direction.y = 0;
+        
+        // Determine which cardinal direction to move (prioritize larger axis)
+        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.z))
+        {
+            // Move horizontally (East or West)
+            return direction.x > 0 ? Vector3.right : Vector3.left;
+        }
+        else
+        {
+            // Move vertically (North or South)
+            return direction.z > 0 ? Vector3.forward : Vector3.back;
+        }
+    }
+    
+    
+    /// <summary>
+    /// Returns whether this apple is in classic mode
+    /// </summary>
+    public bool IsClassicMode() => isClassicMode;
     
     /// <summary>
     /// Returns whether this apple is an ally
@@ -723,7 +875,15 @@ public class AppleEnemy : MonoBehaviour
             
             if (agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
             {
-                agent.SetDestination(nearestBodyPart.position);
+                // In classic mode, use step-by-step cardinal movement
+                if (isClassicMode)
+                {
+                    SetNextCardinalDestination();
+                }
+                else
+                {
+                    agent.SetDestination(nearestBodyPart.position);
+                }
             }
         }
         else
@@ -737,7 +897,15 @@ public class AppleEnemy : MonoBehaviour
             
             if (agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
             {
-                agent.SetDestination(nearestBodyPart.position);
+                // In classic mode, use step-by-step cardinal movement
+                if (isClassicMode)
+                {
+                    SetNextCardinalDestination();
+                }
+                else
+                {
+                    agent.SetDestination(nearestBodyPart.position);
+                }
             }
         }
     }

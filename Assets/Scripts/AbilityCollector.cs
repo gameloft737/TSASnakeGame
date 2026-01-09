@@ -140,6 +140,12 @@ public class AbilityCollector : MonoBehaviour
     {
         isUIOpen = true;
         
+        // Notify ClassicModeManager that menu is opening
+        if (ClassicModeManager.Instance != null)
+        {
+            ClassicModeManager.Instance.OnMenuOpened();
+        }
+        
         FreezeAll();
         if (cameraManager != null)
         {
@@ -194,13 +200,24 @@ public class AbilityCollector : MonoBehaviour
         if (cameraManager != null)
         {
             cameraManager.SetFrozen(false);
-            cameraManager.SwitchToNormalCamera();
+            // Don't switch camera here - let ClassicModeManager handle it
         }
         if (cursorLock != null) cursorLock.StopAbilitySelection();
         
         UnfreezeAll();
         
         isUIOpen = false;
+        
+        // Notify ClassicModeManager that menu is closing - it will restore the correct camera
+        if (ClassicModeManager.Instance != null)
+        {
+            ClassicModeManager.Instance.OnMenuClosed();
+        }
+        else if (cameraManager != null)
+        {
+            // Fallback if no ClassicModeManager - switch to normal camera
+            cameraManager.SwitchToNormalCamera();
+        }
     }
     
     private IEnumerator DOFLerp(bool enable)
