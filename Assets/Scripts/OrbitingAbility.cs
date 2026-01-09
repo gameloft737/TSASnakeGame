@@ -17,8 +17,17 @@ public class OrbitingAbility : BaseAbility
     
     [Header("Orbiting Object Settings")]
     [SerializeField] private GameObject orbitingObjectPrefab;
-    [SerializeField] private float objectScale = 0.5f;
+    [SerializeField] private bool usePrefabScale = true; // If true, uses the prefab's original scale
+    [SerializeField] private float objectScale = 0.5f; // Only used if usePrefabScale is false or no prefab assigned
     [SerializeField] private Color orbitColor = new Color(1f, 0.8f, 0.2f, 1f); // Golden yellow
+    
+    [Header("Collision Settings")]
+    [SerializeField] private float hitRadius = 1.0f; // Radius for collision detection with enemies
+    [SerializeField] private float enemyRadius = 0.5f; // Approximate radius of enemies
+    
+    [Header("Knockback Settings")]
+    [SerializeField] private float knockbackForce = 3f; // Force applied to enemies on hit
+    [SerializeField] private float knockbackDuration = 0.15f; // How long the knockback lasts
     
     [Header("Visual Settings")]
     [SerializeField] private bool showDebugGizmos = true;
@@ -40,9 +49,7 @@ public class OrbitingAbility : BaseAbility
     
     protected override void Awake()
     {
-        base.Awake();
-        
-        // Find player transform
+        // Find player transform BEFORE base.Awake() since it calls ActivateAbility()
         PlayerMovement player = FindFirstObjectByType<PlayerMovement>();
         if (player != null)
         {
@@ -60,6 +67,10 @@ public class OrbitingAbility : BaseAbility
                 audioSource.spatialBlend = 0f; // 2D sound
             }
         }
+        
+        // Call base.Awake() AFTER setting up playerTransform
+        // because it calls ActivateAbility() which needs playerTransform
+        base.Awake();
     }
     
     protected override void ActivateAbility()
@@ -104,10 +115,13 @@ public class OrbitingAbility : BaseAbility
         for (int i = 0; i < orbitCount; i++)
         {
             GameObject orbitObj;
+            bool shouldApplyScale = false;
             
             if (orbitingObjectPrefab != null)
             {
                 orbitObj = Instantiate(orbitingObjectPrefab);
+                // Only apply objectScale if usePrefabScale is false
+                shouldApplyScale = !usePrefabScale;
             }
             else
             {
@@ -129,9 +143,17 @@ public class OrbitingAbility : BaseAbility
                 // Remove default collider - we handle collision detection manually
                 Collider col = orbitObj.GetComponent<Collider>();
                 if (col != null) Destroy(col);
+                
+                // Always apply scale to default primitives
+                shouldApplyScale = true;
             }
             
-            orbitObj.transform.localScale = Vector3.one * objectScale;
+            // Only override scale if needed (for primitives or when usePrefabScale is false)
+            if (shouldApplyScale)
+            {
+                orbitObj.transform.localScale = Vector3.one * objectScale;
+            }
+            
             orbitObj.transform.SetParent(transform);
             
             orbitingObjects.Add(orbitObj);
@@ -167,11 +189,17 @@ public class OrbitingAbility : BaseAbility
             
             orbitingObjects[i].transform.position = playerTransform.position + offset;
             
-            // Make the object face the direction of movement (tangent to orbit)
-            Vector3 tangent = new Vector3(-Mathf.Sin(radians), 0, Mathf.Cos(radians));
-            if (tangent.sqrMagnitude > 0.01f)
+            // Only apply orbit-facing rotation if the object doesn't have an Animator
+            // (Animated objects should control their own rotation)
+            Animator animator = orbitingObjects[i].GetComponent<Animator>();
+            if (animator == null || !animator.enabled)
             {
-                orbitingObjects[i].transform.rotation = Quaternion.LookRotation(tangent);
+                // Make the object face the direction of movement (tangent to orbit)
+                Vector3 tangent = new Vector3(-Mathf.Sin(radians), 0, Mathf.Cos(radians));
+                if (tangent.sqrMagnitude > 0.01f)
+                {
+                    orbitingObjects[i].transform.rotation = Quaternion.LookRotation(tangent);
+                }
             }
         }
     }
@@ -184,8 +212,8 @@ public class OrbitingAbility : BaseAbility
         if (playerTransform == null) return;
         
         float damage = GetOrbitDamage();
-        float hitRadius = objectScale * 0.75f; // Collision radius based on object size
-        float hitRadiusSqr = hitRadius * hitRadius;
+        float totalRadius = hitRadius + enemyRadius;
+        float totalRadiusSqr = totalRadius * totalRadius;
         
         AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
         
@@ -203,17 +231,26 @@ public class OrbitingAbility : BaseAbility
                 if (enemyHitCooldowns.ContainsKey(enemy) && enemyHitCooldowns[enemy] > 0)
                     continue;
                 
-                // Check distance
-                float distanceSqr = (enemy.transform.position - orbitPos).sqrMagnitude;
-                
-                // Account for enemy size (approximate)
-                float enemyRadius = 0.5f;
-                float totalRadiusSqr = (hitRadius + enemyRadius) * (hitRadius + enemyRadius);
+                // Check distance - use horizontal distance only for more reliable hits
+                Vector3 enemyPos = enemy.transform.position;
+                Vector3 toEnemy = enemyPos - orbitPos;
+                toEnemy.y = 0; // Ignore vertical difference
+                float distanceSqr = toEnemy.sqrMagnitude;
                 
                 if (distanceSqr <= totalRadiusSqr)
                 {
                     // Hit the enemy
                     enemy.TakeDamage(damage);
+                    
+                    // Apply knockback - push enemy away from the orbiting weapon
+                    Vector3 knockbackDir = toEnemy.normalized;
+                    if (knockbackDir.sqrMagnitude < 0.01f)
+                    {
+                        // If enemy is exactly at orbit position, push outward from player
+                        knockbackDir = (enemyPos - playerTransform.position).normalized;
+                        knockbackDir.y = 0;
+                    }
+                    enemy.ApplyKnockback(knockbackDir, knockbackForce, knockbackDuration);
                     
                     // Set cooldown for this enemy
                     enemyHitCooldowns[enemy] = GetDamageCooldown();
@@ -223,8 +260,6 @@ public class OrbitingAbility : BaseAbility
                     {
                         audioSource.PlayOneShot(hitSound, 0.5f);
                     }
-                    
-                    Debug.Log($"OrbitingAbility hit {enemy.name} for {damage} damage!");
                 }
             }
         }

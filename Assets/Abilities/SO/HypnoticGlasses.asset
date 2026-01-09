@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
+  m_Name: HypnoticGlasses
+  m_EditorClassIdentifier: 
+  abilityName: Hypnotic Glasses
+  description: ability so
+  icon: {fileID: 21300000, guid: d904e2ade11ed3c40be500f0fe5ffbbe, type: 3}
+  abilityPrefab: {fileID: 526979885640982481, guid: 86430d74f253f8048bd5beed5e9742a4, type: 3}
+  abilityType: 1
+  maxLevel: 6
+  upgradeData: {fileID: 11400000, guid: 56def28ce00a7bd45a0f6e24461f06bc, type: 2}

@@ -1,3 +1,4 @@
+
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -14,11 +15,11 @@ public class ForceFieldAbility : BaseAbility
     [SerializeField] private float baseDamageInterval = 0.5f; // How often to deal damage
     
     [Header("Visual Settings")]
-    [SerializeField] private GameObject forceFieldVisualPrefab;
+    [SerializeField] private GameObject forceFieldVisualPrefab; // Particle system prefab for the force field visual
     [SerializeField] private Color forceFieldColor = new Color(0.3f, 0.7f, 1f, 0.4f); // Light blue
     [SerializeField] private bool showDebugGizmos = true;
     [SerializeField] private float visualYOffset = -0.5f; // How far below the snake the visual sits
-    [SerializeField] private float visualThickness = 0.2f; // Thickness of the circular visual
+    [SerializeField] private bool useParticleSystem = true; // Whether to create a particle system if no prefab is assigned
     
     [Header("Audio")]
     [SerializeField] private AudioClip damageSound;
@@ -29,6 +30,7 @@ public class ForceFieldAbility : BaseAbility
     
     private Transform playerTransform;
     private GameObject forceFieldVisual;
+    private ParticleSystem forceFieldParticleSystem;
     private float damageTimer = 0f;
     private HashSet<AppleEnemy> enemiesInField = new HashSet<AppleEnemy>();
     private List<AppleEnemy> enemiesToRemove = new List<AppleEnemy>();
@@ -60,6 +62,22 @@ public class ForceFieldAbility : BaseAbility
     protected override void ActivateAbility()
     {
         base.ActivateAbility();
+        
+        // Re-check for player transform in case it wasn't found in Awake
+        if (playerTransform == null)
+        {
+            PlayerMovement player = FindFirstObjectByType<PlayerMovement>();
+            if (player != null)
+            {
+                playerTransform = player.transform;
+            }
+            else
+            {
+                Debug.LogError("ForceFieldAbility: Could not find PlayerMovement! Ability will not work.");
+                return;
+            }
+        }
+        
         CreateForceFieldVisual();
         Debug.Log($"ForceFieldAbility: Activated at level {currentLevel} with radius {GetRadius()}");
     }
@@ -88,52 +106,157 @@ public class ForceFieldAbility : BaseAbility
     }
     
     /// <summary>
-    /// Creates the visual representation of the force field as a flat circular disc underneath the snake
+    /// Creates the visual representation of the force field - either as a particle system or a flat disc
     /// </summary>
     private void CreateForceFieldVisual()
     {
         if (forceFieldVisualPrefab != null)
         {
+            // Use the assigned prefab (particle system or other visual)
             forceFieldVisual = Instantiate(forceFieldVisualPrefab, playerTransform.position, Quaternion.identity);
             forceFieldVisual.transform.SetParent(transform);
+            
+            // Get particle system reference if it exists
+            forceFieldParticleSystem = forceFieldVisual.GetComponent<ParticleSystem>();
+            if (forceFieldParticleSystem == null)
+            {
+                forceFieldParticleSystem = forceFieldVisual.GetComponentInChildren<ParticleSystem>();
+            }
+            
+            // Start the particle system if found
+            if (forceFieldParticleSystem != null)
+            {
+                forceFieldParticleSystem.Play();
+            }
+        }
+        else if (useParticleSystem)
+        {
+            // Create a default particle system for the force field
+            CreateDefaultParticleSystem();
         }
         else
         {
-            // Create a flat cylinder visual to represent the force field as a disc underneath the snake
-            forceFieldVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            forceFieldVisual.name = "ForceFieldVisual";
-            forceFieldVisual.transform.SetParent(transform);
-            
-            // Remove collider - we handle collision detection manually
-            Collider col = forceFieldVisual.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-            
-            // Set up material with transparency
-            Renderer renderer = forceFieldVisual.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                // Try to find a transparent shader
-                Shader transparentShader = Shader.Find("Sprites/Default");
-                if (transparentShader == null)
-                {
-                    transparentShader = Shader.Find("Universal Render Pipeline/Lit");
-                }
-                
-                Material mat = new Material(transparentShader);
-                mat.color = forceFieldColor;
-                
-                // Enable transparency if using URP shader
-                if (mat.HasProperty("_Surface"))
-                {
-                    mat.SetFloat("_Surface", 1); // 1 = Transparent
-                    mat.SetFloat("_Blend", 0); // Alpha blend
-                }
-                
-                renderer.material = mat;
-            }
+            // Create a flat cylinder visual as fallback
+            CreateCylinderVisual();
         }
         
         UpdateVisualScale();
+    }
+    
+    /// <summary>
+    /// Creates a default particle system for the force field visual
+    /// </summary>
+    private void CreateDefaultParticleSystem()
+    {
+        forceFieldVisual = new GameObject("ForceFieldParticleVisual");
+        forceFieldVisual.transform.SetParent(transform);
+        forceFieldVisual.transform.position = playerTransform.position;
+        
+        forceFieldParticleSystem = forceFieldVisual.AddComponent<ParticleSystem>();
+        
+        // Configure main module - continuous looping effect
+        var main = forceFieldParticleSystem.main;
+        main.duration = 1f;
+        main.loop = true;
+        main.startLifetime = 1.5f;
+        main.startSpeed = 0.5f;
+        main.startSize = 0.2f;
+        main.startColor = forceFieldColor;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+        main.maxParticles = 200;
+        
+        // Configure emission - continuous particles
+        var emission = forceFieldParticleSystem.emission;
+        emission.rateOverTime = 50f;
+        
+        // Configure shape - circle/ring around the player
+        var shape = forceFieldParticleSystem.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;
+        shape.radius = GetRadius();
+        shape.radiusThickness = 0.1f; // Emit from edge of circle
+        shape.arc = 360f;
+        shape.rotation = new Vector3(-90f, 0f, 0f); // Horizontal circle
+        
+        // Configure velocity over lifetime - swirl effect
+        var velocityOverLifetime = forceFieldParticleSystem.velocityOverLifetime;
+        velocityOverLifetime.enabled = true;
+        velocityOverLifetime.orbitalY = 2f; // Orbit around Y axis
+        
+        // Configure size over lifetime - slight pulse
+        var sizeOverLifetime = forceFieldParticleSystem.sizeOverLifetime;
+        sizeOverLifetime.enabled = true;
+        AnimationCurve sizeCurve = new AnimationCurve();
+        sizeCurve.AddKey(0f, 0.5f);
+        sizeCurve.AddKey(0.5f, 1f);
+        sizeCurve.AddKey(1f, 0.5f);
+        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+        
+        // Configure color over lifetime - fade in and out
+        var colorOverLifetime = forceFieldParticleSystem.colorOverLifetime;
+        colorOverLifetime.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] { 
+                new GradientColorKey(forceFieldColor, 0f), 
+                new GradientColorKey(forceFieldColor, 0.5f),
+                new GradientColorKey(forceFieldColor, 1f) 
+            },
+            new GradientAlphaKey[] { 
+                new GradientAlphaKey(0f, 0f), 
+                new GradientAlphaKey(1f, 0.2f),
+                new GradientAlphaKey(1f, 0.8f),
+                new GradientAlphaKey(0f, 1f) 
+            }
+        );
+        colorOverLifetime.color = gradient;
+        
+        // Configure renderer
+        var renderer = forceFieldVisual.GetComponent<ParticleSystemRenderer>();
+        Material particleMat = new Material(Shader.Find("Particles/Standard Unlit"));
+        particleMat.color = forceFieldColor;
+        renderer.material = particleMat;
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        
+        forceFieldParticleSystem.Play();
+    }
+    
+    /// <summary>
+    /// Creates a cylinder visual as fallback
+    /// </summary>
+    private void CreateCylinderVisual()
+    {
+        forceFieldVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        forceFieldVisual.name = "ForceFieldVisual";
+        forceFieldVisual.transform.SetParent(transform);
+        
+        // Remove collider - we handle collision detection manually
+        Collider col = forceFieldVisual.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+        
+        // Set up material with transparency
+        Renderer renderer = forceFieldVisual.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            // Try to find a transparent shader
+            Shader transparentShader = Shader.Find("Sprites/Default");
+            if (transparentShader == null)
+            {
+                transparentShader = Shader.Find("Universal Render Pipeline/Lit");
+            }
+            
+            Material mat = new Material(transparentShader);
+            mat.color = forceFieldColor;
+            
+            // Enable transparency if using URP shader
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 1); // 1 = Transparent
+                mat.SetFloat("_Blend", 0); // Alpha blend
+            }
+            
+            renderer.material = mat;
+        }
     }
     
     /// <summary>
@@ -155,16 +278,27 @@ public class ForceFieldAbility : BaseAbility
     
     /// <summary>
     /// Updates the visual scale based on current radius
-    /// Creates a flat disc shape (wide but thin cylinder)
     /// </summary>
     private void UpdateVisualScale()
     {
-        if (forceFieldVisual != null)
+        if (forceFieldVisual == null) return;
+        
+        float radius = GetRadius();
+        
+        // If using particle system, update the shape radius
+        if (forceFieldParticleSystem != null)
         {
-            float radius = GetRadius();
+            var shape = forceFieldParticleSystem.shape;
+            shape.radius = radius;
+            
+            // Scale the visual object to match radius
+            forceFieldVisual.transform.localScale = Vector3.one * (radius / baseRadius);
+        }
+        else
+        {
             // Cylinder primitive: X and Z control diameter, Y controls height
             // We want a flat disc, so make Y very small and X/Z large
-            forceFieldVisual.transform.localScale = new Vector3(radius * 2f, visualThickness, radius * 2f);
+            forceFieldVisual.transform.localScale = new Vector3(radius * 2f, 0.2f, radius * 2f);
         }
     }
     
@@ -224,6 +358,7 @@ public class ForceFieldAbility : BaseAbility
         
         float currentDamage = GetFieldDamage();
         bool playedSound = false;
+        int enemiesHit = 0;
         
         enemiesToRemove.Clear();
         
@@ -236,6 +371,7 @@ public class ForceFieldAbility : BaseAbility
             }
             
             enemy.TakeDamage(currentDamage);
+            enemiesHit++;
             
             if (!playedSound && damageSound != null && audioSource != null)
             {
@@ -248,6 +384,11 @@ public class ForceFieldAbility : BaseAbility
         foreach (AppleEnemy enemy in enemiesToRemove)
         {
             enemiesInField.Remove(enemy);
+        }
+        
+        if (enemiesHit > 0)
+        {
+            Debug.Log($"ForceFieldAbility: Dealt {currentDamage:F1} damage to {enemiesHit} enemies!");
         }
     }
     

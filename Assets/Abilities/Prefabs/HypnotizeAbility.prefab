@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &526979885640982481
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4703776913488645933}
+  - component: {fileID: 6435928488258050224}
+  m_Layer: 0
+  m_Name: HypnotizeAbility
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4703776913488645933
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 526979885640982481}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 476.0644, y: 398.81293, z: -1.3793231}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6435928488258050224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 526979885640982481}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b32cd42b960b7204daef0d376080c650, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentLevel: 1
+  maxLevel: 6
+  upgradeData: {fileID: 11400000, guid: 56def28ce00a7bd45a0f6e24461f06bc, type: 2}
+  baseAllyCount: 1
+  baseConversionRange: 15
+  baseConversionCooldown: 10
+  attachmentToShow: {fileID: 0}
+  allyMaterial: {fileID: -5354028657143720620, guid: fe88ab7c154ca074190477d968c9c111, type: 3}
+  allyTintColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  allyDamageMultiplier: 1
+  allyHealthMultiplier: 1
+  conversionSound: {fileID: 0}
+  audioSource: {fileID: 0}
+  conversionEffectPrefab: {fileID: 0}

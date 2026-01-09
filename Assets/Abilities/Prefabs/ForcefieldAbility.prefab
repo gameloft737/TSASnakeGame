@@ -50,10 +50,10 @@ MonoBehaviour:
   baseRadius: 3
   baseDamage: 10
   baseDamageInterval: 0.5
-  forceFieldVisualPrefab: {fileID: 919132149155446097, guid: 7d0ec1db347059e44b0308990bdc4338, type: 3}
+  forceFieldVisualPrefab: {fileID: 4327141488123506268, guid: 450b0872f779cde49a43e2929c5c708d, type: 3}
   forceFieldColor: {r: 0.3, g: 0.7, b: 1, a: 0.4}
   showDebugGizmos: 1
   visualYOffset: -0.5
-  visualThickness: 0.2
+  useParticleSystem: 1
   damageSound: {fileID: 0}
   audioSource: {fileID: 0}

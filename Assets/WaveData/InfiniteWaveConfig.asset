@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: InfiniteWaveConfig
   m_EditorClassIdentifier: 
   waveNamePrefix: Wave
-  baseDifficulty: 1
+  baseDifficulty: 4
   difficultyGrowthRate: 0.5
   maxDifficultyMultiplier: 15
   baseHealthMultiplier: 1

@@ -224,16 +224,12 @@ public class CurrentAttackDisplay : MonoBehaviour
             statsText.text = $"DMG: {damage:F1}  RNG: {range:F1}";
         }
         
-        // Set background color - use active color if showing as active attack (matches DraggableAttackSlot)
+        // Set background color
         if (backgroundImage != null)
         {
             if (isMaxLevel)
             {
                 backgroundImage.color = maxLevelColor;
-            }
-            else if (showAsActive)
-            {
-                backgroundImage.color = activeSlotColor;
             }
             else
             {

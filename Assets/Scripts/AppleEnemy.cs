@@ -64,10 +64,35 @@ public class AppleEnemy : MonoBehaviour
     private float contactDistanceSqr;
     private WaitForSeconds trackingWait;
     
+    // Knockback state
+    private bool isKnockedBack = false;
+    private Vector3 knockbackVelocity;
+    private float knockbackTimer = 0f;
+    private float knockbackDuration = 0f;
+    
+    // Ally state
+    private bool isAlly = false;
+    private float allyDamageMultiplier = 1f;
+    private AppleEnemy currentEnemyTarget; // Target enemy apple when ally
+    private Renderer[] renderers; // Cached renderers for visual changes
+    private Color originalColor;
+    private Material originalMaterial;
+    
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         agent.updateRotation = false;
+        
+        // Cache renderers for visual changes
+        renderers = GetComponentsInChildren<Renderer>();
+        if (renderers.Length > 0)
+        {
+            originalMaterial = renderers[0].material;
+            if (originalMaterial.HasProperty("_Color"))
+            {
+                originalColor = originalMaterial.color;
+            }
+        }
         
         // Ensure base max health is set
         EnsureBaseHealthInitialized();
@@ -175,9 +200,44 @@ public class AppleEnemy : MonoBehaviour
         }
     }
 
+    void Update()
+    {
+        // Handle knockback movement
+        if (isKnockedBack && !isFrozen && !isDead)
+        {
+            knockbackTimer += Time.deltaTime;
+            
+            // Move the enemy during knockback
+            transform.position += knockbackVelocity * Time.deltaTime;
+            
+            // End knockback after duration
+            if (knockbackTimer >= knockbackDuration)
+            {
+                isKnockedBack = false;
+                knockbackVelocity = Vector3.zero;
+                
+                // Re-enable agent movement
+                if (agent.enabled && agent.isOnNavMesh)
+                {
+                    agent.isStopped = false;
+                    nearestBodyPart = FindNearestBodyPart();
+                    if (nearestBodyPart)
+                    {
+                        agent.SetDestination(nearestBodyPart.position);
+                    }
+                }
+            }
+        }
+    }
+    
     void LateUpdate()
     {
-        if (isFrozen || !agentObj || !agent.enabled) return;
+        if (isFrozen || !agentObj) return;
+        
+        // Skip rotation update during knockback
+        if (isKnockedBack) return;
+        
+        if (!agent.enabled) return;
         
         Vector3 velocity = agent.velocity;
         
@@ -195,6 +255,12 @@ public class AppleEnemy : MonoBehaviour
 
     private Transform FindNearestBodyPart()
     {
+        // If we're an ally, find nearest enemy apple instead
+        if (isAlly)
+        {
+            return FindNearestEnemyApple();
+        }
+        
         if (!snakeBody || snakeBody.bodyParts == null || snakeBody.bodyParts.Count == 0)
             return null;
 
@@ -220,16 +286,75 @@ public class AppleEnemy : MonoBehaviour
 
         return nearest;
     }
+    
+    /// <summary>
+    /// Finds the nearest enemy apple (non-ally) for ally targeting
+    /// </summary>
+    private Transform FindNearestEnemyApple()
+    {
+        AppleEnemy[] allApples = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        
+        float nearestDistanceSqr = float.MaxValue;
+        Transform nearest = null;
+        Vector3 myPos = transform.position;
+        
+        foreach (AppleEnemy apple in allApples)
+        {
+            // Skip self, allies, frozen, and dead apples
+            if (apple == this || apple == null || apple.isAlly || apple.IsFrozen() || apple.isDead)
+                continue;
+            
+            float distanceSqr = (apple.transform.position - myPos).sqrMagnitude;
+            if (distanceSqr < nearestDistanceSqr)
+            {
+                nearestDistanceSqr = distanceSqr;
+                nearest = apple.transform;
+                currentEnemyTarget = apple;
+            }
+        }
+        
+        return nearest;
+    }
 
     private bool IsAnyBodyPartNearby(out Transform closestPart)
     {
         closestPart = null;
         
-        if (!snakeBody || snakeBody.bodyParts == null || snakeBody.bodyParts.Count == 0)
-            return false;
-
+        // If we're an ally, check for nearby enemy apples instead
+        if (isAlly)
+        {
+            return IsAnyEnemyAppleNearby(out closestPart);
+        }
+        
         float closestDistanceSqr = float.MaxValue;
         Vector3 myPos = transform.position;
+        
+        // First check for nearby ally apples (enemies can attack allies)
+        AppleEnemy[] allApples = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        foreach (AppleEnemy apple in allApples)
+        {
+            // Only target ally apples
+            if (apple == this || apple == null || !apple.isAlly || apple.IsFrozen() || apple.isDead)
+                continue;
+            
+            float distanceSqr = (apple.transform.position - myPos).sqrMagnitude;
+            if (distanceSqr <= contactDistanceSqr && distanceSqr < closestDistanceSqr)
+            {
+                closestDistanceSqr = distanceSqr;
+                closestPart = apple.transform;
+                currentEnemyTarget = apple;
+            }
+        }
+        
+        // If we found an ally apple nearby, return true
+        if (closestPart != null)
+        {
+            return true;
+        }
+        
+        // Otherwise check for snake body parts
+        if (!snakeBody || snakeBody.bodyParts == null || snakeBody.bodyParts.Count == 0)
+            return false;
 
         var bodyParts = snakeBody.bodyParts;
         int count = bodyParts.Count;
@@ -243,10 +368,41 @@ public class AppleEnemy : MonoBehaviour
                 {
                     closestDistanceSqr = distanceSqr;
                     closestPart = bodyPart.transform;
+                    currentEnemyTarget = null; // Not targeting an apple
                 }
             }
         }
 
+        return closestPart != null;
+    }
+    
+    /// <summary>
+    /// Checks if any enemy apple is nearby (for ally targeting)
+    /// </summary>
+    private bool IsAnyEnemyAppleNearby(out Transform closestPart)
+    {
+        closestPart = null;
+        
+        AppleEnemy[] allApples = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        
+        float closestDistanceSqr = float.MaxValue;
+        Vector3 myPos = transform.position;
+        
+        foreach (AppleEnemy apple in allApples)
+        {
+            // Skip self, allies, frozen, and dead apples
+            if (apple == this || apple == null || apple.isAlly || apple.IsFrozen() || apple.isDead)
+                continue;
+            
+            float distanceSqr = (apple.transform.position - myPos).sqrMagnitude;
+            if (distanceSqr <= contactDistanceSqr && distanceSqr < closestDistanceSqr)
+            {
+                closestDistanceSqr = distanceSqr;
+                closestPart = apple.transform;
+                currentEnemyTarget = apple;
+            }
+        }
+        
         return closestPart != null;
     }
 
@@ -381,13 +537,77 @@ public class AppleEnemy : MonoBehaviour
     private void DealDamage()
     {
         float damage = UnityEngine.Random.Range(minDamage, maxDamage);
-        if (snakeHealth) snakeHealth.TakeDamage(damage);
+        
+        // If we're an ally, damage the enemy apple instead
+        if (isAlly)
+        {
+            if (currentEnemyTarget != null && !currentEnemyTarget.isDead)
+            {
+                // Allies deal damage to enemy apples using regular TakeDamage
+                currentEnemyTarget.TakeDamage(damage * allyDamageMultiplier);
+            }
+        }
+        else
+        {
+            // Enemy apples can damage the snake OR ally apples
+            // Check if we're targeting an ally apple (via contact)
+            if (currentEnemyTarget != null && currentEnemyTarget.isAlly && !currentEnemyTarget.isDead)
+            {
+                // Enemy apple attacking an ally - use TakeDamageFromEnemy
+                currentEnemyTarget.TakeDamageFromEnemy(damage);
+            }
+            else if (snakeHealth)
+            {
+                // Normal behavior - damage the snake
+                snakeHealth.TakeDamage(damage);
+            }
+        }
     }
 
+    /// <summary>
+    /// Take damage from player attacks/abilities. Allies are immune to this.
+    /// </summary>
     public void TakeDamage(float damage)
     {
+        // Allies cannot be damaged by player attacks/abilities
+        if (isAlly) return;
+        
         currentHealth -= damage;
         if (currentHealth <= 0) Die();
+    }
+    
+    /// <summary>
+    /// Take damage from enemy apples. Only allies can take this damage.
+    /// </summary>
+    public void TakeDamageFromEnemy(float damage)
+    {
+        // Only allies can be damaged by enemy apples
+        if (!isAlly) return;
+        
+        currentHealth -= damage;
+        if (currentHealth <= 0) Die();
+    }
+    
+    /// <summary>
+    /// Apply knockback force to push the enemy away. Allies are immune to knockback from player.
+    /// </summary>
+    public void ApplyKnockback(Vector3 direction, float force, float duration)
+    {
+        // Allies cannot be knocked back by player attacks
+        if (isDead || isFrozen || isAlly) return;
+        
+        // Normalize direction and apply force
+        knockbackVelocity = direction.normalized * force;
+        knockbackDuration = duration;
+        knockbackTimer = 0f;
+        isKnockedBack = true;
+        
+        // Temporarily disable agent during knockback
+        if (agent.enabled && agent.isOnNavMesh)
+        {
+            agent.velocity = Vector3.zero;
+            agent.isStopped = true;
+        }
     }
 
     public void Die()
@@ -474,6 +694,105 @@ public class AppleEnemy : MonoBehaviour
     }
 
     public bool IsFrozen() => isFrozen;
+    
+    /// <summary>
+    /// Returns whether this apple is an ally
+    /// </summary>
+    public bool IsAlly() => isAlly;
+    
+    /// <summary>
+    /// Sets this apple as an ally or reverts it back to an enemy
+    /// </summary>
+    public void SetAsAlly(bool ally, float damageMultiplier = 1f, float healthMultiplier = 1f)
+    {
+        isAlly = ally;
+        allyDamageMultiplier = damageMultiplier;
+        
+        if (ally)
+        {
+            // Apply health multiplier for allies
+            if (healthMultiplier > 1f)
+            {
+                maxHealth *= healthMultiplier;
+                currentHealth = maxHealth;
+            }
+            
+            // Clear current target and find new enemy target
+            currentEnemyTarget = null;
+            nearestBodyPart = FindNearestBodyPart();
+            
+            if (agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
+            {
+                agent.SetDestination(nearestBodyPart.position);
+            }
+        }
+        else
+        {
+            // Revert to enemy behavior
+            currentEnemyTarget = null;
+            nearestBodyPart = FindNearestBodyPart();
+            
+            // Restore original visuals
+            RestoreOriginalVisuals();
+            
+            if (agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
+            {
+                agent.SetDestination(nearestBodyPart.position);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Sets a material for the ally visual
+    /// </summary>
+    public void SetAllyMaterial(Material material)
+    {
+        if (renderers == null || material == null) return;
+        
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                renderer.material = material;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Sets a tint color for the ally visual
+    /// </summary>
+    public void SetAllyTint(Color tintColor)
+    {
+        if (renderers == null) return;
+        
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null && renderer.material.HasProperty("_Color"))
+            {
+                renderer.material.color = tintColor;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Restores the original visual appearance
+    /// </summary>
+    private void RestoreOriginalVisuals()
+    {
+        if (renderers == null || originalMaterial == null) return;
+        
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                renderer.material = originalMaterial;
+                if (renderer.material.HasProperty("_Color"))
+                {
+                    renderer.material.color = originalColor;
+                }
+            }
+        }
+    }
 
     private void OnDrawGizmosSelected()
     {
