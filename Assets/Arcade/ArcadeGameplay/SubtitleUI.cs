@@ -49,6 +49,8 @@ public class SubtitleUI : MonoBehaviour
     /// </summary>
     public void ShowSubtitle(string message, float duration = -1f)
     {
+        Debug.Log($"SubtitleUI.ShowSubtitle called with message: '{message}', duration: {duration}");
+        
         if (Instance == null)
         {
             Debug.LogWarning("SubtitleUI.Instance is null. Make sure a SubtitleUI exists in the scene.");
@@ -71,10 +73,27 @@ public class SubtitleUI : MonoBehaviour
         if (activeCoroutine != null)
             StopCoroutine(activeCoroutine);
 
+        // Make sure this GameObject and its parents are active
+        if (!gameObject.activeInHierarchy)
+        {
+            Debug.LogWarning("SubtitleUI: GameObject is not active in hierarchy! Activating...");
+            gameObject.SetActive(true);
+        }
+        
+        // Check if parent Canvas is active
+        Canvas parentCanvas = GetComponentInParent<Canvas>();
+        if (parentCanvas != null && !parentCanvas.gameObject.activeInHierarchy)
+        {
+            Debug.LogWarning($"SubtitleUI: Parent Canvas '{parentCanvas.name}' is not active!");
+        }
+
         // Activate objects and set text
         backgroundPanel.gameObject.SetActive(true);
         subtitleText.gameObject.SetActive(true);
         subtitleText.text = message;
+        
+        Debug.Log($"SubtitleUI: backgroundPanel active: {backgroundPanel.gameObject.activeInHierarchy}, subtitleText active: {subtitleText.gameObject.activeInHierarchy}");
+        Debug.Log($"SubtitleUI: Text set to: '{subtitleText.text}'");
 
         activeCoroutine = StartCoroutine(SubtitleRoutine(duration));
     }

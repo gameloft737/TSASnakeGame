@@ -61,6 +61,13 @@ public class ObjectiveTrigger : MonoBehaviour
 
     private bool playerInRange = false;
     private bool completed = false;
+    private ObjectiveOutline objectiveOutline;
+
+    private void Awake()
+    {
+        // Cache the ObjectiveOutline component if present
+        objectiveOutline = GetComponent<ObjectiveOutline>();
+    }
 
 
     private IEnumerator LoadSceneAfterDelay()
@@ -126,17 +133,21 @@ public class ObjectiveTrigger : MonoBehaviour
 
     private void CompleteObjective()
     {
-
-    // Show subtitle on completion
-    if (!string.IsNullOrEmpty(completionSubtitle))
-    {
-        SubtitleUI.Instance.ShowSubtitle(completionSubtitle, subtitleDuration);
-    }
-
+        // Show subtitle on completion
+        if (!string.IsNullOrEmpty(completionSubtitle))
+        {
+            SubtitleUI.Instance.ShowSubtitle(completionSubtitle, subtitleDuration);
+        }
 
         completed = true;
         playerInRange = false;
         InteractionPromptUI.Instance.HideMessage();
+        
+        // Disable the outline on this objective
+        if (objectiveOutline != null)
+        {
+            objectiveOutline.OnObjectiveCompleted();
+        }
 
         // Play Animator trigger if assigned
         if (animator != null && !string.IsNullOrEmpty(animationTriggerName))
