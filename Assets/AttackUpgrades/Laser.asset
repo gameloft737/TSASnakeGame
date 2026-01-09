@@ -21,9 +21,9 @@ MonoBehaviour:
     damage: 15
     range: 8
     minFuelToActivate: 50
-    fuelRechargeRate: 20
+    fuelRechargeRate: 12
     burstFuelCost: 0
-    continuousDrainRate: 10
+    continuousDrainRate: 40
     customStats:
     - statName: laserDistance
       value: 8
@@ -34,9 +34,9 @@ MonoBehaviour:
     damage: 15
     range: 8
     minFuelToActivate: 50
-    fuelRechargeRate: 20
+    fuelRechargeRate: 13
     burstFuelCost: 0
-    continuousDrainRate: 10
+    continuousDrainRate: 38
     customStats:
     - statName: laserDistance
       value: 10
@@ -47,9 +47,9 @@ MonoBehaviour:
     damage: 25
     range: 12
     minFuelToActivate: 40
-    fuelRechargeRate: 24
+    fuelRechargeRate: 14
     burstFuelCost: 0
-    continuousDrainRate: 8
+    continuousDrainRate: 35
     customStats:
     - statName: laserDistance
       value: 12
@@ -60,9 +60,9 @@ MonoBehaviour:
     damage: 32
     range: 14
     minFuelToActivate: 35
-    fuelRechargeRate: 26
+    fuelRechargeRate: 15
     burstFuelCost: 0
-    continuousDrainRate: 7
+    continuousDrainRate: 32
     customStats:
     - statName: laserDistance
       value: 14
@@ -73,9 +73,9 @@ MonoBehaviour:
     damage: 40
     range: 16
     minFuelToActivate: 30
-    fuelRechargeRate: 28
+    fuelRechargeRate: 16
     burstFuelCost: 0
-    continuousDrainRate: 6
+    continuousDrainRate: 30
     customStats:
     - statName: laserDistance
       value: 16
@@ -86,9 +86,9 @@ MonoBehaviour:
     damage: 50
     range: 20
     minFuelToActivate: 25
-    fuelRechargeRate: 30
+    fuelRechargeRate: 18
     burstFuelCost: 0
-    continuousDrainRate: 5
+    continuousDrainRate: 28
     customStats:
     - statName: laserDistance
       value: 20
@@ -99,9 +99,9 @@ MonoBehaviour:
     damage: 50
     range: 20
     minFuelToActivate: 25
-    fuelRechargeRate: 30
+    fuelRechargeRate: 20
     burstFuelCost: 0
-    continuousDrainRate: 5
+    continuousDrainRate: 25
     customStats:
     - statName: laserDistance
       value: 20

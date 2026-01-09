@@ -83,8 +83,8 @@ public class AppleEnemy : MonoBehaviour
     private float allyDamageMultiplier = 1f;
     private AppleEnemy currentEnemyTarget; // Target enemy apple when ally
     private Renderer[] renderers; // Cached renderers for visual changes
-    private Color originalColor;
-    private Material originalMaterial;
+    private Material[] originalMaterials; // Store original material for EACH renderer
+    private Color[] originalColors; // Store original color for EACH renderer
     
     void Start()
     {
@@ -95,10 +95,26 @@ public class AppleEnemy : MonoBehaviour
         renderers = GetComponentsInChildren<Renderer>();
         if (renderers.Length > 0)
         {
-            originalMaterial = renderers[0].material;
-            if (originalMaterial.HasProperty("_Color"))
+            // Store original materials and colors for ALL renderers
+            originalMaterials = new Material[renderers.Length];
+            originalColors = new Color[renderers.Length];
+            
+            for (int i = 0; i < renderers.Length; i++)
             {
-                originalColor = originalMaterial.color;
+                originalMaterials[i] = renderers[i].material;
+                // Check for both _Color and _BaseColor (URP/HDRP compatibility)
+                if (originalMaterials[i].HasProperty("_Color"))
+                {
+                    originalColors[i] = originalMaterials[i].color;
+                }
+                else if (originalMaterials[i].HasProperty("_BaseColor"))
+                {
+                    originalColors[i] = originalMaterials[i].GetColor("_BaseColor");
+                }
+                else
+                {
+                    originalColors[i] = Color.white;
+                }
             }
         }
         
@@ -935,9 +951,18 @@ public class AppleEnemy : MonoBehaviour
         
         foreach (Renderer renderer in renderers)
         {
-            if (renderer != null && renderer.material.HasProperty("_Color"))
+            if (renderer != null)
             {
-                renderer.material.color = tintColor;
+                Material mat = renderer.material;
+                // Check for both _Color and _BaseColor (URP/HDRP compatibility)
+                if (mat.HasProperty("_Color"))
+                {
+                    mat.color = tintColor;
+                }
+                else if (mat.HasProperty("_BaseColor"))
+                {
+                    mat.SetColor("_BaseColor", tintColor);
+                }
             }
         }
     }
@@ -947,16 +972,23 @@ public class AppleEnemy : MonoBehaviour
     /// </summary>
     private void RestoreOriginalVisuals()
     {
-        if (renderers == null || originalMaterial == null) return;
+        if (renderers == null || originalMaterials == null) return;
         
-        foreach (Renderer renderer in renderers)
+        for (int i = 0; i < renderers.Length; i++)
         {
-            if (renderer != null)
+            if (renderers[i] != null && i < originalMaterials.Length && originalMaterials[i] != null)
             {
-                renderer.material = originalMaterial;
-                if (renderer.material.HasProperty("_Color"))
+                renderers[i].material = originalMaterials[i];
+                Material mat = renderers[i].material;
+                
+                // Check for both _Color and _BaseColor (URP/HDRP compatibility)
+                if (mat.HasProperty("_Color"))
                 {
-                    renderer.material.color = originalColor;
+                    mat.color = originalColors[i];
+                }
+                else if (mat.HasProperty("_BaseColor"))
+                {
+                    mat.SetColor("_BaseColor", originalColors[i]);
                 }
             }
         }
