@@ -27,7 +27,6 @@ public class AttackButton : MonoBehaviour
     private AttackSelectionUI selectionUI;
     private Button button;
     private bool isAbilityMode = false;
-    private bool isSwapMode = false;
     private Color customNormalColor;
     private Color customSelectedColor;
     private bool useCustomColors = false;
@@ -69,7 +68,6 @@ public class AttackButton : MonoBehaviour
         this.attackIndex = attackIndex;
         this.selectionUI = selectionUI;
         this.playerOwnsAttack = false;
-        this.isSwapMode = false;
         this.useCustomColors = false;
         
         UpdateDisplay(isSelected);
@@ -93,7 +91,6 @@ public class AttackButton : MonoBehaviour
         this.attackIndex = attackIndex;
         this.selectionUI = selectionUI;
         this.playerOwnsAttack = ownsAttack;
-        this.isSwapMode = false;
         this.useCustomColors = false;
         
         UpdateDisplay(isSelected);
@@ -116,7 +113,6 @@ public class AttackButton : MonoBehaviour
         this.currentAbilityLevel = currentLevel;
         this.selectionUI = selectionUI;
         this.isAbilityMode = true;
-        this.isSwapMode = false;
         this.useCustomColors = false;
         
         UpdateAbilityDisplay(isSelected);

@@ -11,12 +11,9 @@ public class SnakeHealth : MonoBehaviour
     // Cached max health (base + bonuses)
     private float maxHealth;
     
-    [Header("Death Settings")]
-    [SerializeField] private float deathScreenDuration = 5f;
-    
     [Header("References")]
     [SerializeField] private WaveManager waveManager;
-    [SerializeField] private AttackSelectionUI attackSelectionUI;
+    [SerializeField] private DeathScreenManager deathScreenManager;
     [SerializeField] private PlayerMovement playerMovement;
     [SerializeField] private AttackManager attackManager;
     [SerializeField] private EnemySpawner enemySpawner;
@@ -48,9 +45,9 @@ public class SnakeHealth : MonoBehaviour
             waveManager = FindFirstObjectByType<WaveManager>();
         }
         
-        if (attackSelectionUI == null)
+        if (deathScreenManager == null)
         {
-            attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
+            deathScreenManager = FindFirstObjectByType<DeathScreenManager>();
         }
         
         if (playerMovement == null)
@@ -164,51 +161,38 @@ public class SnakeHealth : MonoBehaviour
         
         onDeath?.Invoke();
         
-        StartCoroutine(HandleDeath());
+        // Show death screen with restart/quit options
+        if (deathScreenManager != null)
+        {
+            deathScreenManager.ShowDeathScreen();
+        }
+        else
+        {
+            // Try to find or create DeathScreenManager
+            deathScreenManager = FindFirstObjectByType<DeathScreenManager>();
+            
+            if (deathScreenManager == null)
+            {
+                // Create a new DeathScreenManager
+                GameObject deathManagerObj = new GameObject("DeathScreenManager");
+                deathScreenManager = deathManagerObj.AddComponent<DeathScreenManager>();
+                Debug.Log("[SnakeHealth] Created DeathScreenManager automatically");
+            }
+            
+            deathScreenManager.ShowDeathScreen();
+        }
     }
     
-    private IEnumerator HandleDeath()
+    /// <summary>
+    /// Resets the snake's health to full. Called by DeathScreenManager when restarting.
+    /// </summary>
+    public void ResetHealth()
     {
-        // Show "YOU'RE DEAD" message
-        if (attackSelectionUI != null)
-        {
-            attackSelectionUI.ShowDeathScreen(true);
-        }
-        
-        // Wait for specified duration
-        yield return new WaitForSeconds(deathScreenDuration);
-        
-        // Hide death screen
-        if (attackSelectionUI != null)
-        {
-            attackSelectionUI.ShowDeathScreen(false);
-        }
-        
-        // Reset health first
         UpdateMaxHealth();
         currentHealth = maxHealth;
         isDead = false;
         onHealthChanged?.Invoke(currentHealth, maxHealth);
-        
-        // Switch back to gameplay camera
-        if (cameraManager != null)
-        {
-            cameraManager.SwitchToNormalCamera();
-        }
-        
-        // Reset the current wave (clears enemies, stops movement/attacks)
-        if (waveManager != null)
-        {
-            waveManager.ResetCurrentWave();
-        }
-        
-        // Now start the wave again (enables movement/attacks, starts spawning)
-        if (waveManager != null)
-        {
-            waveManager.StartCurrentWave();
-        }
-        
-        Debug.Log("Level reset - wave restarting immediately!");
+        Debug.Log("[SnakeHealth] Health reset to full");
     }
     
     public float GetHealthPercentage()

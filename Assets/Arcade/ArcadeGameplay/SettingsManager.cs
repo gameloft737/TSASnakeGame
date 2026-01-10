@@ -4,55 +4,37 @@ using UnityEngine.Audio;
 using TMPro;
 using System.Collections.Generic;
 
-/// <summary>
-/// Manages game settings including audio, graphics, and controls.
-/// Persists settings using PlayerPrefs.
-/// </summary>
 public class SettingsManager : MonoBehaviour
 {
     public static SettingsManager Instance { get; private set; }
     
     [Header("Audio Settings")]
-    [Tooltip("Optional: Audio Mixer for volume control")]
     public AudioMixer audioMixer;
-    
-    [Tooltip("Master volume slider (0-1)")]
     public Slider masterVolumeSlider;
-    
-    [Tooltip("Music volume slider (0-1)")]
     public Slider musicVolumeSlider;
-    
-    [Tooltip("SFX volume slider (0-1)")]
     public Slider sfxVolumeSlider;
     
     [Header("Graphics Settings")]
-    [Tooltip("Dropdown for quality level selection")]
     public TMP_Dropdown qualityDropdown;
-    
-    [Tooltip("Dropdown for resolution selection")]
     public TMP_Dropdown resolutionDropdown;
-    
-    [Tooltip("Toggle for fullscreen mode")]
     public Toggle fullscreenToggle;
-    
-    [Tooltip("Toggle for VSync")]
     public Toggle vsyncToggle;
     
     [Header("Controls Settings")]
-    [Tooltip("Slider for mouse sensitivity")]
     public Slider sensitivitySlider;
-    
-    [Tooltip("Text to display current sensitivity value")]
     public TextMeshProUGUI sensitivityValueText;
-    
-    [Tooltip("Toggle for inverted Y-axis")]
     public Toggle invertYToggle;
     
     [Header("FPS Controller Reference")]
-    [Tooltip("Reference to update sensitivity in real-time")]
     public EasyPeasyFirstPersonController.FirstPersonController fpsController;
     
-    // PlayerPrefs keys
+    [Header("Snake Camera Reference")]
+    [Tooltip("Reference to the Cinemachine sensitivity controller for the snake game")]
+    public CinemachineSensitivityController snakeCameraSensitivity;
+    
+    [Header("Sensitivity Scaling")]
+    public float sensitivityMultiplier = 5f;
+    
     private const string MASTER_VOLUME_KEY = "MasterVolume";
     private const string MUSIC_VOLUME_KEY = "MusicVolume";
     private const string SFX_VOLUME_KEY = "SFXVolume";
@@ -63,352 +45,274 @@ public class SettingsManager : MonoBehaviour
     private const string SENSITIVITY_KEY = "MouseSensitivity";
     private const string INVERT_Y_KEY = "InvertY";
     
-    private Resolution[] resolutions;
-    
-    private void Awake()
-    {
-        // Singleton pattern
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-            return;
-        }
-    }
-    
+    private List<Resolution> filteredResolutions;
     private bool listenersSetup = false;
+    private bool initialized = false;
     
-    private void Start()
+    private void Awake() { if (Instance == null) Instance = this; }
+    private void Start() { Initialize(); }
+    
+    private void Initialize()
     {
+        if (initialized) return;
+        initialized = true;
+        InitializeQualityDropdown();
         InitializeResolutions();
-        FindFPSController(); // Try to find FPS controller if not assigned
-        SetupListeners(); // Setup listeners BEFORE loading settings to avoid double-triggering
+        FindFPSController();
+        SetupListeners();
         LoadSettings();
     }
     
-    /// <summary>
-    /// Attempts to find the FPS controller if not assigned in inspector
-    /// </summary>
-    private void FindFPSController()
+    private void OnEnable()
     {
-        if (fpsController != null) return;
-        
-        // Try to find by type
-        fpsController = FindFirstObjectByType<EasyPeasyFirstPersonController.FirstPersonController>();
-        
-        if (fpsController != null)
-        {
-            Debug.Log($"SettingsManager: Found FPS controller on '{fpsController.gameObject.name}'");
-        }
-        else
-        {
-            Debug.LogWarning("SettingsManager: Could not find FPS controller in scene. Sensitivity settings may not apply.");
-        }
+        if (!initialized) Initialize();
+        RefreshUIFromPlayerPrefs();
     }
     
-    /// <summary>
-    /// Initializes the resolution dropdown with available resolutions
-    /// </summary>
+    public void RefreshUIFromPlayerPrefs()
+    {
+        float masterVol = PlayerPrefs.GetFloat(MASTER_VOLUME_KEY, 1f);
+        float musicVol = PlayerPrefs.GetFloat(MUSIC_VOLUME_KEY, 1f);
+        float sfxVol = PlayerPrefs.GetFloat(SFX_VOLUME_KEY, 1f);
+        
+        if (masterVolumeSlider) masterVolumeSlider.SetValueWithoutNotify(masterVol);
+        if (musicVolumeSlider) musicVolumeSlider.SetValueWithoutNotify(musicVol);
+        if (sfxVolumeSlider) sfxVolumeSlider.SetValueWithoutNotify(sfxVol);
+        
+        int quality = PlayerPrefs.GetInt(QUALITY_KEY, QualitySettings.GetQualityLevel());
+        int resIdx = PlayerPrefs.GetInt(RESOLUTION_KEY, GetCurrentResolutionIndex());
+        bool fullscreen = PlayerPrefs.GetInt(FULLSCREEN_KEY, Screen.fullScreen ? 1 : 0) == 1;
+        bool vsync = PlayerPrefs.GetInt(VSYNC_KEY, QualitySettings.vSyncCount > 0 ? 1 : 0) == 1;
+        
+        if (qualityDropdown) { qualityDropdown.SetValueWithoutNotify(quality); qualityDropdown.RefreshShownValue(); }
+        if (resolutionDropdown) { resolutionDropdown.SetValueWithoutNotify(resIdx); resolutionDropdown.RefreshShownValue(); }
+        if (fullscreenToggle) fullscreenToggle.SetIsOnWithoutNotify(fullscreen);
+        if (vsyncToggle) vsyncToggle.SetIsOnWithoutNotify(vsync);
+        
+        float sens = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        bool invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
+        
+        if (sensitivitySlider) sensitivitySlider.SetValueWithoutNotify(sens);
+        if (invertYToggle) invertYToggle.SetIsOnWithoutNotify(invertY);
+        if (sensitivityValueText) sensitivityValueText.text = sens.ToString("F1");
+        
+        FindFPSController();
+    }
+    
+    private int GetCurrentResolutionIndex()
+    {
+        if (filteredResolutions == null || filteredResolutions.Count == 0) return 0;
+        for (int i = 0; i < filteredResolutions.Count; i++)
+            if (filteredResolutions[i].width == Screen.currentResolution.width && filteredResolutions[i].height == Screen.currentResolution.height)
+                return i;
+        return 0;
+    }
+    
+    private void FindFPSController()
+    {
+        if (fpsController == null)
+            fpsController = FindFirstObjectByType<EasyPeasyFirstPersonController.FirstPersonController>();
+    }
+    
+    private void FindSnakeCameraSensitivity()
+    {
+        if (snakeCameraSensitivity == null)
+            snakeCameraSensitivity = FindFirstObjectByType<CinemachineSensitivityController>();
+    }
+    
+    private void InitializeQualityDropdown()
+    {
+        if (qualityDropdown == null) return;
+        qualityDropdown.ClearOptions();
+        qualityDropdown.AddOptions(new List<string>(QualitySettings.names));
+        int saved = PlayerPrefs.GetInt(QUALITY_KEY, QualitySettings.GetQualityLevel());
+        qualityDropdown.value = saved;
+        qualityDropdown.RefreshShownValue();
+    }
+    
     private void InitializeResolutions()
     {
         if (resolutionDropdown == null) return;
-        
-        resolutions = Screen.resolutions;
+        Resolution[] resolutions = Screen.resolutions;
         resolutionDropdown.ClearOptions();
+        filteredResolutions = new List<Resolution>();
+        HashSet<string> seen = new HashSet<string>();
+        
+        for (int i = resolutions.Length - 1; i >= 0; i--)
+        {
+            string key = $"{resolutions[i].width}x{resolutions[i].height}";
+            if (!seen.Contains(key)) { seen.Add(key); filteredResolutions.Add(resolutions[i]); }
+        }
+        filteredResolutions.Reverse();
         
         List<string> options = new List<string>();
-        int currentResolutionIndex = 0;
-        
-        for (int i = 0; i < resolutions.Length; i++)
+        int currentIdx = 0;
+        for (int i = 0; i < filteredResolutions.Count; i++)
         {
-            string option = $"{resolutions[i].width} x {resolutions[i].height} @ {resolutions[i].refreshRateRatio}Hz";
-            options.Add(option);
-            
-            if (resolutions[i].width == Screen.currentResolution.width &&
-                resolutions[i].height == Screen.currentResolution.height)
-            {
-                currentResolutionIndex = i;
-            }
+            options.Add($"{filteredResolutions[i].width} x {filteredResolutions[i].height}");
+            if (filteredResolutions[i].width == Screen.currentResolution.width && filteredResolutions[i].height == Screen.currentResolution.height)
+                currentIdx = i;
         }
-        
         resolutionDropdown.AddOptions(options);
-        resolutionDropdown.value = PlayerPrefs.GetInt(RESOLUTION_KEY, currentResolutionIndex);
+        resolutionDropdown.value = PlayerPrefs.GetInt(RESOLUTION_KEY, currentIdx);
         resolutionDropdown.RefreshShownValue();
     }
     
-    /// <summary>
-    /// Sets up all UI element listeners (only once to prevent stacking)
-    /// </summary>
     private void SetupListeners()
     {
-        // Prevent setting up listeners multiple times
         if (listenersSetup) return;
         listenersSetup = true;
         
-        // Audio listeners
-        if (masterVolumeSlider != null)
-        {
-            masterVolumeSlider.onValueChanged.RemoveAllListeners(); // Clear any existing
-            masterVolumeSlider.onValueChanged.AddListener(SetMasterVolume);
-        }
-        
-        if (musicVolumeSlider != null)
-        {
-            musicVolumeSlider.onValueChanged.RemoveAllListeners();
-            musicVolumeSlider.onValueChanged.AddListener(SetMusicVolume);
-        }
-        
-        if (sfxVolumeSlider != null)
-        {
-            sfxVolumeSlider.onValueChanged.RemoveAllListeners();
-            sfxVolumeSlider.onValueChanged.AddListener(SetSFXVolume);
-        }
-        
-        // Graphics listeners
-        if (qualityDropdown != null)
-        {
-            qualityDropdown.onValueChanged.RemoveAllListeners();
-            qualityDropdown.onValueChanged.AddListener(SetQuality);
-        }
-        
-        if (resolutionDropdown != null)
-        {
-            resolutionDropdown.onValueChanged.RemoveAllListeners();
-            resolutionDropdown.onValueChanged.AddListener(SetResolution);
-        }
-        
-        if (fullscreenToggle != null)
-        {
-            fullscreenToggle.onValueChanged.RemoveAllListeners();
-            fullscreenToggle.onValueChanged.AddListener(SetFullscreen);
-        }
-        
-        if (vsyncToggle != null)
-        {
-            vsyncToggle.onValueChanged.RemoveAllListeners();
-            vsyncToggle.onValueChanged.AddListener(SetVSync);
-        }
-        
-        // Controls listeners
-        if (sensitivitySlider != null)
-        {
-            sensitivitySlider.onValueChanged.RemoveAllListeners();
-            sensitivitySlider.onValueChanged.AddListener(SetSensitivity);
-        }
-        
-        if (invertYToggle != null)
-        {
-            invertYToggle.onValueChanged.RemoveAllListeners();
-            invertYToggle.onValueChanged.AddListener(SetInvertY);
-        }
+        if (masterVolumeSlider) { masterVolumeSlider.onValueChanged.RemoveAllListeners(); masterVolumeSlider.onValueChanged.AddListener(SetMasterVolume); }
+        if (musicVolumeSlider) { musicVolumeSlider.onValueChanged.RemoveAllListeners(); musicVolumeSlider.onValueChanged.AddListener(SetMusicVolume); }
+        if (sfxVolumeSlider) { sfxVolumeSlider.onValueChanged.RemoveAllListeners(); sfxVolumeSlider.onValueChanged.AddListener(SetSFXVolume); }
+        if (qualityDropdown) { qualityDropdown.onValueChanged.RemoveAllListeners(); qualityDropdown.onValueChanged.AddListener(SetQuality); }
+        if (resolutionDropdown) { resolutionDropdown.onValueChanged.RemoveAllListeners(); resolutionDropdown.onValueChanged.AddListener(SetResolution); }
+        if (fullscreenToggle) { fullscreenToggle.onValueChanged.RemoveAllListeners(); fullscreenToggle.onValueChanged.AddListener(SetFullscreen); }
+        if (vsyncToggle) { vsyncToggle.onValueChanged.RemoveAllListeners(); vsyncToggle.onValueChanged.AddListener(SetVSync); }
+        if (sensitivitySlider) { sensitivitySlider.onValueChanged.RemoveAllListeners(); sensitivitySlider.onValueChanged.AddListener(SetSensitivity); }
+        if (invertYToggle) { invertYToggle.onValueChanged.RemoveAllListeners(); invertYToggle.onValueChanged.AddListener(SetInvertY); }
     }
     
-    /// <summary>
-    /// Loads all saved settings from PlayerPrefs
-    /// </summary>
     public void LoadSettings()
     {
-        // Load Audio settings
-        float masterVolume = PlayerPrefs.GetFloat(MASTER_VOLUME_KEY, 1f);
-        float musicVolume = PlayerPrefs.GetFloat(MUSIC_VOLUME_KEY, 1f);
-        float sfxVolume = PlayerPrefs.GetFloat(SFX_VOLUME_KEY, 1f);
+        float masterVol = PlayerPrefs.GetFloat(MASTER_VOLUME_KEY, 1f);
+        float musicVol = PlayerPrefs.GetFloat(MUSIC_VOLUME_KEY, 1f);
+        float sfxVol = PlayerPrefs.GetFloat(SFX_VOLUME_KEY, 1f);
+        if (masterVolumeSlider) masterVolumeSlider.value = masterVol;
+        if (musicVolumeSlider) musicVolumeSlider.value = musicVol;
+        if (sfxVolumeSlider) sfxVolumeSlider.value = sfxVol;
+        SetMasterVolume(masterVol); SetMusicVolume(musicVol); SetSFXVolume(sfxVol);
         
-        if (masterVolumeSlider != null) masterVolumeSlider.value = masterVolume;
-        if (musicVolumeSlider != null) musicVolumeSlider.value = musicVolume;
-        if (sfxVolumeSlider != null) sfxVolumeSlider.value = sfxVolume;
+        int quality = PlayerPrefs.GetInt(QUALITY_KEY, QualitySettings.GetQualityLevel());
+        bool fullscreen = PlayerPrefs.GetInt(FULLSCREEN_KEY, Screen.fullScreen ? 1 : 0) == 1;
+        bool vsync = PlayerPrefs.GetInt(VSYNC_KEY, QualitySettings.vSyncCount > 0 ? 1 : 0) == 1;
+        if (qualityDropdown) qualityDropdown.value = quality;
+        if (fullscreenToggle) fullscreenToggle.isOn = fullscreen;
+        if (vsyncToggle) vsyncToggle.isOn = vsync;
+        SetQuality(quality); SetFullscreen(fullscreen); SetVSync(vsync);
         
-        // Apply audio settings
-        SetMasterVolume(masterVolume);
-        SetMusicVolume(musicVolume);
-        SetSFXVolume(sfxVolume);
-        
-        // Load Graphics settings
-        int qualityLevel = PlayerPrefs.GetInt(QUALITY_KEY, QualitySettings.GetQualityLevel());
-        bool isFullscreen = PlayerPrefs.GetInt(FULLSCREEN_KEY, Screen.fullScreen ? 1 : 0) == 1;
-        bool isVSync = PlayerPrefs.GetInt(VSYNC_KEY, QualitySettings.vSyncCount > 0 ? 1 : 0) == 1;
-        
-        if (qualityDropdown != null) qualityDropdown.value = qualityLevel;
-        if (fullscreenToggle != null) fullscreenToggle.isOn = isFullscreen;
-        if (vsyncToggle != null) vsyncToggle.isOn = isVSync;
-        
-        // Apply graphics settings
-        SetQuality(qualityLevel);
-        SetFullscreen(isFullscreen);
-        SetVSync(isVSync);
-        
-        // Load Controls settings
-        float sensitivity = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        float sens = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
         bool invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
-        
-        if (sensitivitySlider != null) sensitivitySlider.value = sensitivity;
-        if (invertYToggle != null) invertYToggle.isOn = invertY;
-        
-        // Apply controls settings
-        SetSensitivity(sensitivity);
+        if (sensitivitySlider) sensitivitySlider.value = sens;
+        if (invertYToggle) invertYToggle.isOn = invertY;
+        SetSensitivity(sens);
         SetInvertY(invertY);
     }
     
-    /// <summary>
-    /// Saves all current settings to PlayerPrefs
-    /// </summary>
-    public void SaveSettings()
-    {
-        PlayerPrefs.Save();
-    }
-    
-    #region Audio Settings
+    public void SaveSettings() { PlayerPrefs.Save(); }
     
     public void SetMasterVolume(float volume)
     {
-        // Clamp volume to valid range
         volume = Mathf.Clamp01(volume);
         PlayerPrefs.SetFloat(MASTER_VOLUME_KEY, volume);
-        
-        if (audioMixer != null)
-        {
-            // Convert linear to logarithmic for audio mixer (-80dB to 0dB)
-            float dB = volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f;
-            audioMixer.SetFloat("MasterVolume", dB);
-        }
-        
-        // Always set AudioListener volume as the primary method
+        PlayerPrefs.Save();
+        if (audioMixer != null) audioMixer.SetFloat("MasterVolume", volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f);
         AudioListener.volume = volume;
     }
     
     public void SetMusicVolume(float volume)
     {
         PlayerPrefs.SetFloat(MUSIC_VOLUME_KEY, volume);
-        
-        if (audioMixer != null)
-        {
-            float dB = volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f;
-            audioMixer.SetFloat("MusicVolume", dB);
-        }
+        PlayerPrefs.Save();
+        if (audioMixer != null) audioMixer.SetFloat("MusicVolume", volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f);
     }
     
     public void SetSFXVolume(float volume)
     {
         PlayerPrefs.SetFloat(SFX_VOLUME_KEY, volume);
-        
-        if (audioMixer != null)
-        {
-            float dB = volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f;
-            audioMixer.SetFloat("SFXVolume", dB);
-        }
+        PlayerPrefs.Save();
+        if (audioMixer != null) audioMixer.SetFloat("SFXVolume", volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f);
     }
-    
-    #endregion
-    
-    #region Graphics Settings
     
     public void SetQuality(int qualityIndex)
     {
-        QualitySettings.SetQualityLevel(qualityIndex);
+        Debug.Log($"[SettingsManager] Setting quality to level {qualityIndex} ({(qualityIndex < QualitySettings.names.Length ? QualitySettings.names[qualityIndex] : "Unknown")})");
+        QualitySettings.SetQualityLevel(qualityIndex, true);
         PlayerPrefs.SetInt(QUALITY_KEY, qualityIndex);
+        PlayerPrefs.Save();
     }
     
     public void SetResolution(int resolutionIndex)
     {
-        if (resolutions == null || resolutionIndex >= resolutions.Length) return;
-        
-        Resolution resolution = resolutions[resolutionIndex];
-        Screen.SetResolution(resolution.width, resolution.height, Screen.fullScreen);
+        if (filteredResolutions == null || resolutionIndex >= filteredResolutions.Count) return;
+        Resolution res = filteredResolutions[resolutionIndex];
+        Debug.Log($"[SettingsManager] Setting resolution to {res.width}x{res.height} (fullscreen: {Screen.fullScreen})");
+        Screen.SetResolution(res.width, res.height, Screen.fullScreen);
         PlayerPrefs.SetInt(RESOLUTION_KEY, resolutionIndex);
+        PlayerPrefs.Save();
     }
     
     public void SetFullscreen(bool isFullscreen)
     {
         Screen.fullScreen = isFullscreen;
         PlayerPrefs.SetInt(FULLSCREEN_KEY, isFullscreen ? 1 : 0);
+        PlayerPrefs.Save();
     }
     
     public void SetVSync(bool enabled)
     {
         QualitySettings.vSyncCount = enabled ? 1 : 0;
         PlayerPrefs.SetInt(VSYNC_KEY, enabled ? 1 : 0);
+        PlayerPrefs.Save();
     }
-    
-    #endregion
-    
-    #region Controls Settings
     
     public void SetSensitivity(float sensitivity)
     {
         PlayerPrefs.SetFloat(SENSITIVITY_KEY, sensitivity);
-        
-        // Update sensitivity text display
-        if (sensitivityValueText != null)
-        {
-            sensitivityValueText.text = sensitivity.ToString("F1");
-        }
+        PlayerPrefs.Save();
+        if (sensitivityValueText) sensitivityValueText.text = sensitivity.ToString("F1");
         
         // Apply to FPS controller if available
-        ApplySensitivityToController(sensitivity);
-    }
-    
-    /// <summary>
-    /// Applies sensitivity to the FPS controller, finding it if necessary
-    /// </summary>
-    private void ApplySensitivityToController(float sensitivity)
-    {
-        // Try to find controller if not assigned
-        if (fpsController == null)
-        {
-            FindFPSController();
-        }
+        if (fpsController == null) FindFPSController();
+        if (fpsController != null) fpsController.mouseSensitivity = sensitivity * sensitivityMultiplier;
         
-        if (fpsController != null)
-        {
-            fpsController.mouseSensitivity = sensitivity;
-        }
-    }
-    
-    /// <summary>
-    /// Call this to re-apply sensitivity (useful after scene transitions or camera switches)
-    /// </summary>
-    public void ReapplySensitivity()
-    {
-        float sensitivity = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
-        ApplySensitivityToController(sensitivity);
+        // Apply to Snake Cinemachine camera if available
+        if (snakeCameraSensitivity == null) FindSnakeCameraSensitivity();
+        if (snakeCameraSensitivity != null) snakeCameraSensitivity.SetSensitivity(sensitivity);
     }
     
     public void SetInvertY(bool inverted)
     {
         PlayerPrefs.SetInt(INVERT_Y_KEY, inverted ? 1 : 0);
-        
-        // Note: You would need to modify the FirstPersonController to support inverted Y
-        // This is a placeholder for that functionality
+        PlayerPrefs.Save();
+        if (fpsController == null) FindFPSController();
+        if (fpsController != null) fpsController.invertY = inverted;
     }
     
-    #endregion
+    public void ReapplySensitivity()
+    {
+        float sens = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        bool invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
+        
+        // Apply to FPS controller if available
+        if (fpsController == null) FindFPSController();
+        if (fpsController != null)
+        {
+            fpsController.mouseSensitivity = sens * sensitivityMultiplier;
+            fpsController.invertY = invertY;
+        }
+        
+        // Apply to Snake Cinemachine camera if available
+        if (snakeCameraSensitivity == null) FindSnakeCameraSensitivity();
+        if (snakeCameraSensitivity != null)
+        {
+            snakeCameraSensitivity.SetSensitivity(sens);
+        }
+    }
     
-    /// <summary>
-    /// Resets all settings to default values
-    /// </summary>
     public void ResetToDefaults()
     {
-        // Audio defaults
-        if (masterVolumeSlider != null) masterVolumeSlider.value = 1f;
-        if (musicVolumeSlider != null) musicVolumeSlider.value = 1f;
-        if (sfxVolumeSlider != null) sfxVolumeSlider.value = 1f;
-        
-        // Graphics defaults
-        if (qualityDropdown != null) qualityDropdown.value = QualitySettings.names.Length - 1; // Highest quality
-        if (fullscreenToggle != null) fullscreenToggle.isOn = true;
-        if (vsyncToggle != null) vsyncToggle.isOn = true;
-        
-        // Controls defaults
-        if (sensitivitySlider != null) sensitivitySlider.value = 50f;
-        if (invertYToggle != null) invertYToggle.isOn = false;
-        
+        if (masterVolumeSlider) masterVolumeSlider.value = 1f;
+        if (musicVolumeSlider) musicVolumeSlider.value = 1f;
+        if (sfxVolumeSlider) sfxVolumeSlider.value = 1f;
+        if (qualityDropdown) qualityDropdown.value = QualitySettings.names.Length - 1;
+        if (fullscreenToggle) fullscreenToggle.isOn = true;
+        if (vsyncToggle) vsyncToggle.isOn = true;
+        if (sensitivitySlider) sensitivitySlider.value = 50f;
+        if (invertYToggle) invertYToggle.isOn = false;
         SaveSettings();
     }
     
-    private void OnDestroy()
-    {
-        SaveSettings();
-    }
+    private void OnDestroy() { SaveSettings(); }
 }

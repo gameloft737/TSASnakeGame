@@ -47,6 +47,10 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Reference to the FPS controller to disable during menu")]
     public EasyPeasyFirstPersonController.FirstPersonController fpsController;
     
+    [Header("Pause Menu Reference")]
+    [Tooltip("Reference to PauseMenuManager to enable pausing after game starts")]
+    public PauseMenuManager pauseMenuManager;
+    
     [Header("Audio")]
     [Tooltip("Optional: Sound to play when clicking Play")]
     public AudioClip playButtonSound;
@@ -456,6 +460,16 @@ public class MainMenuManager : MonoBehaviour
         
         // Resume time before starting cutscene
         Time.timeScale = 1f;
+        
+        // Enable pausing now that the game has started
+        if (pauseMenuManager == null)
+        {
+            pauseMenuManager = FindFirstObjectByType<PauseMenuManager>();
+        }
+        if (pauseMenuManager != null)
+        {
+            pauseMenuManager.EnablePausing();
+        }
         
         // Start the intro cutscene
         if (autoStartCutscene && introCutsceneController != null)

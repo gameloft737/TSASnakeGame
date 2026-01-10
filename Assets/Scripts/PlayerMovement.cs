@@ -11,7 +11,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float rotationSpeed = 180f;
     [SerializeField] private float mouseSensitivity = 2f; // Mouse sensitivity (not multiplied by deltaTime!)
     [SerializeField] private float mouseSmoothing = 0.15f; // Lower = smoother, higher = more responsive
-    [SerializeField] private float aimInputDelay = 0.5f; // Delay before look input is active
     [SerializeField] private float surfaceAlignSpeed = 10f;
     [SerializeField] private float gravityForce = 20f;
     
@@ -34,10 +33,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private CameraManager cameraManager;
     [SerializeField] private bool useMouseInAimMode = true; // Toggle which camera mode uses mouse
     
-    [Header("Classic Mode Settings")]
-    [SerializeField] private float gridCellSize = 1f;
-    [SerializeField] private float classicMoveInterval = 0.15f; // Time between grid moves
-
     private Rigidbody rb;
     [SerializeField]private bool isGrounded;
     private bool moveForward;
@@ -52,7 +47,6 @@ public class PlayerMovement : MonoBehaviour
     private bool isClassicMode = false;
     private Vector2Int classicDirection = Vector2Int.up; // Current movement direction
     private Vector2Int nextClassicDirection = Vector2Int.up; // Queued direction
-    private float classicMoveTimer = 0f;
     private Vector2Int lastInputDirection = Vector2Int.zero;
 
     void Start()
@@ -457,4 +451,18 @@ public class PlayerMovement : MonoBehaviour
     /// Returns whether the player is currently frozen
     /// </summary>
     public bool IsFrozen() => isFrozen;
+    
+    /// <summary>
+    /// Sets the mouse sensitivity for camera/rotation control
+    /// </summary>
+    /// <param name="sensitivity">The new sensitivity value</param>
+    public void SetMouseSensitivity(float sensitivity)
+    {
+        mouseSensitivity = sensitivity;
+    }
+    
+    /// <summary>
+    /// Gets the current mouse sensitivity
+    /// </summary>
+    public float GetMouseSensitivity() => mouseSensitivity;
 }

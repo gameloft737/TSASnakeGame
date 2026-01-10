@@ -26,16 +26,9 @@ public class LaserAttack : Attack
     [SerializeField] private float laserWidth = 0.1f;
     [SerializeField] private LayerMask ignoreMask;
     [SerializeField] private Transform aimReference; // The object that aims forward (e.g., head)
-    [SerializeField] private float mouseSensitivity = 0.5f; // How much mouse movement affects rotation
-    [SerializeField] private float minXRotation = -5f; // Minimum X rotation
-    [SerializeField] private float maxXRotation = 5f; // Maximum X rotation
     
     [Header("Evolution Settings")]
     [SerializeField] private bool sideLasersEnabled = false; // Enabled when evolved
-    
-    [Header("Mouse Look Reference")]
-    [SerializeField] private MouseLookAt mouseLookAt;
-    [SerializeField] private CameraManager cameraManager;
     
     // Custom stat names for upgrade data
     private const string STAT_LASER_DISTANCE = "laserDistance";

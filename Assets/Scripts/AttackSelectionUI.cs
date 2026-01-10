@@ -420,21 +420,144 @@ public class AttackSelectionUI : MonoBehaviour
         spawnedButtons.Add(buttonObj);
         buttonToFallback[buttonObj] = fallbackType;
         
+        // Disable the AttackButton component so it doesn't interfere
         AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
         if (attackButton != null) attackButton.enabled = false;
         
-        TextMeshProUGUI nameText = buttonObj.transform.Find("AttackName")?.GetComponent<TextMeshProUGUI>();
-        TextMeshProUGUI levelText = buttonObj.transform.Find("LevelText")?.GetComponent<TextMeshProUGUI>();
-        TextMeshProUGUI descriptionText = buttonObj.transform.Find("Description")?.GetComponent<TextMeshProUGUI>();
+        // Try to find text components - check multiple possible names/paths
+        TextMeshProUGUI nameText = FindTextComponent(buttonObj, "AttackName", "Name", "Title", "Text");
+        TextMeshProUGUI levelText = FindTextComponent(buttonObj, "LevelText", "Level");
+        TextMeshProUGUI descriptionText = FindTextComponent(buttonObj, "Description", "Desc", "DescriptionText");
+        Image iconImage = FindImageComponent(buttonObj, "Icon", "IconImage");
         Image backgroundImage = buttonObj.GetComponent<Image>();
         
-        if (nameText != null) nameText.text = $"[Bonus] {name}";
-        if (levelText != null) levelText.text = "";
-        if (descriptionText != null) descriptionText.text = description;
+        // If we couldn't find specific text components, try to get ALL text components and use them
+        if (nameText == null || descriptionText == null)
+        {
+            TextMeshProUGUI[] allTexts = buttonObj.GetComponentsInChildren<TextMeshProUGUI>(true);
+            Debug.Log($"Fallback button '{name}': Found {allTexts.Length} text components");
+            
+            // Assign texts based on order if we have them
+            for (int i = 0; i < allTexts.Length; i++)
+            {
+                Debug.Log($"  Text[{i}]: '{allTexts[i].gameObject.name}' = '{allTexts[i].text}'");
+                
+                // First text is usually the name/title
+                if (i == 0 && nameText == null) nameText = allTexts[i];
+                // Second text is usually level
+                else if (i == 1 && levelText == null) levelText = allTexts[i];
+                // Third text is usually description
+                else if (i == 2 && descriptionText == null) descriptionText = allTexts[i];
+            }
+        }
+        
+        // Set the text values
+        if (nameText != null)
+        {
+            nameText.text = $"[Bonus] {name}";
+            Debug.Log($"Set name text to: [Bonus] {name}");
+        }
+        else
+        {
+            Debug.LogWarning($"Fallback button '{name}': Could not find name text component!");
+        }
+        
+        if (levelText != null)
+        {
+            levelText.text = "";
+        }
+        
+        if (descriptionText != null)
+        {
+            descriptionText.text = description;
+            Debug.Log($"Set description text to: {description}");
+        }
+        else
+        {
+            Debug.LogWarning($"Fallback button '{name}': Could not find description text component!");
+        }
+        
         if (backgroundImage != null) backgroundImage.color = bgColor;
+        if (iconImage != null) iconImage.enabled = false;
+        
+        // Also try to find and hide any "new" or "upgrade" indicators (search recursively)
+        HideIndicatorRecursive(buttonObj.transform, "NewIndicator");
+        HideIndicatorRecursive(buttonObj.transform, "UpgradeIndicator");
+        HideIndicatorRecursive(buttonObj.transform, "New");
+        HideIndicatorRecursive(buttonObj.transform, "Upgrade");
         
         Button button = buttonObj.GetComponent<Button>();
-        if (button != null) { button.onClick.RemoveAllListeners(); button.onClick.AddListener(() => OnFallbackSelected(fallbackType)); }
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => OnFallbackSelected(fallbackType));
+        }
+    }
+    
+    private void HideIndicatorRecursive(Transform parent, string nameContains)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.gameObject.name.Contains(nameContains))
+            {
+                child.gameObject.SetActive(false);
+            }
+            HideIndicatorRecursive(child, nameContains);
+        }
+    }
+    
+    private TextMeshProUGUI FindTextComponent(GameObject obj, params string[] possibleNames)
+    {
+        // First try direct children
+        foreach (string name in possibleNames)
+        {
+            Transform child = obj.transform.Find(name);
+            if (child != null)
+            {
+                TextMeshProUGUI tmp = child.GetComponent<TextMeshProUGUI>();
+                if (tmp != null) return tmp;
+            }
+        }
+        
+        // Then try recursive search
+        TextMeshProUGUI[] allTexts = obj.GetComponentsInChildren<TextMeshProUGUI>(true);
+        foreach (string name in possibleNames)
+        {
+            foreach (TextMeshProUGUI tmp in allTexts)
+            {
+                if (tmp.gameObject.name.Contains(name))
+                    return tmp;
+            }
+        }
+        
+        return null;
+    }
+    
+    private Image FindImageComponent(GameObject obj, params string[] possibleNames)
+    {
+        // First try direct children
+        foreach (string name in possibleNames)
+        {
+            Transform child = obj.transform.Find(name);
+            if (child != null)
+            {
+                Image img = child.GetComponent<Image>();
+                if (img != null) return img;
+            }
+        }
+        
+        // Then try recursive search (excluding the root object's Image)
+        Image[] allImages = obj.GetComponentsInChildren<Image>(true);
+        foreach (string name in possibleNames)
+        {
+            foreach (Image img in allImages)
+            {
+                if (img.gameObject != obj && img.gameObject.name.Contains(name))
+                    return img;
+            }
+        }
+        
+        return null;
     }
     
     private List<object> GetRandomOptions(List<object> available, int count)

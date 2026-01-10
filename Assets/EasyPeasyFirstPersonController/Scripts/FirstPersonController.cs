@@ -7,6 +7,7 @@ namespace EasyPeasyFirstPersonController
     public partial class FirstPersonController : MonoBehaviour
     {
         [Range(0, 100)] public float mouseSensitivity = 50f;
+        public bool invertY = false;
         [Range(0f, 200f)] private float snappiness = 100f;
         [Range(0f, 20f)] public float walkSpeed = 3f;
         [Range(0f, 30f)] public float sprintSpeed = 5f;
@@ -166,13 +167,18 @@ namespace EasyPeasyFirstPersonController
 
             if (isLook)
             {
-                // Sensitivity is expected to be 0-100, we normalize it to a reasonable range
-                float normalizedSensitivity = mouseSensitivity * 0.1f; // 0-10 range
+                // Sensitivity is set directly by SettingsManager (already scaled)
+                // We apply a small base multiplier for fine-tuning
+                float normalizedSensitivity = mouseSensitivity * 0.1f;
                 float mouseX = Input.GetAxis("Mouse X") * normalizedSensitivity;
                 float mouseY = Input.GetAxis("Mouse Y") * normalizedSensitivity;
 
                 rotX += mouseX;
-                rotY -= mouseY;
+                // Apply invert Y if enabled
+                if (invertY)
+                    rotY += mouseY;
+                else
+                    rotY -= mouseY;
                 rotY = Mathf.Clamp(rotY, -90f, 90f);
 
                 xVelocity = Mathf.Lerp(xVelocity, rotX, snappiness * Time.deltaTime);

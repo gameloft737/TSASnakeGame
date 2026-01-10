@@ -19,6 +19,33 @@ public class CursorLock : MonoBehaviour
 
     void Update()
     {
+        // Don't lock cursor if game is paused
+        if (SnakeScenePauseManager.Instance != null && SnakeScenePauseManager.Instance.IsPaused)
+        {
+            return; // Let the pause manager control the cursor
+        }
+        
+        // Also check the old SnakePauseMenu for backwards compatibility
+        if (SnakePauseMenu.Instance != null && SnakePauseMenu.Instance.IsPaused)
+        {
+            return; // Let the pause manager control the cursor
+        }
+        
+        // Don't lock cursor if tutorial panel is active
+        if (TutorialPanelManager.Instance != null && TutorialPanelManager.Instance.IsTutorialActive)
+        {
+            UnlockCursor(); // Keep cursor unlocked for tutorial panel buttons
+            return;
+        }
+        
+        // Don't lock cursor if death screen is active
+        DeathScreenManager deathScreen = FindFirstObjectByType<DeathScreenManager>();
+        if (deathScreen != null && deathScreen.IsDeathScreenActive())
+        {
+            UnlockCursor(); // Keep cursor unlocked for death screen buttons
+            return;
+        }
+        
         // Check if in ability selection phase (if you have a phase manager or similar system)
         if (isAbilitySelection)
         {
