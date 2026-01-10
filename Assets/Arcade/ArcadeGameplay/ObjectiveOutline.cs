@@ -69,9 +69,6 @@ public class ObjectiveOutline : MonoBehaviour
     // Cached collider bounds
     private Bounds cachedBounds;
     private Collider targetCollider;
-    
-    // Track if we should wait for cutscene
-    private bool waitingForCutscene = true;
 
     private void Awake()
     {
@@ -84,15 +81,11 @@ public class ObjectiveOutline : MonoBehaviour
         
         if (targetCollider == null && showDebugInfo)
             Debug.LogWarning($"ObjectiveOutline [{gameObject.name}]: No collider found!");
-        
-        if (showDebugInfo)
-            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Found collider: {(targetCollider != null ? targetCollider.GetType().Name : "NONE")}");
     }
 
     private void Start()
     {
         isOutlineActive = false;
-        waitingForCutscene = true;
         
         // Don't check outline immediately - wait for cutscene to end
         // The ObjectiveManager will call UpdateAllOutlines() when cutscene ends
@@ -131,17 +124,10 @@ public class ObjectiveOutline : MonoBehaviour
         
         if (!gameHasStarted)
         {
-            if (showDebugInfo)
-                Debug.Log($"ObjectiveOutline [{gameObject.name}]: Waiting for cutscene to end...");
             return;
         }
         
-        waitingForCutscene = false;
-        
         bool shouldBeActive = ObjectiveManager.Instance.CurrentObjectiveIndex == objectiveTrigger.myObjectiveIndex;
-        
-        if (showDebugInfo)
-            Debug.Log($"ObjectiveOutline [{gameObject.name}]: shouldBeActive={shouldBeActive}, isActive={isOutlineActive}");
         
         if (shouldBeActive && !isOutlineActive) EnableOutline();
         else if (!shouldBeActive && isOutlineActive) DisableOutline();
@@ -187,8 +173,6 @@ public class ObjectiveOutline : MonoBehaviour
         // Double-check that cutscene has ended
         if (!HasGameStarted())
         {
-            if (showDebugInfo)
-                Debug.Log($"ObjectiveOutline [{gameObject.name}]: Cutscene not ended yet, not enabling outline");
             return;
         }
         
@@ -198,8 +182,6 @@ public class ObjectiveOutline : MonoBehaviour
         
         if (animationCoroutine != null) StopCoroutine(animationCoroutine);
         animationCoroutine = StartCoroutine(AnimateOutline());
-        
-        Debug.Log($"ObjectiveOutline: ENABLED wireframe for {gameObject.name}");
     }
 
     public void DisableOutline()
@@ -214,8 +196,6 @@ public class ObjectiveOutline : MonoBehaviour
         }
 
         CleanupWireframe();
-        
-        Debug.Log($"ObjectiveOutline: DISABLED wireframe for {gameObject.name}");
     }
 
     private void CreateWireframe()
@@ -278,9 +258,6 @@ public class ObjectiveOutline : MonoBehaviour
                 CreateCornerSphere(corner);
             }
         }
-        
-        if (showDebugInfo)
-            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Created wireframe with {lineRenderers.Count} lines and {cornerSpheres.Count} corners");
     }
 
     private void CreateLine(Vector3 start, Vector3 end)

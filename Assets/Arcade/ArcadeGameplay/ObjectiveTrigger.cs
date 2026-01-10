@@ -56,15 +56,37 @@ public class ObjectiveTrigger : MonoBehaviour
     public AnimationClip animationClip;
 
     [Header("Sound Settings")]
+    [Tooltip("Main AudioSource for looping sounds (before/after)")]
     public AudioSource audioSource;        // AudioSource on this object
-    public AudioClip soundBefore;          // Plays while objective is active
-    public AudioClip soundAfter;           // Plays when objective completes
-    public bool loopBeforeSound = true;    // Should the "before" sound loop?
-    public bool loopAfterSound = false;    // Should the "after" sound loop?
+    
+    [Header("Before Sounds (While Objective is Active)")]
+    [Tooltip("Sounds that play while the objective is active (before completion)")]
+    public AudioClip[] soundsBefore;       // Multiple sounds that play while objective is active
+    [Tooltip("Should the before sounds loop?")]
+    public bool loopBeforeSounds = true;
+    [Tooltip("Volume for before sounds")]
+    [Range(0f, 1f)]
+    public float beforeSoundsVolume = 1f;
+    
+    [Header("After Sounds (When Objective Completes)")]
+    [Tooltip("Sounds that play when the objective is completed")]
+    public AudioClip[] soundsAfter;        // Multiple sounds that play when objective completes
+    [Tooltip("Should the after sounds loop?")]
+    public bool loopAfterSounds = false;
+    [Tooltip("Volume for after sounds")]
+    [Range(0f, 1f)]
+    public float afterSoundsVolume = 1f;
 
-    [Header("Additional One-Shot Completion Sound")]
-    public AudioClip completionOneShotSound;   // Plays once on completion (different from the 'after' sound)
-    public float completionOneShotVolume = 1f; // Optional volume control
+    [Header("One-Shot Completion Sounds")]
+    [Tooltip("Additional sounds that play once on completion (played via PlayOneShot)")]
+    public AudioClip[] completionOneShotSounds;
+    [Tooltip("Volume for one-shot completion sounds")]
+    [Range(0f, 1f)]
+    public float completionOneShotVolume = 1f;
+    
+    [Header("Additional Audio Sources")]
+    [Tooltip("Extra AudioSources for playing multiple sounds simultaneously")]
+    public AudioSource[] additionalAudioSources;
 
     [Header("Scene Transition")]
     public string sceneToLoad;         // Leave empty to disable scene loading
@@ -81,6 +103,7 @@ public class ObjectiveTrigger : MonoBehaviour
     private ObjectiveOutline objectiveOutline;
     private Transform playerTransform;
     private Camera playerCamera;
+    private AudioSource[] allAudioSources; // Combined array of main + additional audio sources
 
     private void Awake()
     {
@@ -90,6 +113,35 @@ public class ObjectiveTrigger : MonoBehaviour
         // Use this transform if no interaction point specified
         if (interactionPoint == null)
             interactionPoint = transform;
+        
+        // Build combined audio sources array
+        BuildAudioSourcesArray();
+    }
+    
+    /// <summary>
+    /// Builds the combined array of all available audio sources
+    /// </summary>
+    private void BuildAudioSourcesArray()
+    {
+        int count = (audioSource != null ? 1 : 0) + (additionalAudioSources != null ? additionalAudioSources.Length : 0);
+        allAudioSources = new AudioSource[count];
+        
+        int index = 0;
+        if (audioSource != null)
+        {
+            allAudioSources[index++] = audioSource;
+        }
+        
+        if (additionalAudioSources != null)
+        {
+            foreach (AudioSource source in additionalAudioSources)
+            {
+                if (source != null)
+                {
+                    allAudioSources[index++] = source;
+                }
+            }
+        }
     }
 
     private void Start()
@@ -99,42 +151,9 @@ public class ObjectiveTrigger : MonoBehaviour
         if (player != null)
         {
             playerTransform = player.transform;
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Found player '{player.name}'");
-        }
-        else
-        {
-            Debug.LogWarning($"ObjectiveTrigger [{gameObject.name}]: No GameObject with 'Player' tag found!");
         }
         
         playerCamera = Camera.main;
-        if (playerCamera != null)
-        {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Found main camera '{playerCamera.name}'");
-        }
-        else
-        {
-            Debug.LogWarning($"ObjectiveTrigger [{gameObject.name}]: Camera.main is null!");
-        }
-        
-        // Check InteractionPromptUI
-        if (InteractionPromptUI.Instance == null)
-        {
-            Debug.LogWarning($"ObjectiveTrigger [{gameObject.name}]: InteractionPromptUI.Instance is null! Make sure InteractionPromptUI is in the scene.");
-        }
-        else
-        {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: InteractionPromptUI found");
-        }
-        
-        // Check ObjectiveManager
-        if (ObjectiveManager.Instance == null)
-        {
-            Debug.LogWarning($"ObjectiveTrigger [{gameObject.name}]: ObjectiveManager.Instance is null! Make sure ObjectiveManager is in the scene.");
-        }
-        else
-        {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: ObjectiveManager found. Current objective index: {ObjectiveManager.Instance.CurrentObjectiveIndex}");
-        }
     }
 
     private IEnumerator LoadSceneAfterDelay()
@@ -151,16 +170,123 @@ public class ObjectiveTrigger : MonoBehaviour
         myObjectiveIndex = index;
         completed = false;
 
-        // Handle sound for new active objective
-        if (audioSource != null)
+        // Handle sounds for new active objective
+        PlayBeforeSounds();
+    }
+    
+    /// <summary>
+    /// Play all "before" sounds when the objective becomes active
+    /// </summary>
+    private void PlayBeforeSounds()
+    {
+        if (soundsBefore == null || soundsBefore.Length == 0) return;
+        
+        // Stop any currently playing sounds first
+        StopAllSounds();
+        
+        // Play each before sound on an available audio source
+        for (int i = 0; i < soundsBefore.Length; i++)
         {
-            if (soundBefore != null)
+            AudioClip clip = soundsBefore[i];
+            if (clip == null) continue;
+            
+            AudioSource source = GetAudioSource(i);
+            if (source != null)
             {
-                audioSource.clip = soundBefore;
-                audioSource.loop = loopBeforeSound;
-                audioSource.Play();
+                source.clip = clip;
+                source.loop = loopBeforeSounds;
+                source.volume = beforeSoundsVolume;
+                source.Play();
+            }
+            else
+            {
+                Debug.LogWarning($"ObjectiveTrigger [{gameObject.name}]: Not enough AudioSources to play all before sounds. Need {soundsBefore.Length}, have {allAudioSources.Length}");
+                break;
             }
         }
+    }
+    
+    /// <summary>
+    /// Play all "after" sounds when the objective is completed
+    /// </summary>
+    private void PlayAfterSounds()
+    {
+        if (soundsAfter == null || soundsAfter.Length == 0) return;
+        
+        // Play each after sound on an available audio source
+        for (int i = 0; i < soundsAfter.Length; i++)
+        {
+            AudioClip clip = soundsAfter[i];
+            if (clip == null) continue;
+            
+            AudioSource source = GetAudioSource(i);
+            if (source != null)
+            {
+                if (loopAfterSounds)
+                {
+                    source.clip = clip;
+                    source.loop = true;
+                    source.volume = afterSoundsVolume;
+                    source.Play();
+                }
+                else
+                {
+                    source.loop = false;
+                    source.PlayOneShot(clip, afterSoundsVolume);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"ObjectiveTrigger [{gameObject.name}]: Not enough AudioSources to play all after sounds. Need {soundsAfter.Length}, have {allAudioSources.Length}");
+                break;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Play all one-shot completion sounds
+    /// </summary>
+    private void PlayCompletionOneShotSounds()
+    {
+        if (completionOneShotSounds == null || completionOneShotSounds.Length == 0) return;
+        
+        // Play all one-shot sounds on the main audio source (they can overlap with PlayOneShot)
+        if (audioSource != null)
+        {
+            foreach (AudioClip clip in completionOneShotSounds)
+            {
+                if (clip != null)
+                {
+                    audioSource.PlayOneShot(clip, completionOneShotVolume);
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Stop all sounds on all audio sources
+    /// </summary>
+    private void StopAllSounds()
+    {
+        if (allAudioSources == null) return;
+        
+        foreach (AudioSource source in allAudioSources)
+        {
+            if (source != null)
+            {
+                source.Stop();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Get an audio source by index (returns null if index is out of range)
+    /// </summary>
+    private AudioSource GetAudioSource(int index)
+    {
+        if (allAudioSources == null || index >= allAudioSources.Length)
+            return null;
+        return allAudioSources[index];
     }
 
     // Checks if this objective is currently active
@@ -179,12 +305,6 @@ public class ObjectiveTrigger : MonoBehaviour
 
     private void Update()
     {
-        // Debug: Log every few seconds to confirm Update is running
-        if (showDebugInfo && Time.frameCount % 300 == 0)
-        {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Update running. IsActiveObjective: {IsActiveObjective()}, myIndex: {myObjectiveIndex}, currentIndex: {ObjectiveManager.Instance?.CurrentObjectiveIndex ?? -1}");
-        }
-        
         if (!IsActiveObjective())
         {
             if (canInteract)
@@ -202,26 +322,16 @@ public class ObjectiveTrigger : MonoBehaviour
         // Show/hide interaction prompt
         if (canInteract && !wasCanInteract)
         {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Showing interaction prompt");
-            if (InteractionPromptUI.Instance != null)
-            {
-                InteractionPromptUI.Instance.ShowMessage(interactionMessage);
-            }
-            else
-            {
-                Debug.LogError($"ObjectiveTrigger [{gameObject.name}]: Cannot show prompt - InteractionPromptUI.Instance is null!");
-            }
+            InteractionPromptUI.Instance?.ShowMessage(interactionMessage);
         }
         else if (!canInteract && wasCanInteract)
         {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Hiding interaction prompt");
             InteractionPromptUI.Instance?.HideMessage();
         }
         
         // Check for interaction input
         if (canInteract && Input.GetKeyDown(KeyCode.E))
         {
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: E pressed, completing objective");
             CompleteObjective();
         }
     }
@@ -255,8 +365,6 @@ public class ObjectiveTrigger : MonoBehaviour
         float distance = Vector3.Distance(playerPosition, targetPosition);
         if (distance > interactionRange)
         {
-            if (showDebugInfo)
-                Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Out of range ({distance:F1} > {interactionRange})");
             return false;
         }
         
@@ -267,8 +375,6 @@ public class ObjectiveTrigger : MonoBehaviour
         float angle = Vector3.Angle(cameraForward, directionToTarget);
         if (angle > lookAtAngle)
         {
-            if (showDebugInfo)
-                Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Not looking at ({angle:F1}° > {lookAtAngle}°)");
             return false;
         }
         
@@ -284,15 +390,10 @@ public class ObjectiveTrigger : MonoBehaviour
                 // Check if we hit this object or a child of this object
                 if (!IsPartOfThisObject(hit.transform))
                 {
-                    if (showDebugInfo)
-                        Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Blocked by {hit.transform.name}");
                     return false;
                 }
             }
         }
-        
-        if (showDebugInfo)
-            Debug.Log($"ObjectiveTrigger [{gameObject.name}]: Can interact! Distance: {distance:F1}, Angle: {angle:F1}°");
         
         return true;
     }
@@ -398,35 +499,14 @@ public class ObjectiveTrigger : MonoBehaviour
         }
 
         // Handle sound switching
-        if (audioSource != null)
-        {
-            // Stop before sound
-            audioSource.Stop();
-
-            // Play the additional ONE-SHOT completion sound first
-            if (completionOneShotSound != null)
-            {
-                audioSource.PlayOneShot(completionOneShotSound, completionOneShotVolume);
-            }
-
-            // Handle AFTER sound (looping or one-shot)
-            if (soundAfter != null)
-            {
-                if (loopAfterSound)
-                {
-                    // Loop the after sound
-                    audioSource.clip = soundAfter;
-                    audioSource.loop = true;
-                    audioSource.Play();
-                }
-                else
-                {
-                    // Play the after sound once
-                    audioSource.loop = false;
-                    audioSource.PlayOneShot(soundAfter);
-                }
-            }
-        }
+        // Stop all before sounds
+        StopAllSounds();
+        
+        // Play the one-shot completion sounds first
+        PlayCompletionOneShotSounds();
+        
+        // Play the after sounds
+        PlayAfterSounds();
         
         // Play cutscene if assigned
         if (cutsceneToPlay != null)

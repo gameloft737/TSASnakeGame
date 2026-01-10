@@ -150,6 +150,13 @@ public class CutsceneController : MonoBehaviour
             TeleportPlayerToCutsceneEnd();
             fpsController.SetControl(true);
         }
+        
+        // Reapply sensitivity settings after camera switch
+        if (SettingsManager.Instance != null)
+        {
+            SettingsManager.Instance.ReapplySensitivity();
+            Debug.Log("CutsceneController: Reapplied sensitivity settings");
+        }
 
         // Notify ObjectiveManager that cutscene has ended (shows objective UI)
         if (ObjectiveManager.Instance != null)

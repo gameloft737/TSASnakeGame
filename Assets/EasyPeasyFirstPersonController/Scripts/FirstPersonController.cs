@@ -28,6 +28,43 @@ namespace EasyPeasyFirstPersonController
         public float bobbingAmount = 0.05f;
         private float sprintBobMultiplier = 1.5f;
         private float recoilReturnSpeed = 8f;
+        
+        [Header("Footstep Sounds")]
+        [Tooltip("Array of footstep sounds to randomly choose from when walking")]
+        public AudioClip[] walkFootstepSounds;
+        
+        [Tooltip("Array of footstep sounds for sprinting (optional - uses walk sounds if empty)")]
+        public AudioClip[] sprintFootstepSounds;
+        
+        [Tooltip("Array of footstep sounds for crouching (optional - uses walk sounds if empty)")]
+        public AudioClip[] crouchFootstepSounds;
+        
+        [Tooltip("Sound to play when jumping")]
+        public AudioClip jumpSound;
+        
+        [Tooltip("Sound to play when landing")]
+        public AudioClip landSound;
+        
+        [Range(0f, 1f)]
+        [Tooltip("Volume for footstep sounds")]
+        public float footstepVolume = 0.5f;
+        
+        [Range(0f, 1f)]
+        [Tooltip("Volume for jump/land sounds")]
+        public float jumpLandVolume = 0.6f;
+        
+        [Tooltip("Pitch variation for footsteps (adds randomness)")]
+        [Range(0f, 0.3f)]
+        public float footstepPitchVariation = 0.1f;
+        
+        [Tooltip("Time between footsteps when walking")]
+        public float walkFootstepInterval = 0.5f;
+        
+        [Tooltip("Time between footsteps when sprinting")]
+        public float sprintFootstepInterval = 0.35f;
+        
+        [Tooltip("Time between footsteps when crouching")]
+        public float crouchFootstepInterval = 0.7f;
         public bool canSlide = true;
         public bool canJump = true;
         public bool canSprint = true;
@@ -56,7 +93,10 @@ namespace EasyPeasyFirstPersonController
         private float coyoteTimer;
         private Camera cam;
         private AudioSource slideAudioSource;
+        private AudioSource footstepAudioSource;
         private float bobTimer;
+        private float footstepTimer;
+        private bool wasGrounded;
         private float defaultPosY;
         private Vector3 recoil = Vector3.zero;
         private bool isLook = true, isMove = true;
@@ -81,12 +121,21 @@ namespace EasyPeasyFirstPersonController
             slideAudioSource = gameObject.AddComponent<AudioSource>();
             slideAudioSource.playOnAwake = false;
             slideAudioSource.loop = false;
+            
+            // Create footstep audio source
+            footstepAudioSource = gameObject.AddComponent<AudioSource>();
+            footstepAudioSource.playOnAwake = false;
+            footstepAudioSource.loop = false;
+            footstepAudioSource.spatialBlend = 0f; // 2D sound
+            
             Cursor.lockState = CursorLockMode.Locked;
             currentCameraHeight = originalCameraParentHeight;
             currentBobOffset = 0f;
             currentFov = normalFov;
             currentSlideSpeed = 0f;
             currentTiltAngle = 0f;
+            footstepTimer = 0f;
+            wasGrounded = true;
 
             rotX = transform.rotation.eulerAngles.y;
             rotY = playerCamera.localRotation.eulerAngles.x;
@@ -97,6 +146,14 @@ namespace EasyPeasyFirstPersonController
         private void Update()
         {
             isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask, groundCheckQueryTriggerInteraction);
+            
+            // Check for landing
+            if (isGrounded && !wasGrounded)
+            {
+                PlayLandSound();
+            }
+            wasGrounded = isGrounded;
+            
             if (isGrounded && moveDirection.y < 0)
             {
                 moveDirection.y = -2f;
@@ -109,8 +166,10 @@ namespace EasyPeasyFirstPersonController
 
             if (isLook)
             {
-                float mouseX = Input.GetAxis("Mouse X") * 10 * mouseSensitivity * Time.deltaTime;
-                float mouseY = Input.GetAxis("Mouse Y") * 10 * mouseSensitivity * Time.deltaTime;
+                // Sensitivity is expected to be 0-100, we normalize it to a reasonable range
+                float normalizedSensitivity = mouseSensitivity * 0.1f; // 0-10 range
+                float mouseX = Input.GetAxis("Mouse X") * normalizedSensitivity;
+                float mouseY = Input.GetAxis("Mouse Y") * normalizedSensitivity;
 
                 rotX += mouseX;
                 rotY -= mouseY;
@@ -126,6 +185,7 @@ namespace EasyPeasyFirstPersonController
             }
 
             HandleHeadBob();
+            HandleFootsteps();
 
             bool wantsToCrouch = canCrouch && Input.GetKey(KeyCode.LeftControl) && !isSliding;
             Vector3 point1 = transform.position + characterController.center - Vector3.up * (characterController.height * 0.5f);
@@ -246,6 +306,7 @@ namespace EasyPeasyFirstPersonController
                 if (canJump && Input.GetKeyDown(KeyCode.Space) && !isSliding)
                 {
                     moveDirection.y = jumpSpeed;
+                    PlayJumpSound();
                 }
                 else if (moveDirection.y < 0)
                 {
@@ -309,8 +370,117 @@ public void SetCameraRotation(Transform targetCamera, bool movePlayer = false)
         // Immediately apply rotation to camera
         playerCamera.localRotation = Quaternion.Euler(rotY, 0f, 0f);
     }
-
-
+    
+    /// <summary>
+    /// Handles footstep sound timing and playback
+    /// </summary>
+    private void HandleFootsteps()
+    {
+        if (!isGrounded || isSliding || !isMove) return;
+        
+        Vector3 horizontalVelocity = new Vector3(characterController.velocity.x, 0f, characterController.velocity.z);
+        bool isMoving = horizontalVelocity.magnitude > 0.1f;
+        
+        if (!isMoving)
+        {
+            footstepTimer = 0f;
+            return;
+        }
+        
+        // Determine footstep interval based on movement state
+        float interval = walkFootstepInterval;
+        if (isSprinting)
+        {
+            interval = sprintFootstepInterval;
+        }
+        else if (isCrouching)
+        {
+            interval = crouchFootstepInterval;
+        }
+        
+        // Update timer and play footstep
+        footstepTimer += Time.deltaTime;
+        if (footstepTimer >= interval)
+        {
+            footstepTimer = 0f;
+            PlayFootstepSound();
+        }
+    }
+    
+    /// <summary>
+    /// Plays a random footstep sound based on current movement state
+    /// </summary>
+    private void PlayFootstepSound()
+    {
+        if (footstepAudioSource == null) return;
+        
+        AudioClip[] clips = GetCurrentFootstepClips();
+        if (clips == null || clips.Length == 0) return;
+        
+        // Pick a random clip
+        AudioClip clip = clips[UnityEngine.Random.Range(0, clips.Length)];
+        if (clip == null) return;
+        
+        // Apply pitch variation
+        footstepAudioSource.pitch = 1f + UnityEngine.Random.Range(-footstepPitchVariation, footstepPitchVariation);
+        
+        // Adjust volume based on movement state
+        float volume = footstepVolume;
+        if (isCrouching)
+        {
+            volume *= 0.5f; // Quieter when crouching
+        }
+        else if (isSprinting)
+        {
+            volume *= 1.2f; // Louder when sprinting
+        }
+        
+        footstepAudioSource.PlayOneShot(clip, volume);
+    }
+    
+    /// <summary>
+    /// Gets the appropriate footstep clips for the current movement state
+    /// </summary>
+    private AudioClip[] GetCurrentFootstepClips()
+    {
+        if (isCrouching && crouchFootstepSounds != null && crouchFootstepSounds.Length > 0)
+        {
+            return crouchFootstepSounds;
+        }
+        else if (isSprinting && sprintFootstepSounds != null && sprintFootstepSounds.Length > 0)
+        {
+            return sprintFootstepSounds;
+        }
+        else if (walkFootstepSounds != null && walkFootstepSounds.Length > 0)
+        {
+            return walkFootstepSounds;
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// Plays the jump sound
+    /// </summary>
+    private void PlayJumpSound()
+    {
+        if (footstepAudioSource != null && jumpSound != null)
+        {
+            footstepAudioSource.pitch = 1f;
+            footstepAudioSource.PlayOneShot(jumpSound, jumpLandVolume);
+        }
+    }
+    
+    /// <summary>
+    /// Plays the landing sound
+    /// </summary>
+    private void PlayLandSound()
+    {
+        if (footstepAudioSource != null && landSound != null)
+        {
+            footstepAudioSource.pitch = 1f;
+            footstepAudioSource.PlayOneShot(landSound, jumpLandVolume);
+        }
+    }
 
 
     }

@@ -64,8 +64,7 @@ public class ObjectiveManager : MonoBehaviour
     /// </summary>
     private void FindObjectiveOutlines()
     {
-        objectiveOutlines = FindObjectsOfType<ObjectiveOutline>();
-        Debug.Log($"ObjectiveManager: Found {objectiveOutlines.Length} ObjectiveOutline components");
+        objectiveOutlines = FindObjectsByType<ObjectiveOutline>(FindObjectsSortMode.None);
     }
     
     /// <summary>

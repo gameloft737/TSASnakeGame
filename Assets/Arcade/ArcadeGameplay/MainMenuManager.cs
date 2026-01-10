@@ -54,8 +54,34 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Optional: Sound to play for button clicks")]
     public AudioClip buttonClickSound;
     
+    [Header("Menu Music")]
+    [Tooltip("The main menu music clip")]
+    public AudioClip menuMusic;
+    
+    [Tooltip("Volume for menu music")]
+    [Range(0f, 1f)]
+    public float menuMusicVolume = 0.5f;
+    
+    [Tooltip("Should menu music loop?")]
+    public bool loopMenuMusic = true;
+    
+    [Tooltip("Fade out duration for menu music when starting game")]
+    public float menuMusicFadeOutDuration = 1f;
+    
+    [Header("Game Audio Management")]
+    [Tooltip("Audio sources to mute during menu (will be unmuted when game starts)")]
+    public AudioSource[] gameAudioSources;
+    
+    [Tooltip("If true, automatically finds and mutes all AudioSources in scene except menu")]
+    public bool autoFindGameAudioSources = true;
+    
+    [Tooltip("Tags to exclude from auto-muting (e.g., 'MenuAudio')")]
+    public string[] excludeFromMuteTags;
+    
     private AudioSource audioSource;
+    private AudioSource menuMusicSource;
     private bool isTransitioning = false;
+    private AudioSource[] cachedGameAudioSources;
     
     private void Awake()
     {
@@ -66,6 +92,12 @@ public class MainMenuManager : MonoBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
         }
         audioSource.playOnAwake = false;
+        
+        // Create a separate AudioSource for menu music
+        menuMusicSource = gameObject.AddComponent<AudioSource>();
+        menuMusicSource.playOnAwake = false;
+        menuMusicSource.loop = loopMenuMusic;
+        menuMusicSource.volume = menuMusicVolume;
     }
     
     private void Start()
@@ -94,6 +126,142 @@ public class MainMenuManager : MonoBehaviour
         
         // Setup button listeners
         SetupButtonListeners();
+        
+        // Setup audio - mute game sounds and play menu music
+        SetupMenuAudio();
+    }
+    
+    /// <summary>
+    /// Sets up audio for the menu state - plays menu music and mutes game audio
+    /// </summary>
+    private void SetupMenuAudio()
+    {
+        // Find all game audio sources if auto-find is enabled
+        if (autoFindGameAudioSources)
+        {
+            FindGameAudioSources();
+        }
+        else
+        {
+            cachedGameAudioSources = gameAudioSources;
+        }
+        
+        // Mute all game audio sources
+        MuteGameAudio(true);
+        
+        // Start playing menu music
+        PlayMenuMusic();
+    }
+    
+    /// <summary>
+    /// Finds all AudioSources in the scene except menu-related ones
+    /// </summary>
+    private void FindGameAudioSources()
+    {
+        AudioSource[] allSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
+        System.Collections.Generic.List<AudioSource> gameSources = new System.Collections.Generic.List<AudioSource>();
+        
+        foreach (AudioSource source in allSources)
+        {
+            // Skip our own audio sources
+            if (source == audioSource || source == menuMusicSource)
+                continue;
+            
+            // Skip sources with excluded tags
+            bool isExcluded = false;
+            if (excludeFromMuteTags != null)
+            {
+                foreach (string tag in excludeFromMuteTags)
+                {
+                    if (!string.IsNullOrEmpty(tag) && source.gameObject.CompareTag(tag))
+                    {
+                        isExcluded = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!isExcluded)
+            {
+                gameSources.Add(source);
+            }
+        }
+        
+        cachedGameAudioSources = gameSources.ToArray();
+        Debug.Log($"MainMenuManager: Found {cachedGameAudioSources.Length} game audio sources to manage");
+    }
+    
+    /// <summary>
+    /// Mutes or unmutes all game audio sources
+    /// </summary>
+    private void MuteGameAudio(bool mute)
+    {
+        if (cachedGameAudioSources == null) return;
+        
+        foreach (AudioSource source in cachedGameAudioSources)
+        {
+            if (source != null)
+            {
+                source.mute = mute;
+            }
+        }
+        
+        Debug.Log($"MainMenuManager: {(mute ? "Muted" : "Unmuted")} {cachedGameAudioSources.Length} game audio sources");
+    }
+    
+    /// <summary>
+    /// Starts playing the menu music
+    /// </summary>
+    private void PlayMenuMusic()
+    {
+        if (menuMusic != null && menuMusicSource != null)
+        {
+            menuMusicSource.clip = menuMusic;
+            menuMusicSource.volume = menuMusicVolume;
+            menuMusicSource.loop = loopMenuMusic;
+            menuMusicSource.Play();
+            Debug.Log("MainMenuManager: Started playing menu music");
+        }
+    }
+    
+    /// <summary>
+    /// Stops the menu music (with optional fade)
+    /// </summary>
+    private void StopMenuMusic(bool fade = true)
+    {
+        if (menuMusicSource != null && menuMusicSource.isPlaying)
+        {
+            if (fade && menuMusicFadeOutDuration > 0)
+            {
+                StartCoroutine(FadeOutMenuMusic());
+            }
+            else
+            {
+                menuMusicSource.Stop();
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Coroutine to fade out menu music
+    /// </summary>
+    private IEnumerator FadeOutMenuMusic()
+    {
+        if (menuMusicSource == null) yield break;
+        
+        float startVolume = menuMusicSource.volume;
+        float elapsed = 0f;
+        
+        while (elapsed < menuMusicFadeOutDuration)
+        {
+            elapsed += Time.unscaledDeltaTime; // Use unscaled time since game might be paused
+            menuMusicSource.volume = Mathf.Lerp(startVolume, 0f, elapsed / menuMusicFadeOutDuration);
+            yield return null;
+        }
+        
+        menuMusicSource.Stop();
+        menuMusicSource.volume = startVolume; // Reset volume for potential replay
+        Debug.Log("MainMenuManager: Menu music faded out");
     }
     
     /// <summary>
@@ -251,6 +419,9 @@ public class MainMenuManager : MonoBehaviour
     {
         isTransitioning = true;
         
+        // Start fading out menu music
+        StopMenuMusic(true);
+        
         // Fade out the menu UI using unscaled time (since Time.timeScale is 0)
         if (menuCanvasGroup != null)
         {
@@ -275,6 +446,9 @@ public class MainMenuManager : MonoBehaviour
         {
             mainMenuPanel.SetActive(false);
         }
+        
+        // Unmute all game audio sources
+        MuteGameAudio(false);
         
         // Lock cursor for gameplay
         Cursor.lockState = CursorLockMode.Locked;
@@ -334,6 +508,10 @@ public class MainMenuManager : MonoBehaviour
         {
             fpsController.SetControl(false);
         }
+        
+        // Mute game audio and play menu music again
+        MuteGameAudio(true);
+        PlayMenuMusic();
         
         ShowMainMenu();
     }

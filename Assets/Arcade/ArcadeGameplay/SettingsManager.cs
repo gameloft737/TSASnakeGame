@@ -79,11 +79,34 @@ public class SettingsManager : MonoBehaviour
         }
     }
     
+    private bool listenersSetup = false;
+    
     private void Start()
     {
         InitializeResolutions();
+        FindFPSController(); // Try to find FPS controller if not assigned
+        SetupListeners(); // Setup listeners BEFORE loading settings to avoid double-triggering
         LoadSettings();
-        SetupListeners();
+    }
+    
+    /// <summary>
+    /// Attempts to find the FPS controller if not assigned in inspector
+    /// </summary>
+    private void FindFPSController()
+    {
+        if (fpsController != null) return;
+        
+        // Try to find by type
+        fpsController = FindFirstObjectByType<EasyPeasyFirstPersonController.FirstPersonController>();
+        
+        if (fpsController != null)
+        {
+            Debug.Log($"SettingsManager: Found FPS controller on '{fpsController.gameObject.name}'");
+        }
+        else
+        {
+            Debug.LogWarning("SettingsManager: Could not find FPS controller in scene. Sensitivity settings may not apply.");
+        }
     }
     
     /// <summary>
@@ -117,55 +140,68 @@ public class SettingsManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Sets up all UI element listeners
+    /// Sets up all UI element listeners (only once to prevent stacking)
     /// </summary>
     private void SetupListeners()
     {
+        // Prevent setting up listeners multiple times
+        if (listenersSetup) return;
+        listenersSetup = true;
+        
         // Audio listeners
         if (masterVolumeSlider != null)
         {
+            masterVolumeSlider.onValueChanged.RemoveAllListeners(); // Clear any existing
             masterVolumeSlider.onValueChanged.AddListener(SetMasterVolume);
         }
         
         if (musicVolumeSlider != null)
         {
+            musicVolumeSlider.onValueChanged.RemoveAllListeners();
             musicVolumeSlider.onValueChanged.AddListener(SetMusicVolume);
         }
         
         if (sfxVolumeSlider != null)
         {
+            sfxVolumeSlider.onValueChanged.RemoveAllListeners();
             sfxVolumeSlider.onValueChanged.AddListener(SetSFXVolume);
         }
         
         // Graphics listeners
         if (qualityDropdown != null)
         {
+            qualityDropdown.onValueChanged.RemoveAllListeners();
             qualityDropdown.onValueChanged.AddListener(SetQuality);
         }
         
         if (resolutionDropdown != null)
         {
+            resolutionDropdown.onValueChanged.RemoveAllListeners();
             resolutionDropdown.onValueChanged.AddListener(SetResolution);
         }
         
         if (fullscreenToggle != null)
         {
+            fullscreenToggle.onValueChanged.RemoveAllListeners();
             fullscreenToggle.onValueChanged.AddListener(SetFullscreen);
         }
         
         if (vsyncToggle != null)
         {
+            vsyncToggle.onValueChanged.RemoveAllListeners();
             vsyncToggle.onValueChanged.AddListener(SetVSync);
         }
         
         // Controls listeners
         if (sensitivitySlider != null)
         {
+            sensitivitySlider.onValueChanged.RemoveAllListeners();
             sensitivitySlider.onValueChanged.AddListener(SetSensitivity);
         }
         
         if (invertYToggle != null)
         {
+            invertYToggle.onValueChanged.RemoveAllListeners();
             invertYToggle.onValueChanged.AddListener(SetInvertY);
         }
     }
@@ -227,6 +263,8 @@ public class SettingsManager : MonoBehaviour
     
     public void SetMasterVolume(float volume)
     {
+        // Clamp volume to valid range
+        volume = Mathf.Clamp01(volume);
         PlayerPrefs.SetFloat(MASTER_VOLUME_KEY, volume);
         
         if (audioMixer != null)
@@ -235,11 +273,9 @@ public class SettingsManager : MonoBehaviour
             float dB = volume > 0.0001f ? Mathf.Log10(volume) * 20f : -80f;
             audioMixer.SetFloat("MasterVolume", dB);
         }
-        else
-        {
-            // Fallback: set AudioListener volume
-            AudioListener.volume = volume;
-        }
+        
+        // Always set AudioListener volume as the primary method
+        AudioListener.volume = volume;
     }
     
     public void SetMusicVolume(float volume)
@@ -310,10 +346,33 @@ public class SettingsManager : MonoBehaviour
         }
         
         // Apply to FPS controller if available
+        ApplySensitivityToController(sensitivity);
+    }
+    
+    /// <summary>
+    /// Applies sensitivity to the FPS controller, finding it if necessary
+    /// </summary>
+    private void ApplySensitivityToController(float sensitivity)
+    {
+        // Try to find controller if not assigned
+        if (fpsController == null)
+        {
+            FindFPSController();
+        }
+        
         if (fpsController != null)
         {
             fpsController.mouseSensitivity = sensitivity;
         }
+    }
+    
+    /// <summary>
+    /// Call this to re-apply sensitivity (useful after scene transitions or camera switches)
+    /// </summary>
+    public void ReapplySensitivity()
+    {
+        float sensitivity = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        ApplySensitivityToController(sensitivity);
     }
     
     public void SetInvertY(bool inverted)
