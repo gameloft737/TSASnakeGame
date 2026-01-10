@@ -6328,8 +6328,8 @@ Transform:
   m_GameObject: {fileID: 816130710}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 30.41, y: 5, z: -36.73}
-  m_LocalScale: {x: 1.846622, y: 3.8232532, z: 2.3687446}
+  m_LocalPosition: {x: 30.645, y: 5.003, z: -36.709}
+  m_LocalScale: {x: 0.17655544, y: 1.2412643, z: 0.76904094}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -6403,6 +6403,13 @@ MonoBehaviour:
   myObjectiveIndex: 1
   objectiveName: Turn Off Power
   interactionMessage: Press 'E' to Turn Off Power
+  interactionRange: 8
+  lookAtAngle: 15
+  useRaycast: 1
+  blockingLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  interactionPoint: {fileID: 1016115377}
   animator: {fileID: 1016115378}
   animationTriggerName: LeverPullTrigger
   legacyAnimation: {fileID: 1016115379}
@@ -6416,6 +6423,7 @@ MonoBehaviour:
   completionOneShotVolume: 1
   sceneToLoad: 
   sceneLoadDelay: 0
+  showDebugInfo: 0
 --- !u!114 &816130717
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6428,25 +6436,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98122d0a19e3f5844a172e233d0aa8e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  outlineMethod: 0
   outlineColor: {r: 1, g: 0.8, b: 0, a: 1}
+  lineWidth: 0.2
+  padding: 0.1
+  addCornerPieces: 0
+  cornerSizeMultiplier: 1.5
   pulseEffect: 1
-  pulseSpeed: 2.98
-  pulseMinScale: 0.8
-  pulseMaxScale: 1.2
-  floatHeight: 2
-  indicatorSize: 0.5
-  bobAnimation: 1
-  bobAmplitude: 0.3
-  bobSpeed: 2
-  rotateIndicator: 1
-  rotationSpeed: 90
-  beaconHeight: 10
-  beaconWidth: 1
-  beaconIntensity: 2
-  emissionIntensity: 5
-  targetRenderers: []
-  glowParticles: {fileID: 0}
+  pulseSpeed: 2.31
+  pulseMinScale: 0.815
+  pulseMaxScale: 1
+  pulseColorBrightness: 1
+  pulseMinBrightness: 0.9
   showDebugInfo: 1
 --- !u!1 &817357449
 GameObject:
@@ -12507,6 +12507,13 @@ MonoBehaviour:
   myObjectiveIndex: 2
   objectiveName: Flip Sign
   interactionMessage: Press 'E' to Interact
+  interactionRange: 8
+  lookAtAngle: 15
+  useRaycast: 1
+  blockingLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  interactionPoint: {fileID: 3104037462192498375}
   animator: {fileID: 4276428965492743593}
   animationTriggerName: SignFlipTrigger
   legacyAnimation: {fileID: 0}
@@ -12520,6 +12527,7 @@ MonoBehaviour:
   completionOneShotVolume: 1
   sceneToLoad: 
   sceneLoadDelay: 0
+  showDebugInfo: 0
 --- !u!65 &1706863864
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -12558,8 +12566,8 @@ Transform:
   m_GameObject: {fileID: 1706863861}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 18.14, y: 5.98, z: -15.848}
-  m_LocalScale: {x: 1.9656404, y: 2.4645367, z: 4.1296043}
+  m_LocalPosition: {x: 18.177, y: 6.015, z: -14.278}
+  m_LocalScale: {x: 1.4897588, y: 0.9568417, z: 0.12911333}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -12576,25 +12584,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98122d0a19e3f5844a172e233d0aa8e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  outlineMethod: 0
   outlineColor: {r: 1, g: 0.8, b: 0, a: 1}
+  lineWidth: 0.2
+  padding: 0.1
+  addCornerPieces: 0
+  cornerSizeMultiplier: 1.5
   pulseEffect: 1
-  pulseSpeed: 2.98
-  pulseMinScale: 0.8
-  pulseMaxScale: 1.2
-  floatHeight: 2
-  indicatorSize: 0.5
-  bobAnimation: 1
-  bobAmplitude: 0.3
-  bobSpeed: 2
-  rotateIndicator: 1
-  rotationSpeed: 90
-  beaconHeight: 10
-  beaconWidth: 1
-  beaconIntensity: 2
-  emissionIntensity: 5
-  targetRenderers: []
-  glowParticles: {fileID: 0}
+  pulseSpeed: 2.31
+  pulseMinScale: 0.815
+  pulseMaxScale: 1
+  pulseColorBrightness: 1
+  pulseMinBrightness: 0.9
   showDebugInfo: 1
 --- !u!1 &1712562620
 GameObject:
@@ -12728,6 +12728,13 @@ MonoBehaviour:
   myObjectiveIndex: 0
   objectiveName: Close Door
   interactionMessage: Press 'E' to Close Door
+  interactionRange: 8
+  lookAtAngle: 15
+  useRaycast: 1
+  blockingLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  interactionPoint: {fileID: 3104037462192498375}
   animator: {fileID: 1683266605}
   animationTriggerName: OpenDoorTrigger
   legacyAnimation: {fileID: 1683266607}
@@ -12741,6 +12748,7 @@ MonoBehaviour:
   completionOneShotVolume: 1
   sceneToLoad: 
   sceneLoadDelay: 0
+  showDebugInfo: 1
 --- !u!65 &1716513455
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -12779,8 +12787,8 @@ Transform:
   m_GameObject: {fileID: 1716513453}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 18.06, y: 4.16, z: -14.35}
-  m_LocalScale: {x: 4.2998652, y: 7.4909, z: 2.3687446}
+  m_LocalPosition: {x: 18.13, y: 4.06, z: -14.3}
+  m_LocalScale: {x: 4.1193585, y: 7.900324, z: 0.4340563}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -12797,25 +12805,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98122d0a19e3f5844a172e233d0aa8e7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  outlineMethod: 0
   outlineColor: {r: 1, g: 0.8, b: 0, a: 1}
+  lineWidth: 0.2
+  padding: 0.1
+  addCornerPieces: 0
+  cornerSizeMultiplier: 1.5
   pulseEffect: 1
-  pulseSpeed: 2.98
-  pulseMinScale: 0.8
-  pulseMaxScale: 1.2
-  floatHeight: 2
-  indicatorSize: 0.5
-  bobAnimation: 1
-  bobAmplitude: 0.3
-  bobSpeed: 2
-  rotateIndicator: 1
-  rotationSpeed: 90
-  beaconHeight: 10
-  beaconWidth: 1
-  beaconIntensity: 2
-  emissionIntensity: 5
-  targetRenderers: []
-  glowParticles: {fileID: 0}
+  pulseSpeed: 2.31
+  pulseMinScale: 0.815
+  pulseMaxScale: 1
+  pulseColorBrightness: 1
+  pulseMinBrightness: 0.9
   showDebugInfo: 1
 --- !u!1 &1720933053
 GameObject:
@@ -14635,7 +14635,6 @@ GameObject:
   - component: {fileID: 2046975191}
   - component: {fileID: 2046975190}
   - component: {fileID: 2046975189}
-  - component: {fileID: 2046975193}
   m_Layer: 0
   m_Name: MachineCollider
   m_TagString: Untagged
@@ -14668,6 +14667,13 @@ MonoBehaviour:
   myObjectiveIndex: 3
   objectiveName: Investigate Machine
   interactionMessage: Press 'E' to Investigate
+  interactionRange: 7.73
+  lookAtAngle: 15
+  useRaycast: 1
+  blockingLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  interactionPoint: {fileID: 0}
   animator: {fileID: 0}
   animationTriggerName: 
   legacyAnimation: {fileID: 0}
@@ -14681,6 +14687,7 @@ MonoBehaviour:
   completionOneShotVolume: 1
   sceneToLoad: 
   sceneLoadDelay: 0
+  showDebugInfo: 0
 --- !u!65 &2046975190
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -14719,44 +14726,12 @@ Transform:
   m_GameObject: {fileID: 2046975188}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -6.816, y: 4.66, z: -36.73}
-  m_LocalScale: {x: 0.86847156, y: 8.587409, z: 5.0428205}
+  m_LocalPosition: {x: -19.57, y: 4.66, z: -36.73}
+  m_LocalScale: {x: 5.2535563, y: 8.587409, z: 5.0428205}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2046975193
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2046975188}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 98122d0a19e3f5844a172e233d0aa8e7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  outlineMethod: 0
-  outlineColor: {r: 1, g: 0.8, b: 0, a: 1}
-  pulseEffect: 1
-  pulseSpeed: 2.98
-  pulseMinScale: 0.8
-  pulseMaxScale: 1.2
-  floatHeight: 2
-  indicatorSize: 0.5
-  bobAnimation: 1
-  bobAmplitude: 0.3
-  bobSpeed: 2
-  rotateIndicator: 1
-  rotationSpeed: 90
-  beaconHeight: 10
-  beaconWidth: 1
-  beaconIntensity: 2
-  emissionIntensity: 5
-  targetRenderers: []
-  glowParticles: {fileID: 0}
-  showDebugInfo: 1
 --- !u!1 &2047528709
 GameObject:
   m_ObjectHideFlags: 0
@@ -23342,7 +23317,6 @@ SceneRoots:
   - {fileID: 806381053}
   - {fileID: 817357450}
   - {fileID: 557651450}
-  - {fileID: 967191080}
   - {fileID: 1683266606}
   - {fileID: 1016115377}
   - {fileID: 583685151}
@@ -23350,4 +23324,5 @@ SceneRoots:
   - {fileID: 1734851914}
   - {fileID: 490341496}
   - {fileID: 1637275113}
+  - {fileID: 967191080}
   - {fileID: 744794216}

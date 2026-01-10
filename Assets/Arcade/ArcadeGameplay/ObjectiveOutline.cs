@@ -1,108 +1,142 @@
+
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+/// <summary>
+/// Adds a glowing wireframe outline around the objective's collider.
+/// Attach this to any ObjectiveTrigger GameObject.
+/// </summary>
 [RequireComponent(typeof(ObjectiveTrigger))]
 public class ObjectiveOutline : MonoBehaviour
 {
-    public enum OutlineMethod
-    {
-        FloatingIndicator,
-        EmissionGlow,
-        LightBeacon
-    }
+    [Header("Wireframe Settings")]
+    [Tooltip("Color of the wireframe outline")]
+    public Color outlineColor = new Color(1f, 0.8f, 0f, 1f); // Golden yellow
+    
+    [Tooltip("Width of the wireframe lines")]
+    [Range(0.01f, 1f)]
+    public float lineWidth = 0.1f;
+    
+    [Tooltip("Padding around the collider bounds")]
+    public float padding = 0.1f;
+    
+    [Header("Corner Settings")]
+    [Tooltip("Add corner pieces for clean intersections")]
+    public bool addCornerPieces = true;
+    
+    [Tooltip("Size multiplier for corner pieces (1.0 = same as line width)")]
+    [Range(0.8f, 2f)]
+    public float cornerSizeMultiplier = 1.0f;
 
-    [Header("Outline Method")]
-    public OutlineMethod outlineMethod = OutlineMethod.FloatingIndicator;
-
-    [Header("Outline Settings")]
-    public Color outlineColor = new Color(1f, 0.8f, 0f, 1f);
+    [Header("Animation")]
+    [Tooltip("Should the outline pulse?")]
     public bool pulseEffect = true;
-    [Range(0.1f, 5f)] public float pulseSpeed = 1.5f;
-    [Range(0.5f, 1f)] public float pulseMinScale = 0.8f;
-    [Range(1f, 2f)] public float pulseMaxScale = 1.2f;
-
-    [Header("Floating Indicator")]
-    public float floatHeight = 2f;
-    public float indicatorSize = 0.5f;
-    public bool bobAnimation = true;
-    public float bobAmplitude = 0.3f;
-    public float bobSpeed = 2f;
-    public bool rotateIndicator = true;
-    public float rotationSpeed = 90f;
-
-    [Header("Light Beacon")]
-    public float beaconHeight = 10f;
-    public float beaconWidth = 1f;
-    [Range(0f, 5f)] public float beaconIntensity = 2f;
-
-    [Header("Emission Glow")]
-    [Range(0f, 10f)] public float emissionIntensity = 3f;
-
-    [Header("Target Renderers")]
-    public Renderer[] targetRenderers;
-
-    [Header("Particle Effect")]
-    public ParticleSystem glowParticles;
+    
+    [Tooltip("Speed of the pulse animation")]
+    [Range(0.1f, 5f)]
+    public float pulseSpeed = 1.5f;
+    
+    [Tooltip("Minimum scale during pulse (multiplier of line width)")]
+    [Range(0.5f, 1f)]
+    public float pulseMinScale = 0.7f;
+    
+    [Tooltip("Maximum scale during pulse (multiplier of line width)")]
+    [Range(1f, 2f)]
+    public float pulseMaxScale = 1.3f;
+    
+    [Tooltip("Pulse the color brightness as well")]
+    public bool pulseColorBrightness = true;
+    
+    [Tooltip("Minimum brightness multiplier")]
+    [Range(0.3f, 1f)]
+    public float pulseMinBrightness = 0.5f;
 
     [Header("Debug")]
     public bool showDebugInfo = true;
 
+    // Private variables
     private ObjectiveTrigger objectiveTrigger;
     private bool isOutlineActive = false;
-    private List<Material> createdMaterials = new List<Material>();
-    private Dictionary<Renderer, Material[]> rendererOriginalMaterials = new Dictionary<Renderer, Material[]>();
     private Coroutine animationCoroutine;
-    private GameObject floatingIndicator;
-    private GameObject lightBeacon;
-    private Light beaconLight;
     
-    private static readonly int EmissionColorID = Shader.PropertyToID("_EmissionColor");
+    // Wireframe objects
+    private GameObject wireframeContainer;
+    private List<LineRenderer> lineRenderers = new List<LineRenderer>();
+    private List<GameObject> cornerSpheres = new List<GameObject>();
+    private Material wireframeMaterial;
+    
+    // Cached collider bounds
+    private Bounds cachedBounds;
+    private Collider targetCollider;
+    
+    // Track if we should wait for cutscene
+    private bool waitingForCutscene = true;
 
     private void Awake()
     {
         objectiveTrigger = GetComponent<ObjectiveTrigger>();
-        if (targetRenderers == null || targetRenderers.Length == 0)
-            targetRenderers = GetComponentsInChildren<Renderer>();
         
-        foreach (Renderer r in targetRenderers)
-            if (r != null) rendererOriginalMaterials[r] = r.sharedMaterials;
+        // Find the collider on this object or children
+        targetCollider = GetComponent<Collider>();
+        if (targetCollider == null)
+            targetCollider = GetComponentInChildren<Collider>();
+        
+        if (targetCollider == null && showDebugInfo)
+            Debug.LogWarning($"ObjectiveOutline [{gameObject.name}]: No collider found!");
         
         if (showDebugInfo)
-            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Found {targetRenderers.Length} renderers");
+            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Found collider: {(targetCollider != null ? targetCollider.GetType().Name : "NONE")}");
     }
 
     private void Start()
     {
         isOutlineActive = false;
-        StartCoroutine(LateStart());
-    }
-
-    private IEnumerator LateStart()
-    {
-        yield return null;
-        yield return null;
+        waitingForCutscene = true;
         
-        if (showDebugInfo && ObjectiveManager.Instance != null)
-            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Current={ObjectiveManager.Instance.CurrentObjectiveIndex}, My={objectiveTrigger.myObjectiveIndex}");
-        
-        CheckAndUpdateOutline();
+        // Don't check outline immediately - wait for cutscene to end
+        // The ObjectiveManager will call UpdateAllOutlines() when cutscene ends
     }
 
     private void OnDisable() { DisableOutline(); }
-    private void OnDestroy() { CleanupAll(); }
+    private void OnDestroy() { CleanupWireframe(); }
 
-    private void CleanupAll()
+    private void CleanupWireframe()
     {
-        foreach (Material m in createdMaterials) if (m != null) Destroy(m);
-        createdMaterials.Clear();
-        if (floatingIndicator != null) Destroy(floatingIndicator);
-        if (lightBeacon != null) Destroy(lightBeacon);
+        if (wireframeContainer != null)
+        {
+            Destroy(wireframeContainer);
+            wireframeContainer = null;
+        }
+        if (wireframeMaterial != null)
+        {
+            Destroy(wireframeMaterial);
+            wireframeMaterial = null;
+        }
+        lineRenderers.Clear();
+        cornerSpheres.Clear();
     }
 
+    /// <summary>
+    /// Check if this objective is the current one and update outline accordingly.
+    /// Only shows outline after cutscene has ended.
+    /// </summary>
     public void CheckAndUpdateOutline()
     {
         if (ObjectiveManager.Instance == null) return;
+        
+        // Check if the game has started (cutscene ended)
+        // We use reflection or a public property to check hasStarted
+        bool gameHasStarted = HasGameStarted();
+        
+        if (!gameHasStarted)
+        {
+            if (showDebugInfo)
+                Debug.Log($"ObjectiveOutline [{gameObject.name}]: Waiting for cutscene to end...");
+            return;
+        }
+        
+        waitingForCutscene = false;
         
         bool shouldBeActive = ObjectiveManager.Instance.CurrentObjectiveIndex == objectiveTrigger.myObjectiveIndex;
         
@@ -112,28 +146,60 @@ public class ObjectiveOutline : MonoBehaviour
         if (shouldBeActive && !isOutlineActive) EnableOutline();
         else if (!shouldBeActive && isOutlineActive) DisableOutline();
     }
+    
+    /// <summary>
+    /// Check if the game has started (cutscene has ended)
+    /// </summary>
+    private bool HasGameStarted()
+    {
+        // Check if ObjectiveManager has started objectives
+        // We can check if the objective UI is visible or if currentIndex > -1
+        if (ObjectiveManager.Instance == null) return false;
+        
+        // The ObjectiveManager shows UI and starts objectives after cutscene ends
+        // We can check if the objectiveUIContainer is active
+        var uiContainer = ObjectiveManager.Instance.objectiveUIContainer;
+        if (uiContainer != null)
+        {
+            return uiContainer.activeInHierarchy;
+        }
+        
+        // Fallback: check if objectiveTextUI is active
+        var textUI = ObjectiveManager.Instance.objectiveTextUI;
+        if (textUI != null)
+        {
+            return textUI.gameObject.activeInHierarchy;
+        }
+        
+        // If we can't determine, assume started
+        return true;
+    }
 
     public void EnableOutline()
     {
         if (isOutlineActive) return;
-        isOutlineActive = true;
-
-        if (showDebugInfo)
-            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Enabling with {outlineMethod}");
-
-        switch (outlineMethod)
+        if (targetCollider == null)
         {
-            case OutlineMethod.FloatingIndicator: CreateFloatingIndicator(); break;
-            case OutlineMethod.EmissionGlow: EnableEmissionGlow(); break;
-            case OutlineMethod.LightBeacon: CreateLightBeacon(); break;
+            Debug.LogError($"ObjectiveOutline [{gameObject.name}]: Cannot enable - no collider found!");
+            return;
         }
-
+        
+        // Double-check that cutscene has ended
+        if (!HasGameStarted())
+        {
+            if (showDebugInfo)
+                Debug.Log($"ObjectiveOutline [{gameObject.name}]: Cutscene not ended yet, not enabling outline");
+            return;
+        }
+        
+        isOutlineActive = true;
+        
+        CreateWireframe();
+        
         if (animationCoroutine != null) StopCoroutine(animationCoroutine);
         animationCoroutine = StartCoroutine(AnimateOutline());
-
-        if (glowParticles != null) glowParticles.Play();
         
-        Debug.Log($"ObjectiveOutline: ENABLED for {gameObject.name}");
+        Debug.Log($"ObjectiveOutline: ENABLED wireframe for {gameObject.name}");
     }
 
     public void DisableOutline()
@@ -141,156 +207,242 @@ public class ObjectiveOutline : MonoBehaviour
         if (!isOutlineActive) return;
         isOutlineActive = false;
 
-        if (animationCoroutine != null) { StopCoroutine(animationCoroutine); animationCoroutine = null; }
-
-        switch (outlineMethod)
+        if (animationCoroutine != null)
         {
-            case OutlineMethod.FloatingIndicator: if (floatingIndicator) { Destroy(floatingIndicator); floatingIndicator = null; } break;
-            case OutlineMethod.EmissionGlow: RestoreOriginalMaterials(); break;
-            case OutlineMethod.LightBeacon: if (lightBeacon) { Destroy(lightBeacon); lightBeacon = null; } break;
+            StopCoroutine(animationCoroutine);
+            animationCoroutine = null;
         }
 
-        if (glowParticles != null) glowParticles.Stop();
-        Debug.Log($"ObjectiveOutline: DISABLED for {gameObject.name}");
+        CleanupWireframe();
+        
+        Debug.Log($"ObjectiveOutline: DISABLED wireframe for {gameObject.name}");
     }
 
-    private void CreateFloatingIndicator()
+    private void CreateWireframe()
     {
-        if (floatingIndicator != null) return;
-
-        floatingIndicator = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        floatingIndicator.name = "ObjectiveIndicator";
-        floatingIndicator.transform.SetParent(transform);
-        floatingIndicator.transform.localPosition = new Vector3(0, floatHeight, 0);
-        floatingIndicator.transform.localScale = Vector3.one * indicatorSize;
-        floatingIndicator.transform.localRotation = Quaternion.Euler(45, 0, 45);
-
-        Collider col = floatingIndicator.GetComponent<Collider>();
-        if (col) Destroy(col);
-
-        MeshRenderer rend = floatingIndicator.GetComponent<MeshRenderer>();
-        Material mat = new Material(Shader.Find("Standard"));
-        mat.color = outlineColor;
-        mat.EnableKeyword("_EMISSION");
-        mat.SetColor(EmissionColorID, outlineColor * emissionIntensity);
-        mat.renderQueue = 3100;
-        rend.material = mat;
-        createdMaterials.Add(mat);
-
-        Debug.Log($"ObjectiveOutline: Created floating indicator at height {floatHeight}");
-    }
-
-    private void CreateLightBeacon()
-    {
-        if (lightBeacon != null) return;
-
-        lightBeacon = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        lightBeacon.name = "ObjectiveBeacon";
-        lightBeacon.transform.SetParent(transform);
-        lightBeacon.transform.localPosition = new Vector3(0, beaconHeight / 2f, 0);
-        lightBeacon.transform.localScale = new Vector3(beaconWidth, beaconHeight / 2f, beaconWidth);
-
-        Collider col = lightBeacon.GetComponent<Collider>();
-        if (col) Destroy(col);
-
-        MeshRenderer rend = lightBeacon.GetComponent<MeshRenderer>();
-        Material mat = new Material(Shader.Find("Standard"));
-        mat.SetFloat("_Mode", 3);
-        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        mat.SetInt("_ZWrite", 0);
-        mat.EnableKeyword("_ALPHABLEND_ON");
-        mat.renderQueue = 3000;
-        Color c = outlineColor; c.a = 0.3f;
-        mat.color = c;
-        mat.EnableKeyword("_EMISSION");
-        mat.SetColor(EmissionColorID, outlineColor * beaconIntensity);
-        rend.material = mat;
-        createdMaterials.Add(mat);
-
-        GameObject lightObj = new GameObject("BeaconLight");
-        lightObj.transform.SetParent(lightBeacon.transform);
-        lightObj.transform.localPosition = Vector3.zero;
-        beaconLight = lightObj.AddComponent<Light>();
-        beaconLight.type = LightType.Point;
-        beaconLight.color = outlineColor;
-        beaconLight.intensity = beaconIntensity;
-        beaconLight.range = beaconHeight;
-
-        Debug.Log($"ObjectiveOutline: Created light beacon");
-    }
-
-    private void EnableEmissionGlow()
-    {
-        foreach (Renderer r in targetRenderers)
+        if (wireframeContainer != null) return;
+        
+        // Get collider bounds
+        cachedBounds = targetCollider.bounds;
+        
+        // Add padding
+        Vector3 size = cachedBounds.size + Vector3.one * padding * 2f;
+        Vector3 center = cachedBounds.center;
+        
+        // Create container
+        wireframeContainer = new GameObject("WireframeOutline");
+        wireframeContainer.transform.SetParent(null); // World space
+        wireframeContainer.transform.position = Vector3.zero;
+        wireframeContainer.transform.rotation = Quaternion.identity;
+        
+        // Create material
+        wireframeMaterial = new Material(Shader.Find("Sprites/Default"));
+        wireframeMaterial.color = outlineColor;
+        
+        // Calculate the 8 corners of the bounding box
+        Vector3 halfSize = size * 0.5f;
+        Vector3[] corners = new Vector3[8];
+        corners[0] = center + new Vector3(-halfSize.x, -halfSize.y, -halfSize.z);
+        corners[1] = center + new Vector3(halfSize.x, -halfSize.y, -halfSize.z);
+        corners[2] = center + new Vector3(halfSize.x, -halfSize.y, halfSize.z);
+        corners[3] = center + new Vector3(-halfSize.x, -halfSize.y, halfSize.z);
+        corners[4] = center + new Vector3(-halfSize.x, halfSize.y, -halfSize.z);
+        corners[5] = center + new Vector3(halfSize.x, halfSize.y, -halfSize.z);
+        corners[6] = center + new Vector3(halfSize.x, halfSize.y, halfSize.z);
+        corners[7] = center + new Vector3(-halfSize.x, halfSize.y, halfSize.z);
+        
+        // Create the 12 edges of the box
+        // Bottom face
+        CreateLine(corners[0], corners[1]);
+        CreateLine(corners[1], corners[2]);
+        CreateLine(corners[2], corners[3]);
+        CreateLine(corners[3], corners[0]);
+        
+        // Top face
+        CreateLine(corners[4], corners[5]);
+        CreateLine(corners[5], corners[6]);
+        CreateLine(corners[6], corners[7]);
+        CreateLine(corners[7], corners[4]);
+        
+        // Vertical edges
+        CreateLine(corners[0], corners[4]);
+        CreateLine(corners[1], corners[5]);
+        CreateLine(corners[2], corners[6]);
+        CreateLine(corners[3], corners[7]);
+        
+        // Add corner pieces for clean intersections
+        if (addCornerPieces)
         {
-            if (r == null) continue;
-            Material[] mats = r.materials;
-            for (int i = 0; i < mats.Length; i++)
+            foreach (Vector3 corner in corners)
             {
-                Material m = new Material(mats[i]);
-                m.EnableKeyword("_EMISSION");
-                m.SetColor(EmissionColorID, outlineColor * emissionIntensity);
-                mats[i] = m;
-                createdMaterials.Add(m);
+                CreateCornerSphere(corner);
             }
-            r.materials = mats;
         }
-        Debug.Log($"ObjectiveOutline: Enabled emission glow");
+        
+        if (showDebugInfo)
+            Debug.Log($"ObjectiveOutline [{gameObject.name}]: Created wireframe with {lineRenderers.Count} lines and {cornerSpheres.Count} corners");
     }
 
-    private void RestoreOriginalMaterials()
+    private void CreateLine(Vector3 start, Vector3 end)
     {
-        foreach (var kvp in rendererOriginalMaterials)
-            if (kvp.Key != null) kvp.Key.sharedMaterials = kvp.Value;
+        GameObject lineObj = new GameObject("Line");
+        lineObj.transform.SetParent(wireframeContainer.transform);
+        
+        LineRenderer lr = lineObj.AddComponent<LineRenderer>();
+        lr.material = wireframeMaterial;
+        lr.startColor = outlineColor;
+        lr.endColor = outlineColor;
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+        lr.positionCount = 2;
+        lr.SetPosition(0, start);
+        lr.SetPosition(1, end);
+        lr.useWorldSpace = true;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lr.receiveShadows = false;
+        lr.allowOcclusionWhenDynamic = false;
+        lr.numCapVertices = 4; // Rounded caps
+        lr.numCornerVertices = 4; // Rounded corners
+        
+        lineRenderers.Add(lr);
+    }
+    
+    private void CreateCornerSphere(Vector3 position)
+    {
+        // Use a cube instead of sphere - blends better with the lines
+        GameObject corner = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        corner.name = "Corner";
+        corner.transform.SetParent(wireframeContainer.transform);
+        corner.transform.position = position;
+        
+        // Size matches line width for seamless connection
+        float cornerSize = lineWidth * cornerSizeMultiplier;
+        corner.transform.localScale = Vector3.one * cornerSize;
+        
+        // Rotate 45 degrees for diamond look (optional, can be removed)
+        // corner.transform.rotation = Quaternion.Euler(45, 45, 0);
+        
+        // Remove collider
+        Collider col = corner.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+        
+        // Apply material
+        MeshRenderer renderer = corner.GetComponent<MeshRenderer>();
+        renderer.material = wireframeMaterial;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+        
+        cornerSpheres.Add(corner);
     }
 
     private IEnumerator AnimateOutline()
     {
         float time = 0f;
-        float baseHeight = floatHeight;
         
         while (isOutlineActive)
         {
             time += Time.deltaTime;
-            float pulse = Mathf.Lerp(pulseMinScale, pulseMaxScale, (Mathf.Sin(time * pulseSpeed * Mathf.PI * 2f) + 1f) * 0.5f);
-
-            if (floatingIndicator != null)
+            
+            // Update bounds in case object moves
+            if (targetCollider != null)
             {
-                if (pulseEffect)
-                    floatingIndicator.transform.localScale = Vector3.one * indicatorSize * pulse;
-                
-                if (bobAnimation)
+                Bounds newBounds = targetCollider.bounds;
+                if (newBounds.center != cachedBounds.center || newBounds.size != cachedBounds.size)
                 {
-                    float bob = Mathf.Sin(time * bobSpeed) * bobAmplitude;
-                    floatingIndicator.transform.localPosition = new Vector3(0, baseHeight + bob, 0);
-                }
-                
-                if (rotateIndicator)
-                    floatingIndicator.transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.World);
-            }
-
-            if (lightBeacon != null && beaconLight != null)
-            {
-                float intensity = Mathf.Lerp(beaconIntensity * 0.5f, beaconIntensity, pulse);
-                beaconLight.intensity = intensity;
-            }
-
-            if (outlineMethod == OutlineMethod.EmissionGlow)
-            {
-                Color pulsedColor = outlineColor * emissionIntensity * pulse;
-                foreach (Renderer r in targetRenderers)
-                {
-                    if (r == null) continue;
-                    foreach (Material m in r.materials)
-                        if (m.HasProperty(EmissionColorID))
-                            m.SetColor(EmissionColorID, pulsedColor);
+                    // Bounds changed, recreate wireframe
+                    CleanupWireframe();
+                    CreateWireframe();
                 }
             }
-
+            
+            // Pulse effect - scale line width and brightness
+            if (pulseEffect)
+            {
+                // Calculate pulse value (0 to 1, oscillating)
+                float pulseT = (Mathf.Sin(time * pulseSpeed * Mathf.PI * 2f) + 1f) * 0.5f;
+                
+                // Scale the line width
+                float currentWidth = Mathf.Lerp(lineWidth * pulseMinScale, lineWidth * pulseMaxScale, pulseT);
+                float currentSphereScale = currentWidth * cornerSizeMultiplier;
+                
+                // Calculate pulsed color (brightness)
+                Color pulsedColor = outlineColor;
+                if (pulseColorBrightness)
+                {
+                    float brightness = Mathf.Lerp(pulseMinBrightness, 1f, pulseT);
+                    pulsedColor = new Color(
+                        outlineColor.r * brightness,
+                        outlineColor.g * brightness,
+                        outlineColor.b * brightness,
+                        outlineColor.a
+                    );
+                }
+                
+                // Update material
+                if (wireframeMaterial != null)
+                {
+                    wireframeMaterial.color = pulsedColor;
+                }
+                
+                // Update all line renderers
+                foreach (LineRenderer lr in lineRenderers)
+                {
+                    if (lr != null)
+                    {
+                        lr.startWidth = currentWidth;
+                        lr.endWidth = currentWidth;
+                        lr.startColor = pulsedColor;
+                        lr.endColor = pulsedColor;
+                    }
+                }
+                
+                // Update corner spheres
+                foreach (GameObject sphere in cornerSpheres)
+                {
+                    if (sphere != null)
+                    {
+                        sphere.transform.localScale = Vector3.one * currentSphereScale;
+                    }
+                }
+            }
+            
             yield return null;
         }
     }
 
     public void OnObjectiveCompleted() { DisableOutline(); }
+
+#if UNITY_EDITOR
+    // Draw gizmo in editor for visualization
+    private void OnDrawGizmosSelected()
+    {
+        Collider col = GetComponent<Collider>();
+        if (col == null) col = GetComponentInChildren<Collider>();
+        
+        if (col != null)
+        {
+            Gizmos.color = outlineColor;
+            Bounds bounds = col.bounds;
+            Vector3 size = bounds.size + Vector3.one * padding * 2f;
+            Gizmos.DrawWireCube(bounds.center, size);
+            
+            // Draw corner pieces in gizmo
+            if (addCornerPieces)
+            {
+                Vector3 halfSize = size * 0.5f;
+                Vector3 center = bounds.center;
+                float sphereSize = lineWidth * cornerSizeMultiplier * 0.5f;
+                
+                Gizmos.DrawSphere(center + new Vector3(-halfSize.x, -halfSize.y, -halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(halfSize.x, -halfSize.y, -halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(halfSize.x, -halfSize.y, halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(-halfSize.x, -halfSize.y, halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(-halfSize.x, halfSize.y, -halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(halfSize.x, halfSize.y, -halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(halfSize.x, halfSize.y, halfSize.z), sphereSize);
+                Gizmos.DrawSphere(center + new Vector3(-halfSize.x, halfSize.y, halfSize.z), sphereSize);
+            }
+        }
+    }
+#endif
 }
