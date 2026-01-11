@@ -44,6 +44,9 @@ public class LungeAttack : Attack
 
     protected override void OnActivate()
     {
+        // Play lunge sound
+        SoundManager.Play("Lunge", gameObject);
+        
         ExecuteLunge();
     }
 
@@ -95,6 +98,8 @@ public class LungeAttack : Attack
         // Check if explosion is enabled via custom stat
         if (IsExplosionEnabled())
         {
+            // Play bomb/explosion sound
+            SoundManager.Play("Bomb", gameObject);
             TriggerExplosion();
         }
     }

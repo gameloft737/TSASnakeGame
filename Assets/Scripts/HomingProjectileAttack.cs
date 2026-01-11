@@ -116,11 +116,8 @@ public class HomingProjectileAttack : Attack
             muzzleFlash.Play();
         }
         
-        // Play sound
-        if (fireSound != null && audioSource != null)
-        {
-            audioSource.PlayOneShot(fireSound);
-        }
+        // Play sound using SoundManager
+        SoundManager.Play("MagicOrb", gameObject);
     }
     
     protected override void OnHoldUpdate()
@@ -575,6 +572,9 @@ public class HomingProjectile : MonoBehaviour
     {
         Vector3 explosionPos = transform.position;
         
+        // Play bomb explosion sound
+        SoundManager.Play("Bomb", gameObject);
+        
         // Spawn explosion effect if available
         if (explosionEffectPrefab != null)
         {
@@ -585,12 +585,6 @@ public class HomingProjectile : MonoBehaviour
         {
             // Create a simple default explosion effect
             CreateDefaultExplosionEffect(explosionPos);
-        }
-        
-        // Play explosion sound
-        if (explosionSound != null)
-        {
-            AudioSource.PlayClipAtPoint(explosionSound, explosionPos, 0.7f);
         }
         
         // Find and damage all enemies in explosion radius

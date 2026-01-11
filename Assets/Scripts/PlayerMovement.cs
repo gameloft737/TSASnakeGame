@@ -426,9 +426,12 @@ public class PlayerMovement : MonoBehaviour
     {
         if (frozen && !isFrozen)
         {
-            // Store current velocity and freeze
-            frozenVelocity = rb.linearVelocity;
-            rb.linearVelocity = Vector3.zero;
+            // Store current velocity and freeze (only if not already kinematic)
+            if (!rb.isKinematic)
+            {
+                frozenVelocity = rb.linearVelocity;
+                rb.linearVelocity = Vector3.zero;
+            }
             rb.isKinematic = true;
             
             // Clear all input to prevent any movement/rotation

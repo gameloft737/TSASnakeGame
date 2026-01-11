@@ -168,12 +168,13 @@ public class XPDrop : MonoBehaviour
     /// </summary>
     private void Collect()
     {
+        // Play XP collection sound at this position (not attached to gameObject since it's being destroyed)
+        SoundManager.PlayAtPoint("XPCollect", transform.position);
+        
         if (XPManager.Instance != null)
         {
             XPManager.Instance.AddXP(xpValue);
         }
-        
-        // TODO: Play collection effect/sound
         
         Destroy(gameObject);
     }

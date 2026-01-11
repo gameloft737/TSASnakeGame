@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 /// <summary>
 /// UI Button component for displaying attack or ability upgrade information
@@ -19,6 +20,9 @@ public class AttackButton : MonoBehaviour
     [Header("Colors")]
     [SerializeField] private Color normalColor = Color.white;
     [SerializeField] private Color selectedColor = Color.green;
+    [SerializeField] private Color evolutionNormalColor = new Color(0.8f, 0.2f, 0.2f, 1f); // Red for evolution
+    [SerializeField] private Color evolutionSelectedColor = new Color(1f, 0.3f, 0.3f, 1f); // Lighter red when selected
+    [SerializeField] private Color evolutionTextColor = Color.white; // White text for evolution
     
     private Attack attack;
     private AbilitySO abilitySO;
@@ -30,6 +34,11 @@ public class AttackButton : MonoBehaviour
     private Color customNormalColor;
     private Color customSelectedColor;
     private bool useCustomColors = false;
+    
+    // Track if this is an evolution upgrade
+    private bool isEvolutionUpgrade = false;
+    private Color originalNameTextColor;
+    private bool hasStoredOriginalColor = false;
     
     private void Awake()
     {
@@ -48,6 +57,13 @@ public class AttackButton : MonoBehaviour
             backgroundImage = GetComponent<Image>();
         if (newIndicator == null)
             newIndicator = transform.Find("NewIndicator")?.gameObject;
+        
+        // Store original text color
+        if (attackNameText != null && !hasStoredOriginalColor)
+        {
+            originalNameTextColor = attackNameText.color;
+            hasStoredOriginalColor = true;
+        }
             
         // Set button color block to use only normal and pressed
         if (button != null)
@@ -69,6 +85,8 @@ public class AttackButton : MonoBehaviour
         this.selectionUI = selectionUI;
         this.playerOwnsAttack = false;
         this.useCustomColors = false;
+        this.isAbilityMode = false; // Ensure we're in attack mode, not ability mode
+        this.abilitySO = null; // Clear any previous ability reference
         
         UpdateDisplay(isSelected);
         
@@ -92,6 +110,8 @@ public class AttackButton : MonoBehaviour
         this.selectionUI = selectionUI;
         this.playerOwnsAttack = ownsAttack;
         this.useCustomColors = false;
+        this.isAbilityMode = false; // Ensure we're in attack mode, not ability mode
+        this.abilitySO = null; // Clear any previous ability reference
         
         UpdateDisplay(isSelected);
         
@@ -109,11 +129,12 @@ public class AttackButton : MonoBehaviour
     public void InitializeWithAbility(AbilitySO abilitySO, int currentLevel, AttackSelectionUI selectionUI, bool isSelected)
     {
         this.abilitySO = abilitySO;
-        this.attack = null;
+        this.attack = null; // Clear any previous attack reference
         this.currentAbilityLevel = currentLevel;
         this.selectionUI = selectionUI;
-        this.isAbilityMode = true;
+        this.isAbilityMode = true; // Ensure we're in ability mode
         this.useCustomColors = false;
+        this.playerOwnsAttack = false; // Reset attack ownership flag
         
         UpdateAbilityDisplay(isSelected);
         
@@ -151,6 +172,9 @@ public class AttackButton : MonoBehaviour
         if (attackNameText != null)
         {
             attackNameText.text = abilitySO.abilityName;
+            // Restore original text color for abilities
+            if (hasStoredOriginalColor)
+                attackNameText.color = originalNameTextColor;
         }
         
         // Set level text
@@ -168,6 +192,9 @@ public class AttackButton : MonoBehaviour
             {
                 levelText.text = $"(Lvl {currentAbilityLevel})(MAX) ";
             }
+            // Restore original text color
+            if (hasStoredOriginalColor)
+                levelText.color = originalNameTextColor;
         }
         
         // Set description from upgrade data
@@ -193,6 +220,9 @@ public class AttackButton : MonoBehaviour
             {
                 descriptionText.text = isNew ? "Gain this ability" : $"Level up to Lvl {nextLevel}";
             }
+            // Restore original text color
+            if (hasStoredOriginalColor)
+                descriptionText.color = originalNameTextColor;
         }
         
         // Set icon
@@ -269,13 +299,44 @@ public class AttackButton : MonoBehaviour
         // Attack is "new" if the player doesn't own it yet
         bool isNew = !playerOwnsAttack;
         
-        // Set attack name
+        // Check if the next level is an evolution level
+        int nextLevel = currentLevel + 1;
+        isEvolutionUpgrade = false;
+        EvolutionRequirement nextEvolution = null;
+        
+        if (!isNew && canUpgrade && upgradeData != null)
+        {
+            // Check if next level is an evolution level
+            if (upgradeData.IsEvolutionLevel(nextLevel))
+            {
+                nextEvolution = upgradeData.GetEvolutionForLevel(nextLevel);
+                if (nextEvolution != null)
+                {
+                    isEvolutionUpgrade = true;
+                }
+            }
+        }
+        
+        // Set attack name - use evolution name if this is an evolution upgrade
         if (attackNameText != null)
         {
-            if (upgradeData != null)
-                attackNameText.text = upgradeData.attackName;
+            if (isEvolutionUpgrade && nextEvolution != null)
+            {
+                // Display the evolution name instead of the attack name
+                attackNameText.text = nextEvolution.evolutionName;
+                // Set text color to white for evolution
+                attackNameText.color = evolutionTextColor;
+            }
             else
-                attackNameText.text = attack.attackName;
+            {
+                if (upgradeData != null)
+                    attackNameText.text = upgradeData.attackName;
+                else
+                    attackNameText.text = attack.attackName;
+                // Restore original text color
+                if (hasStoredOriginalColor)
+                    attackNameText.color = originalNameTextColor;
+            }
         }
         
         // Set level text - show what level the attack will be after selection
@@ -287,17 +348,31 @@ public class AttackButton : MonoBehaviour
                 {
                     // New attacks will become level 1
                     levelText.text = "(Lvl 1) ";
+                    if (hasStoredOriginalColor)
+                        levelText.color = originalNameTextColor;
                 }
                 else if (canUpgrade)
                 {
-                    // Show the level it will become after upgrade
-                    int nextLevel = currentLevel + 1;
-                    levelText.text = $"(Lvl {nextLevel}) ";
+                    if (isEvolutionUpgrade)
+                    {
+                        // For evolutions, show "EVO" instead of level number
+                        levelText.text = "(EVO) ";
+                        levelText.color = evolutionTextColor;
+                    }
+                    else
+                    {
+                        // Show the level it will become after upgrade
+                        levelText.text = $"(Lvl {nextLevel}) ";
+                        if (hasStoredOriginalColor)
+                            levelText.color = originalNameTextColor;
+                    }
                 }
                 else
                 {
                     // Already at max level
                     levelText.text = $"(Lvl {currentLevel})(MAX) ";
+                    if (hasStoredOriginalColor)
+                        levelText.color = originalNameTextColor;
                 }
             }
             else
@@ -314,18 +389,29 @@ public class AttackButton : MonoBehaviour
                 // For new attacks, show the level 1 description
                 AttackLevelStats currentStats = upgradeData.GetStatsForLevel(currentLevel);
                 descriptionText.text = currentStats.description;
+                if (hasStoredOriginalColor)
+                    descriptionText.color = originalNameTextColor;
+            }
+            else if (isEvolutionUpgrade && nextEvolution != null)
+            {
+                // For evolutions, show the evolution description
+                descriptionText.text = nextEvolution.evolutionDescription;
+                descriptionText.color = evolutionTextColor;
             }
             else if (upgradeData != null && canUpgrade)
             {
-                int nextLevel = currentLevel + 1;
                 AttackLevelStats nextStats = upgradeData.GetStatsForLevel(nextLevel);
                 descriptionText.text = nextStats.description;
+                if (hasStoredOriginalColor)
+                    descriptionText.color = originalNameTextColor;
             }
             else if (upgradeData != null)
             {
                 // At max level, show current level description
                 AttackLevelStats currentStats = upgradeData.GetStatsForLevel(currentLevel);
                 descriptionText.text = currentStats.description + " (Maxed)";
+                if (hasStoredOriginalColor)
+                    descriptionText.color = originalNameTextColor;
             }
             else
             {
@@ -347,10 +433,15 @@ public class AttackButton : MonoBehaviour
             }
         }
         
-        // Set background color - only normal or selected
+        // Set background color - use evolution colors if this is an evolution upgrade
         if (backgroundImage != null)
         {
-            if (isSelected)
+            if (isEvolutionUpgrade)
+            {
+                // Use red colors for evolution
+                backgroundImage.color = isSelected ? evolutionSelectedColor : evolutionNormalColor;
+            }
+            else if (isSelected)
             {
                 backgroundImage.color = useCustomColors ? customSelectedColor : selectedColor;
             }
@@ -371,6 +462,7 @@ public class AttackButton : MonoBehaviour
         {
             upgradeIndicator.SetActive(!isNew && canUpgrade);
         }
+        
     }
     
     /// <summary>

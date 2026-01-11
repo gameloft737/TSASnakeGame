@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d290879b72c57b479cc91eb51d6c696, type: 3}
+  m_Name: FireEvo
+  m_EditorClassIdentifier: 
+  baseName: Fire Breath
+  evolutionSystemDescription: Combine Fire Breath with the Damage passive ability
+    to unlock the Body Fire evolution!
+  evolutions:
+  - requiredPassivePrefab: {fileID: 5673043873479492005, guid: e8b5b328db0f01b428aad70bb224f461, type: 3}
+    requiredPassiveLevel: 1
+    unlockedLevel: 7
+    evolutionName: Inferno
+    evolutionDescription: Two additional fire emitters spawn on your body, breathing
+      fire when you attack!
+    evolutionHeadMaterial: {fileID: 2100000, guid: 1cefbca2c66fe1f4f89591b8ab558fc6, type: 2}
+    evolutionBodyMaterial: {fileID: 2100000, guid: 9664e569ab37940438e3b78639e60a87, type: 2}
+    evolutionAttachment: {fileID: 0}

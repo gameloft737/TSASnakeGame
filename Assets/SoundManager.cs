@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -80,6 +81,67 @@ public class SoundManager : MonoBehaviour
             }
         }
     }
+    
+    /// <summary>
+    /// Set the volume of a specific sound on an object (0-1)
+    /// </summary>
+    public static void SetVolume(string soundName, GameObject obj, float volume)
+    {
+        if (Instance == null || obj == null) return;
+        
+        int id = obj.GetInstanceID();
+        if (Instance.cache.TryGetValue(id, out var objCache))
+        {
+            if (objCache.TryGetValue(soundName, out var source))
+            {
+                if (source != null)
+                {
+                    source.volume = Mathf.Clamp01(volume);
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Fade out a sound on an object over a duration
+    /// </summary>
+    public static void FadeOut(string soundName, GameObject obj, float duration = 0.3f)
+    {
+        if (Instance == null || obj == null) return;
+        
+        int id = obj.GetInstanceID();
+        if (Instance.cache.TryGetValue(id, out var objCache))
+        {
+            if (objCache.TryGetValue(soundName, out var source))
+            {
+                if (source != null && source.isPlaying)
+                {
+                    Instance.StartCoroutine(Instance.FadeOutCoroutine(source, soundName, duration));
+                }
+            }
+        }
+    }
+    
+    private IEnumerator FadeOutCoroutine(AudioSource source, string soundName, float duration)
+    {
+        if (source == null) yield break;
+        
+        float elapsed = 0f;
+        
+        while (elapsed < duration && source != null && source.isPlaying)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            source.volume = Mathf.Lerp(1f, 0f, t);
+            yield return null;
+        }
+        
+        if (source != null)
+        {
+            source.Stop();
+            source.volume = 1f; // Restore full volume for next play
+        }
+    }
 
     private void PlayInternal(string soundName, GameObject obj)
     {
@@ -119,20 +181,15 @@ public class SoundManager : MonoBehaviour
             Debug.Log($"Creating new AudioSource for '{soundName}' on {obj.name}");
             source = obj.AddComponent<AudioSource>();
             source.clip = sound.clip;
-            source.volume = sound.volume;
-            source.pitch = sound.pitch;
+            source.volume = sound.volume; // Use per-sound volume setting
+            source.pitch = 1f; // Always normal speed
             source.loop = sound.loop;
-            source.spatialBlend = sound.is3D ? 1f : 0f;
-            source.minDistance = sound.minDistance;
-            source.maxDistance = sound.maxDistance;
+            source.spatialBlend = 0f; // Always 2D - no distance-based volume changes
             source.playOnAwake = false;
-            source.outputAudioMixerGroup = mixerGroup;
+            // No mixer group - play directly without any effects
             
             objCache[soundName] = source;
         }
-
-        if (sound.pitchVariation > 0)
-            source.pitch = sound.pitch + UnityEngine.Random.Range(-sound.pitchVariation, sound.pitchVariation);
 
         if (!source.isPlaying || sound.allowOverlap)
         {
@@ -150,7 +207,7 @@ public class SoundManager : MonoBehaviour
         if (!soundDict.TryGetValue(soundName, out Sound sound) || sound.clip == null)
             return;
 
-        AudioSource.PlayClipAtPoint(sound.clip, position, sound.volume);
+        AudioSource.PlayClipAtPoint(sound.clip, position, sound.volume); // Use per-sound volume setting
     }
 }
 
@@ -159,28 +216,8 @@ public class Sound
 {
     public string name;
     public AudioClip clip;
-    
-    [Range(0f, 1f)] public float volume = 1f;
-    [Range(0.1f, 3f)] public float pitch = 1f;
-    [Range(0f, 0.3f)] public float pitchVariation = 0.05f;
-    
-    public bool is3D = true;
-    public float minDistance = 1f;
-    public float maxDistance = 50f;
-    
+    [Range(0f, 3f)]
+    public float volume = 1f;
     public bool loop = false;
     public bool allowOverlap = false;
-
-    // Constructor to ensure defaults are set when created in Inspector
-    public Sound()
-    {
-        volume = 1f;
-        pitch = 1f;
-        pitchVariation = 0.05f;
-        is3D = true;
-        minDistance = 1f;
-        maxDistance = 50f;
-        loop = false;
-        allowOverlap = false;
-    }
 }

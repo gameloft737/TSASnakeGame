@@ -19,12 +19,16 @@ public class DropManager : MonoBehaviour
     [SerializeField] private Vector2 spawnAreaMin = new Vector2(-20f, -20f);
     [SerializeField] private Vector2 spawnAreaMax = new Vector2(20f, 20f);
     
+    [Header("Drop Limit")]
+    [SerializeField] private int maxDrops = 8;
+    
     [Header("Drop Points")]
     [SerializeField] private Transform dropPointsContainer;
     [SerializeField] private bool useDropPoints = false;
     
     private float autoSpawnTimer = 0f;
     private List<Transform> dropPoints = new List<Transform>();
+    private List<AbilityDrop> activeDrops = new List<AbilityDrop>();
 
     private void Start()
     {
@@ -43,6 +47,9 @@ public class DropManager : MonoBehaviour
 
     private void Update()
     {
+        // Clean up null references from collected/destroyed drops
+        activeDrops.RemoveAll(drop => drop == null);
+        
         if (autoSpawn)
         {
             autoSpawnTimer += Time.deltaTime;
@@ -56,17 +63,46 @@ public class DropManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the current number of active drops in the world
+    /// </summary>
+    public int GetActiveDropCount()
+    {
+        // Clean up null references first
+        activeDrops.RemoveAll(drop => drop == null);
+        return activeDrops.Count;
+    }
+    
+    /// <summary>
+    /// Checks if more drops can be spawned
+    /// </summary>
+    public bool CanSpawnDrop()
+    {
+        return GetActiveDropCount() < maxDrops;
+    }
+
+    /// <summary>
     /// Spawns a drop at a specific position
     /// </summary>
     public void SpawnDrop(Vector3 position, GameObject abilityPrefab = null)
     {
         if (dropPrefab == null) return;
         
-        
+        // Check if we've reached the maximum number of drops
+        if (!CanSpawnDrop())
+        {
+            Debug.Log($"[DropManager] Cannot spawn drop - maximum of {maxDrops} drops already active ({GetActiveDropCount()})");
+            return;
+        }
         
         GameObject drop = Instantiate(dropPrefab, position, Quaternion.identity);
         AbilityDrop dropScript = drop.GetComponent<AbilityDrop>();
         
+        // Track the active drop
+        if (dropScript != null)
+        {
+            activeDrops.Add(dropScript);
+            Debug.Log($"[DropManager] Spawned drop. Active drops: {activeDrops.Count}/{maxDrops}");
+        }
     }
 
     /// <summary>

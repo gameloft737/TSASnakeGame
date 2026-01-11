@@ -713,6 +713,9 @@ public class AppleEnemy : MonoBehaviour
         if (isDead) return;
         isDead = true;
 
+        // Play bite sound when apple dies
+        SoundManager.Play("Bite", gameObject);
+        
         if (biteParticles) biteParticles.Stop();
         if (deathObjectPrefab) Instantiate(deathObjectPrefab, transform.position, transform.rotation);
         
@@ -889,7 +892,8 @@ public class AppleEnemy : MonoBehaviour
             currentEnemyTarget = null;
             nearestBodyPart = FindNearestBodyPart();
             
-            if (agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
+            // Only set destination if agent is initialized (Start() has run)
+            if (agent != null && agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
             {
                 // In classic mode, use step-by-step cardinal movement
                 if (isClassicMode)
@@ -911,7 +915,8 @@ public class AppleEnemy : MonoBehaviour
             // Restore original visuals
             RestoreOriginalVisuals();
             
-            if (agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
+            // Only set destination if agent is initialized (Start() has run)
+            if (agent != null && agent.enabled && agent.isOnNavMesh && nearestBodyPart != null)
             {
                 // In classic mode, use step-by-step cardinal movement
                 if (isClassicMode)
@@ -943,7 +948,8 @@ public class AppleEnemy : MonoBehaviour
     }
     
     /// <summary>
-    /// Sets a tint color for the ally visual
+    /// Sets a tint color for the ally visual.
+    /// When using white, this makes the ally completely white by removing textures.
     /// </summary>
     public void SetAllyTint(Color tintColor)
     {
@@ -954,6 +960,24 @@ public class AppleEnemy : MonoBehaviour
             if (renderer != null)
             {
                 Material mat = renderer.material;
+                
+                // If the tint is white (or very close to white), make the object completely white
+                // by removing the main texture and setting the color to white
+                bool isWhite = tintColor.r >= 0.99f && tintColor.g >= 0.99f && tintColor.b >= 0.99f;
+                
+                if (isWhite)
+                {
+                    // Remove the main texture to show solid color
+                    if (mat.HasProperty("_MainTex"))
+                    {
+                        mat.SetTexture("_MainTex", null);
+                    }
+                    if (mat.HasProperty("_BaseMap"))
+                    {
+                        mat.SetTexture("_BaseMap", null);
+                    }
+                }
+                
                 // Check for both _Color and _BaseColor (URP/HDRP compatibility)
                 if (mat.HasProperty("_Color"))
                 {

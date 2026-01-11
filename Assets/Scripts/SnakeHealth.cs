@@ -156,6 +156,9 @@ public class SnakeHealth : MonoBehaviour
         isDead = true;
         Debug.Log("Snake died!");
         
+        // Play death sound
+        SoundManager.Play("Death", gameObject);
+        
         // Immediately stop player movement and pause attacks
         StopPlayerAndAttacks();
         

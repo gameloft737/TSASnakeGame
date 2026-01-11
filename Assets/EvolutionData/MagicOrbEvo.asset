@@ -19,7 +19,7 @@ MonoBehaviour:
   - requiredPassivePrefab: {fileID: 1577351419451060289, guid: 960819189910b98468cbe6afb117c1bc, type: 3}
     requiredPassiveLevel: 1
     unlockedLevel: 7
-    evolutionName: Arcane Barrage
+    evolutionName: Dark magic
     evolutionDescription: Unleashes a devastating barrage of 6 piercing arcane orbs
       with maximum homing and explosive damage!
     evolutionHeadMaterial: {fileID: 2100000, guid: 2ccf34f0195fe11409e125173fa2acba, type: 2}

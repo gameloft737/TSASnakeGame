@@ -156,6 +156,12 @@ public class SnakePauseMenu : MonoBehaviour
         
         isPaused = true;
         
+        // Lower game music volume while paused
+        if (waveManager != null)
+        {
+            SoundManager.SetVolume("GameMusic", waveManager.gameObject, 0.3f);
+        }
+        
         // Show pause menu
         if (pauseMenuPanel != null)
         {
@@ -229,6 +235,12 @@ public class SnakePauseMenu : MonoBehaviour
         if (!isPaused) return;
         
         isPaused = false;
+        
+        // Restore game music volume
+        if (waveManager != null)
+        {
+            SoundManager.SetVolume("GameMusic", waveManager.gameObject, 1f);
+        }
         
         // Hide pause menu
         if (pauseMenuPanel != null)

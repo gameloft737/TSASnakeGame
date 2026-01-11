@@ -181,6 +181,9 @@ public class LaserAttack : Attack
             if (rightSideParticles != null) rightSideParticles.Play();
             if (rightBackParticles != null) rightBackParticles.Play();
         }
+        
+        // Play laser sound (looping)
+        SoundManager.Play("Laser", gameObject);
     }
 
     protected override void OnHoldUpdate()
@@ -279,6 +282,9 @@ public class LaserAttack : Attack
         if (leftBackParticles != null) leftBackParticles.Stop();
         if (rightSideParticles != null) rightSideParticles.Stop();
         if (rightBackParticles != null) rightBackParticles.Stop();
+        
+        // Fade out laser sound instead of abrupt stop
+        SoundManager.FadeOut("Laser", gameObject, 0.3f);
     }
 
     private void UpdateLaser(LineRenderer lineRenderer, ParticleSystem particles, ref AppleEnemy currentTarget, ref bool isDamaging)

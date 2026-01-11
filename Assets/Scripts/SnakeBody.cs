@@ -31,6 +31,7 @@ public class SnakeBody : MonoBehaviour
     // Material system
     [SerializeField] private Renderer headRenderer;
     private GameObject currentAttachment;
+    private Material currentBodyMaterial; // Track current body material for new segments
     
     public List<BodyPart> bodyParts = new List<BodyPart>();
     
@@ -216,6 +217,12 @@ public class SnakeBody : MonoBehaviour
             // Set up the leader - new segment follows the previous last segment
             bodyPartComponent.Initialize(lastSegment, segmentSpacing);
             
+            // Apply current body material to new segment if one is set
+            if (currentBodyMaterial != null)
+            {
+                bodyPartComponent.SetMaterial(currentBodyMaterial);
+            }
+            
             bodyParts.Add(bodyPartComponent);
             bodyLength++;
         }
@@ -327,6 +334,9 @@ public class SnakeBody : MonoBehaviour
         // Only apply body material if provided (evolution attacks)
         if (bodyMaterial != null)
         {
+            // Store the current body material for new segments
+            currentBodyMaterial = bodyMaterial;
+            
             int appliedCount = 0;
             foreach (BodyPart part in bodyParts)
             {
@@ -367,6 +377,9 @@ public class SnakeBody : MonoBehaviour
         
         if (defaultBodyMaterial != null)
         {
+            // Update the tracked body material
+            currentBodyMaterial = defaultBodyMaterial;
+            
             foreach (BodyPart part in bodyParts)
             {
                 part.SetMaterial(defaultBodyMaterial);

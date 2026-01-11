@@ -48,16 +48,17 @@ MonoBehaviour:
   maxLevel: 6
   upgradeData: {fileID: 11400000, guid: 56def28ce00a7bd45a0f6e24461f06bc, type: 2}
   baseAllyCount: 1
-  baseConversionRange: 15
-  baseConversionCooldown: 10
+  baseSpawnRadius: 3
+  baseSpawnCooldown: 10
+  allyPrefab: {fileID: 4464936335970247717, guid: 498f75798a6bd1148a376d60f66c843e, type: 3}
   attachmentToShow: {fileID: 0}
   attachmentObjectName: hypnotize
   attachmentObjectTag: Tools
   searchInPlayerChildren: 1
-  allyMaterial: {fileID: -5354028657143720620, guid: fe88ab7c154ca074190477d968c9c111, type: 3}
-  allyTintColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  allyMaterial: {fileID: 7922251121040759823, guid: 774d4a24b4383b540bd712babdcd8313, type: 3}
+  allyTintColor: {r: 1, g: 1, b: 1, a: 1}
   allyDamageMultiplier: 1
   allyHealthMultiplier: 1
-  conversionSound: {fileID: 0}
+  spawnSound: {fileID: 0}
   audioSource: {fileID: 0}
-  conversionEffectPrefab: {fileID: 0}
+  spawnEffectPrefab: {fileID: 0}

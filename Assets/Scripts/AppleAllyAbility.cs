@@ -3,16 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Active ability that converts enemy apples into allies that fight for the player.
-/// At higher levels, converts multiple apples at once.
+/// Active ability that spawns apple allies that fight for the player.
+/// At higher levels, spawns multiple allies at once.
+/// Allies are white-tinted apples that attack enemy apples.
 /// Uses AbilityUpgradeData for level-based stats.
 /// </summary>
 public class AppleAllyAbility : BaseAbility
 {
-    [Header("Ally Conversion Settings (Fallback if no UpgradeData)")]
-    [SerializeField] private int baseAllyCount = 1; // Number of apples to convert
-    [SerializeField] private float baseConversionRange = 15f; // Range to find apples
-    [SerializeField] private float baseConversionCooldown = 10f; // Cooldown between conversions
+    [Header("Ally Spawn Settings (Fallback if no UpgradeData)")]
+    [SerializeField] private int baseAllyCount = 1; // Number of allies to spawn
+    [SerializeField] private float baseSpawnRadius = 3f; // Radius around player to spawn allies
+    [SerializeField] private float baseSpawnCooldown = 10f; // Cooldown between spawns
+    
+    [Header("Ally Prefab")]
+    [Tooltip("The apple enemy prefab to spawn as an ally. Will be tinted white.")]
+    [SerializeField] private GameObject allyPrefab; // Prefab to spawn as ally
     
     [Header("Visual Settings - Attachment to Unhide")]
     [Tooltip("Direct reference to a GameObject to show (if already in scene)")]
@@ -28,29 +33,32 @@ public class AppleAllyAbility : BaseAbility
     [SerializeField] private bool searchInPlayerChildren = true;
     
     [Header("Ally Visual Settings")]
-    [SerializeField] private Material allyMaterial; // Optional material to apply to converted allies
-    [SerializeField] private Color allyTintColor = new Color(0.5f, 1f, 0.5f, 1f); // Green tint for allies
+    [SerializeField] private Material allyMaterial; // Optional material to apply to spawned allies
+    [SerializeField] private Color allyTintColor = Color.white; // White tint for allies (default)
     
     [Header("Ally Stats")]
     [SerializeField] private float allyDamageMultiplier = 1f; // Damage multiplier for ally attacks
     [SerializeField] private float allyHealthMultiplier = 1f; // Health multiplier for allies
     
     [Header("Audio")]
-    [SerializeField] private AudioClip conversionSound;
+    [SerializeField] private AudioClip spawnSound;
     [SerializeField] private AudioSource audioSource;
     
     [Header("Effects")]
-    [SerializeField] private GameObject conversionEffectPrefab; // VFX when converting an apple
+    [SerializeField] private GameObject spawnEffectPrefab; // VFX when spawning an ally
     
     // Custom stat names for upgrade data
     private const string STAT_ALLY_COUNT = "allyCount";
-    private const string STAT_CONVERSION_RANGE = "conversionRange";
+    private const string STAT_SPAWN_RADIUS = "spawnRadius";
+    private const string STAT_MAX_ALLIES = "maxAllies";
     
     private Transform playerTransform;
     private float cooldownTimer = 0f;
     private List<AppleEnemy> currentAllies = new List<AppleEnemy>();
     private SnakeBody snakeBody;
+    private SnakeHealth snakeHealth;
     private GameObject foundAttachment; // Cached reference to found attachment
+    private int baseMaxAlliesAlive = 5; // Base maximum allies that can be alive at once
     
     protected override void Awake()
     {
@@ -61,8 +69,9 @@ public class AppleAllyAbility : BaseAbility
             playerTransform = player.transform;
         }
         
-        // Find snake body for attachment
+        // Find snake body and health for attachment and ally initialization
         snakeBody = FindFirstObjectByType<SnakeBody>();
+        snakeHealth = FindFirstObjectByType<SnakeHealth>();
         
         // Find the attachment object if not directly assigned
         FindAttachmentObject();
@@ -200,10 +209,10 @@ public class AppleAllyAbility : BaseAbility
         // Show the attachment model on the snake
         ShowAttachment(true);
         
-        // Perform initial conversion
-        ConvertApplesToAllies();
+        // Spawn initial allies
+        SpawnAllies();
         
-        Debug.Log($"AppleAllyAbility: Activated at level {currentLevel} - can convert {GetAllyCount()} apples");
+        Debug.Log($"AppleAllyAbility: Activated at level {currentLevel} - can spawn {GetAllyCount()} allies");
     }
     
     protected override void Update()
@@ -219,9 +228,13 @@ public class AppleAllyAbility : BaseAbility
         }
         else
         {
-            // Try to convert more apples when cooldown is ready
-            ConvertApplesToAllies();
-            cooldownTimer = GetConversionCooldown();
+            // Try to spawn more allies when cooldown is ready (if below max)
+            int maxAllies = GetMaxAllies();
+            if (currentAllies.Count < maxAllies)
+            {
+                SpawnAllies();
+                cooldownTimer = GetSpawnCooldown();
+            }
         }
         
         // Clean up dead allies from the list
@@ -246,85 +259,106 @@ public class AppleAllyAbility : BaseAbility
     }
     
     /// <summary>
-    /// Converts nearby enemy apples to allies
+    /// Spawns new apple allies near the player
     /// </summary>
-    private void ConvertApplesToAllies()
+    private void SpawnAllies()
     {
-        if (playerTransform == null) return;
-        
-        int allyCount = GetAllyCount();
-        float range = GetConversionRange();
-        float rangeSqr = range * range;
-        
-        // Find all enemy apples in range
-        AppleEnemy[] allApples = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
-        
-        // Filter to only non-ally apples within range, sorted by health (highest first)
-        List<AppleEnemy> eligibleApples = allApples
-            .Where(apple => apple != null && 
-                           !apple.IsAlly() && 
-                           !apple.IsFrozen() &&
-                           (apple.transform.position - playerTransform.position).sqrMagnitude <= rangeSqr)
-            .OrderByDescending(apple => apple.GetHealthPercentage())
-            .ToList();
-        
-        // Convert up to allyCount apples
-        int converted = 0;
-        foreach (AppleEnemy apple in eligibleApples)
+        if (playerTransform == null)
         {
-            if (converted >= allyCount) break;
-            
-            // Skip if we already have this as an ally
-            if (currentAllies.Contains(apple)) continue;
-            
-            // Convert to ally
-            ConvertToAlly(apple);
-            converted++;
+            Debug.LogWarning("AppleAllyAbility: Cannot spawn allies - missing player transform!");
+            return;
         }
         
-        if (converted > 0)
+        if (allyPrefab == null)
         {
-            Debug.Log($"AppleAllyAbility: Converted {converted} apples to allies");
+            Debug.LogWarning("AppleAllyAbility: Cannot spawn allies - ally prefab not assigned! Please assign an AppleEnemy prefab.");
+            return;
+        }
+        
+        int allyCount = GetAllyCount();
+        float spawnRadius = GetSpawnRadius();
+        int maxAllies = GetMaxAllies();
+        
+        // Calculate how many we can spawn (respecting max limit)
+        int canSpawn = Mathf.Min(allyCount, maxAllies - currentAllies.Count);
+        
+        if (canSpawn <= 0) return;
+        
+        int spawned = 0;
+        for (int i = 0; i < canSpawn; i++)
+        {
+            // Calculate spawn position in a circle around the player
+            float angle = (float)i / canSpawn * Mathf.PI * 2f;
+            // Add some randomness to the angle
+            angle += Random.Range(-0.3f, 0.3f);
+            Vector3 offset = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * spawnRadius;
+            Vector3 spawnPos = playerTransform.position + offset;
+            
+            // Spawn the ally
+            AppleEnemy ally = SpawnAlly(spawnPos);
+            if (ally != null)
+            {
+                spawned++;
+            }
+        }
+        
+        if (spawned > 0)
+        {
+            Debug.Log($"AppleAllyAbility: Spawned {spawned} white apple allies");
         }
     }
     
     /// <summary>
-    /// Converts a single apple enemy to an ally
+    /// Spawns a single apple ally at the specified position
     /// </summary>
-    private void ConvertToAlly(AppleEnemy apple)
+    private AppleEnemy SpawnAlly(Vector3 position)
     {
-        if (apple == null) return;
+        if (allyPrefab == null) return null;
         
-        // Set as ally
-        apple.SetAsAlly(true, allyDamageMultiplier, allyHealthMultiplier);
+        // Instantiate the ally
+        GameObject allyObj = Instantiate(allyPrefab, position, Quaternion.identity);
+        AppleEnemy ally = allyObj.GetComponent<AppleEnemy>();
         
-        // Apply visual changes
+        if (ally == null)
+        {
+            Debug.LogError("AppleAllyAbility: Ally prefab does not have AppleEnemy component!");
+            Destroy(allyObj);
+            return null;
+        }
+        
+        // Initialize the ally with snake references
+        ally.Initialize(snakeBody, snakeHealth);
+        
+        // Set as ally immediately
+        ally.SetAsAlly(true, allyDamageMultiplier, allyHealthMultiplier);
+        
+        // Apply white tint visual
         if (allyMaterial != null)
         {
-            apple.SetAllyMaterial(allyMaterial);
+            ally.SetAllyMaterial(allyMaterial);
         }
         else
         {
-            apple.SetAllyTint(allyTintColor);
+            // Default to white tint
+            ally.SetAllyTint(allyTintColor);
         }
         
         // Add to our list
-        currentAllies.Add(apple);
+        currentAllies.Add(ally);
         
         // Subscribe to death event to remove from list
         AppleEnemy.OnAppleDied += OnAllyDied;
         
-        // Play conversion effect
-        if (conversionEffectPrefab != null)
+        // Play spawn effect
+        if (spawnEffectPrefab != null)
         {
-            Instantiate(conversionEffectPrefab, apple.transform.position, Quaternion.identity);
+            Instantiate(spawnEffectPrefab, position, Quaternion.identity);
         }
         
-        // Play sound
-        if (conversionSound != null && audioSource != null)
-        {
-            audioSource.PlayOneShot(conversionSound);
-        }
+        // Play spawn sound using SoundManager
+        SoundManager.Play("AppleSpawn", gameObject);
+        
+        return ally;
     }
     
     /// <summary>
@@ -347,7 +381,7 @@ public class AppleAllyAbility : BaseAbility
     }
     
     /// <summary>
-    /// Gets the number of apples to convert based on level
+    /// Gets the number of allies to spawn based on level
     /// </summary>
     private int GetAllyCount()
     {
@@ -361,41 +395,55 @@ public class AppleAllyAbility : BaseAbility
     }
     
     /// <summary>
-    /// Gets the conversion range based on level
+    /// Gets the spawn radius based on level
     /// </summary>
-    private float GetConversionRange()
+    private float GetSpawnRadius()
     {
         if (upgradeData != null)
         {
-            float range = GetCustomStat(STAT_CONVERSION_RANGE, baseConversionRange);
-            return range > 0 ? range : baseConversionRange;
+            float radius = GetCustomStat(STAT_SPAWN_RADIUS, baseSpawnRadius);
+            return radius > 0 ? radius : baseSpawnRadius;
         }
-        // Default scaling: +2 range per level
-        return baseConversionRange + (currentLevel - 1) * 2f;
+        // Default scaling: +0.5 radius per level
+        return baseSpawnRadius + (currentLevel - 1) * 0.5f;
     }
     
     /// <summary>
-    /// Gets the cooldown between conversions
+    /// Gets the cooldown between spawns
     /// </summary>
-    private float GetConversionCooldown()
+    private float GetSpawnCooldown()
     {
         if (upgradeData != null)
         {
             float cooldown = GetCooldown();
-            return cooldown > 0 ? cooldown : baseConversionCooldown;
+            return cooldown > 0 ? cooldown : baseSpawnCooldown;
         }
         // Default scaling: -1 second per level (min 3 seconds)
-        return Mathf.Max(3f, baseConversionCooldown - (currentLevel - 1) * 1f);
+        return Mathf.Max(3f, baseSpawnCooldown - (currentLevel - 1) * 1f);
+    }
+    
+    /// <summary>
+    /// Gets the maximum number of allies that can be alive at once
+    /// </summary>
+    private int GetMaxAllies()
+    {
+        if (upgradeData != null)
+        {
+            int max = Mathf.RoundToInt(GetCustomStat(STAT_MAX_ALLIES, baseMaxAlliesAlive));
+            return Mathf.Max(1, max);
+        }
+        // Default scaling: +2 max allies per level
+        return baseMaxAlliesAlive + (currentLevel - 1) * 2;
     }
     
     protected override void OnLevelUp()
     {
         base.OnLevelUp();
         
-        // Immediately try to convert more apples on level up
-        ConvertApplesToAllies();
+        // Immediately try to spawn more allies on level up
+        SpawnAllies();
         
-        Debug.Log($"AppleAllyAbility: Level {currentLevel} - Allies: {GetAllyCount()}, Range: {GetConversionRange():F1}, Cooldown: {GetConversionCooldown():F1}s");
+        Debug.Log($"AppleAllyAbility: Level {currentLevel} - Allies: {GetAllyCount()}, Radius: {GetSpawnRadius():F1}, Cooldown: {GetSpawnCooldown():F1}s, Max: {GetMaxAllies()}");
     }
     
     protected override void DeactivateAbility()
@@ -405,12 +453,12 @@ public class AppleAllyAbility : BaseAbility
         // Hide the attachment
         ShowAttachment(false);
         
-        // Revert all allies back to enemies
+        // Destroy all spawned allies when ability is deactivated
         foreach (AppleEnemy ally in currentAllies)
         {
             if (ally != null)
             {
-                ally.SetAsAlly(false, 1f, 1f);
+                Destroy(ally.gameObject);
             }
         }
         currentAllies.Clear();
@@ -441,16 +489,16 @@ public class AppleAllyAbility : BaseAbility
         
         if (drawTransform != null)
         {
-            float range = Application.isPlaying ? GetConversionRange() : baseConversionRange;
+            float radius = Application.isPlaying ? GetSpawnRadius() : baseSpawnRadius;
             
-            // Draw conversion range
-            Gizmos.color = new Color(0.5f, 1f, 0.5f, 0.3f);
-            Gizmos.DrawWireSphere(drawTransform.position, range);
+            // Draw spawn radius
+            Gizmos.color = new Color(1f, 1f, 1f, 0.3f); // White for ally spawn area
+            Gizmos.DrawWireSphere(drawTransform.position, radius);
             
             // Draw lines to current allies
             if (Application.isPlaying)
             {
-                Gizmos.color = Color.green;
+                Gizmos.color = Color.white;
                 foreach (AppleEnemy ally in currentAllies)
                 {
                     if (ally != null)

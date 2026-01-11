@@ -10,6 +10,7 @@ public class AbilityButton : MonoBehaviour
     [SerializeField] private TextMeshProUGUI abilityNameText;  // Text to display ability name
     [SerializeField] private TextMeshProUGUI levelText;  // Text to display level info
     [SerializeField] private TextMeshProUGUI descriptionText;  // Text to display ability description
+    [SerializeField] private TextMeshProUGUI evolutionPairingText;  // Shows which attack this passive pairs with for evolution
     [SerializeField] private GameObject newIndicator;  // Shows when ability is new (not yet acquired)
     [SerializeField] private GameObject upgradeIndicator;  // Shows when ability can be upgraded
     [SerializeField] private Image backgroundImage;  // Background image for color changes
@@ -77,6 +78,12 @@ public class AbilityButton : MonoBehaviour
         if (backgroundImage == null)
         {
             backgroundImage = GetComponent<Image>();
+        }
+        
+        // Try to find evolution pairing text
+        if (evolutionPairingText == null)
+        {
+            evolutionPairingText = transform.Find("EvolutionPairingText")?.GetComponent<TextMeshProUGUI>();
         }
 
         // Get Image component for icon if not assigned (look for child named "Icon" or first child Image)
@@ -225,6 +232,54 @@ public class AbilityButton : MonoBehaviour
         {
             upgradeIndicator.SetActive(!isNew && !isMaxLevel);
         }
+        
+        // Show evolution pairing text for passive abilities that pair with attacks
+        if (evolutionPairingText != null)
+        {
+            string pairingInfo = GetEvolutionPairingInfo();
+            if (!string.IsNullOrEmpty(pairingInfo))
+            {
+                evolutionPairingText.text = pairingInfo;
+                evolutionPairingText.gameObject.SetActive(true);
+            }
+            else
+            {
+                evolutionPairingText.gameObject.SetActive(false);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Finds which attack this passive ability pairs with for evolution.
+    /// Returns a string like "Evolves: Fire Breath" or empty if no pairing exists.
+    /// </summary>
+    private string GetEvolutionPairingInfo()
+    {
+        if (abilitySO == null || abilitySO.abilityPrefab == null) return null;
+        
+        // Only check for passive abilities
+        if (abilitySO.abilityType != AbilityType.Passive) return null;
+        
+        // Find all attacks in the scene and check their evolution data
+        Attack[] allAttacks = Object.FindObjectsByType<Attack>(FindObjectsSortMode.None);
+        
+        foreach (Attack attack in allAttacks)
+        {
+            AttackUpgradeData upgradeData = attack.GetUpgradeData();
+            if (upgradeData == null || upgradeData.evolutionData == null) continue;
+            
+            // Check each evolution requirement
+            foreach (EvolutionRequirement evolution in upgradeData.evolutionData.evolutions)
+            {
+                if (evolution.requiredPassivePrefab == abilitySO.abilityPrefab)
+                {
+                    // This passive pairs with this attack for evolution
+                    return $"Evolves: {upgradeData.attackName}";
+                }
+            }
+        }
+        
+        return null;
     }
     
     // This method will be called when the player clicks the button

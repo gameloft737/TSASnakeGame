@@ -24,9 +24,9 @@ public enum LevelUIActionType
     ToggleGameObject,       // Toggle a GameObject's active state
     PlayAnimation,          // Play an animation on an Animator
     InvokeUnityEvent,       // Invoke a custom UnityEvent
-    FadeToWhite,            // Fade the screen to white
-    FadeFromWhite,          // Fade the screen from white to clear
-    FadeToWhiteAndBack,     // Fade to white, hold, then fade back
+    FadeToBlack,            // Fade the screen to black
+    FadeFromBlack,          // Fade the screen from black to clear
+    FadeToBlackAndBack,     // Fade to black, hold, then fade back
     LoadScene,              // Load a new scene (with optional fade)
     FadeAndLoadScene,       // Fade to white, then load a new scene
     ShowTutorialPanel       // Show a tutorial panel that pauses the game
@@ -85,7 +85,7 @@ public class LevelUITrigger
     [Tooltip("Duration of the fade effect")]
     public float fadeDuration = 1f;
     
-    [Tooltip("How long to hold at full white (for FadeToWhiteAndBack)")]
+    [Tooltip("How long to hold at full black (for FadeToBlackAndBack)")]
     public float fadeHoldDuration = 0.5f;
     
     [Tooltip("If true, shows a subtitle after the fade completes")]
@@ -106,10 +106,10 @@ public class LevelUITrigger
     public bool additiveSceneLoad = false;
     
     [Header("Tutorial Panel Settings (for ShowTutorialPanel action)")]
-    [Tooltip("Title text for the tutorial panel")]
+    [Tooltip("(Legacy - no longer used) Title text for the tutorial panel")]
     public string tutorialTitle = "Tutorial";
     
-    [Tooltip("Instructions text for the tutorial panel")]
+    [Tooltip("(Legacy - no longer used) Instructions text for the tutorial panel")]
     [TextArea(3, 8)]
     public string tutorialInstructions = "";
     
@@ -161,9 +161,9 @@ public class LevelUITrigger
 /// - ToggleGameObject: Toggle a GameObject's active state
 /// - PlayAnimation: Play an animation on an Animator
 /// - InvokeUnityEvent: Call a custom UnityEvent
-/// - FadeToWhite: Fade the screen to white using ScreenFadeManager
-/// - FadeFromWhite: Fade the screen from white to clear
-/// - FadeToWhiteAndBack: Fade to white, hold, then fade back (with optional subtitle after)
+/// - FadeToBlack: Fade the screen to black using ScreenFadeManager
+/// - FadeFromBlack: Fade the screen from black to clear
+/// - FadeToBlackAndBack: Fade to black, hold, then fade back (with optional subtitle after)
 /// - LoadScene: Load a new scene immediately
 /// - FadeAndLoadScene: Fade to white, then load a new scene
 /// - ShowTutorialPanel: Show a tutorial panel that pauses the game
@@ -490,10 +490,10 @@ public class LevelUIManager : MonoBehaviour
                     Debug.Log("[LevelUIManager] Invoked UnityEvent");
                 break;
                 
-            case LevelUIActionType.FadeToWhite:
+            case LevelUIActionType.FadeToBlack:
                 if (ScreenFadeManager.Instance != null)
                 {
-                    ScreenFadeManager.Instance.FadeToWhite(trigger.fadeDuration, () =>
+                    ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () =>
                     {
                         if (trigger.showSubtitleAfterFade && !string.IsNullOrEmpty(trigger.fadeSubtitleText))
                         {
@@ -501,7 +501,7 @@ public class LevelUIManager : MonoBehaviour
                         }
                     });
                     if (debugMode)
-                        Debug.Log($"[LevelUIManager] Fading to white over {trigger.fadeDuration}s");
+                        Debug.Log($"[LevelUIManager] Fading to black over {trigger.fadeDuration}s");
                 }
                 else
                 {
@@ -509,10 +509,10 @@ public class LevelUIManager : MonoBehaviour
                 }
                 break;
                 
-            case LevelUIActionType.FadeFromWhite:
+            case LevelUIActionType.FadeFromBlack:
                 if (ScreenFadeManager.Instance != null)
                 {
-                    ScreenFadeManager.Instance.FadeFromWhite(trigger.fadeDuration, () =>
+                    ScreenFadeManager.Instance.FadeFromBlack(trigger.fadeDuration, () =>
                     {
                         if (trigger.showSubtitleAfterFade && !string.IsNullOrEmpty(trigger.fadeSubtitleText))
                         {
@@ -520,7 +520,7 @@ public class LevelUIManager : MonoBehaviour
                         }
                     });
                     if (debugMode)
-                        Debug.Log($"[LevelUIManager] Fading from white over {trigger.fadeDuration}s");
+                        Debug.Log($"[LevelUIManager] Fading from black over {trigger.fadeDuration}s");
                 }
                 else
                 {
@@ -528,14 +528,14 @@ public class LevelUIManager : MonoBehaviour
                 }
                 break;
                 
-            case LevelUIActionType.FadeToWhiteAndBack:
+            case LevelUIActionType.FadeToBlackAndBack:
                 if (ScreenFadeManager.Instance != null)
                 {
-                    ScreenFadeManager.Instance.FadeToWhiteAndBack(
+                    ScreenFadeManager.Instance.FadeToBlackAndBack(
                         trigger.fadeDuration,
                         trigger.fadeHoldDuration,
                         trigger.fadeDuration,
-                        null, // onFadeToWhiteComplete
+                        null, // onFadeToBlackComplete
                         () =>
                         {
                             if (trigger.showSubtitleAfterFade && !string.IsNullOrEmpty(trigger.fadeSubtitleText))
@@ -544,7 +544,7 @@ public class LevelUIManager : MonoBehaviour
                             }
                         });
                     if (debugMode)
-                        Debug.Log($"[LevelUIManager] Fading to white and back over {trigger.fadeDuration}s each, hold {trigger.fadeHoldDuration}s");
+                        Debug.Log($"[LevelUIManager] Fading to black and back over {trigger.fadeDuration}s each, hold {trigger.fadeHoldDuration}s");
                 }
                 else
                 {
@@ -570,12 +570,12 @@ public class LevelUIManager : MonoBehaviour
                 {
                     if (ScreenFadeManager.Instance != null)
                     {
-                        ScreenFadeManager.Instance.FadeToWhite(trigger.fadeDuration, () =>
+                        ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () =>
                         {
                             LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad);
                         });
                         if (debugMode)
-                            Debug.Log($"[LevelUIManager] Fading to white then loading scene: {trigger.sceneToLoad}");
+                            Debug.Log($"[LevelUIManager] Fading to black then loading scene: {trigger.sceneToLoad}");
                     }
                     else
                     {
@@ -593,9 +593,9 @@ public class LevelUIManager : MonoBehaviour
             case LevelUIActionType.ShowTutorialPanel:
                 if (TutorialPanelManager.Instance != null)
                 {
-                    TutorialPanelManager.Instance.ShowTutorial(trigger.tutorialTitle, trigger.tutorialInstructions);
+                    TutorialPanelManager.Instance.ShowTutorial();
                     if (debugMode)
-                        Debug.Log($"[LevelUIManager] Showing tutorial panel: {trigger.tutorialTitle}");
+                        Debug.Log("[LevelUIManager] Showing tutorial panel");
                 }
                 else
                 {
@@ -641,7 +641,7 @@ public class LevelUIManager : MonoBehaviour
         
         if (ScreenFadeManager.Instance != null)
         {
-            ScreenFadeManager.Instance.FadeToWhite(fadeDuration, () =>
+            ScreenFadeManager.Instance.FadeToBlack(fadeDuration, () =>
             {
                 LoadSceneInternal(sceneName, additive);
             });

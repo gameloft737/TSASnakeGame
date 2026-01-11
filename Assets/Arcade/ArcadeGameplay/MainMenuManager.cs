@@ -72,20 +72,9 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("Fade out duration for menu music when starting game")]
     public float menuMusicFadeOutDuration = 1f;
     
-    [Header("Game Audio Management")]
-    [Tooltip("Audio sources to mute during menu (will be unmuted when game starts)")]
-    public AudioSource[] gameAudioSources;
-    
-    [Tooltip("If true, automatically finds and mutes all AudioSources in scene except menu")]
-    public bool autoFindGameAudioSources = true;
-    
-    [Tooltip("Tags to exclude from auto-muting (e.g., 'MenuAudio')")]
-    public string[] excludeFromMuteTags;
-    
     private AudioSource audioSource;
     private AudioSource menuMusicSource;
     private bool isTransitioning = false;
-    private AudioSource[] cachedGameAudioSources;
     
     private void Awake()
     {
@@ -136,88 +125,24 @@ public class MainMenuManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Sets up audio for the menu state - plays menu music and mutes game audio
+    /// Sets up audio for the menu state - plays menu music
     /// </summary>
     private void SetupMenuAudio()
     {
-        // Find all game audio sources if auto-find is enabled
-        if (autoFindGameAudioSources)
-        {
-            FindGameAudioSources();
-        }
-        else
-        {
-            cachedGameAudioSources = gameAudioSources;
-        }
-        
-        // Mute all game audio sources
-        MuteGameAudio(true);
-        
         // Start playing menu music
         PlayMenuMusic();
     }
     
-    /// <summary>
-    /// Finds all AudioSources in the scene except menu-related ones
-    /// </summary>
-    private void FindGameAudioSources()
-    {
-        AudioSource[] allSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
-        System.Collections.Generic.List<AudioSource> gameSources = new System.Collections.Generic.List<AudioSource>();
-        
-        foreach (AudioSource source in allSources)
-        {
-            // Skip our own audio sources
-            if (source == audioSource || source == menuMusicSource)
-                continue;
-            
-            // Skip sources with excluded tags
-            bool isExcluded = false;
-            if (excludeFromMuteTags != null)
-            {
-                foreach (string tag in excludeFromMuteTags)
-                {
-                    if (!string.IsNullOrEmpty(tag) && source.gameObject.CompareTag(tag))
-                    {
-                        isExcluded = true;
-                        break;
-                    }
-                }
-            }
-            
-            if (!isExcluded)
-            {
-                gameSources.Add(source);
-            }
-        }
-        
-        cachedGameAudioSources = gameSources.ToArray();
-        Debug.Log($"MainMenuManager: Found {cachedGameAudioSources.Length} game audio sources to manage");
-    }
-    
-    /// <summary>
-    /// Mutes or unmutes all game audio sources
-    /// </summary>
-    private void MuteGameAudio(bool mute)
-    {
-        if (cachedGameAudioSources == null) return;
-        
-        foreach (AudioSource source in cachedGameAudioSources)
-        {
-            if (source != null)
-            {
-                source.mute = mute;
-            }
-        }
-        
-        Debug.Log($"MainMenuManager: {(mute ? "Muted" : "Unmuted")} {cachedGameAudioSources.Length} game audio sources");
-    }
     
     /// <summary>
     /// Starts playing the menu music
     /// </summary>
     private void PlayMenuMusic()
     {
+        // Use SoundManager for centralized audio management
+        SoundManager.Play("MenuMusic", gameObject);
+        
+        // Fallback to local AudioSource if SoundManager doesn't have the sound
         if (menuMusic != null && menuMusicSource != null)
         {
             menuMusicSource.clip = menuMusic;
@@ -233,6 +158,9 @@ public class MainMenuManager : MonoBehaviour
     /// </summary>
     private void StopMenuMusic(bool fade = true)
     {
+        // Stop via SoundManager
+        SoundManager.Stop("MenuMusic", gameObject);
+        
         if (menuMusicSource != null && menuMusicSource.isPlaying)
         {
             if (fade && menuMusicFadeOutDuration > 0)
@@ -451,9 +379,6 @@ public class MainMenuManager : MonoBehaviour
             mainMenuPanel.SetActive(false);
         }
         
-        // Unmute all game audio sources
-        MuteGameAudio(false);
-        
         // Lock cursor for gameplay
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -523,8 +448,7 @@ public class MainMenuManager : MonoBehaviour
             fpsController.SetControl(false);
         }
         
-        // Mute game audio and play menu music again
-        MuteGameAudio(true);
+        // Play menu music again
         PlayMenuMusic();
         
         ShowMainMenu();

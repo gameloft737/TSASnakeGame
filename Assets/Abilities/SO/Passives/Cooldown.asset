@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
   m_Name: Cooldown
   m_EditorClassIdentifier: 
-  abilityName: Cooldown Reduction
+  abilityName: Cooldown
   description: Reduce all cooldowns by 8%
-  icon: {fileID: 21300000, guid: bfc1c08fa00c04549991db87a06ad137, type: 3}
+  icon: {fileID: 21300000, guid: 24d79824456cfcb4c90df23d64538f66, type: 3}
   abilityPrefab: {fileID: 5673043873479492005, guid: e8b5b328db0f01b428aad70bb224f461, type: 3}
   abilityType: 0
   maxLevel: 5

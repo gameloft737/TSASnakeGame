@@ -140,6 +140,16 @@ public class AbilityCollector : MonoBehaviour
     {
         isUIOpen = true;
         
+        // Play drop menu open sound
+        SoundManager.Play("DropOpen", gameObject);
+        
+        // Lower game music volume while menu is open
+        WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+        if (waveManager != null)
+        {
+            SoundManager.SetVolume("GameMusic", waveManager.gameObject, 0.3f);
+        }
+        
         // Notify ClassicModeManager that menu is opening
         if (ClassicModeManager.Instance != null)
         {
@@ -185,6 +195,13 @@ public class AbilityCollector : MonoBehaviour
 
     private IEnumerator CloseUI()
     {
+        // Restore game music volume
+        WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+        if (waveManager != null)
+        {
+            SoundManager.SetVolume("GameMusic", waveManager.gameObject, 1f);
+        }
+        
         if (uiAnimator != null) uiAnimator.SetBool(animatorBoolParameter, false);
         StartCoroutine(DOFLerp(false));
         

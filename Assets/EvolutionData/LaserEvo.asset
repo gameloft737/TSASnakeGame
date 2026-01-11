@@ -18,7 +18,7 @@ MonoBehaviour:
   - requiredPassivePrefab: {fileID: 8371761886178093558, guid: 00f646ccfa20c85418e8b8a95f602511, type: 3}
     requiredPassiveLevel: 1
     unlockedLevel: 7
-    evolutionName: Big Fat Laser
+    evolutionName: plasma beam
     evolutionDescription: double laser yay (edit in laser evo)
     evolutionHeadMaterial: {fileID: 2100000, guid: bf07d6242fb47b24cabd38a70ed33258, type: 2}
     evolutionBodyMaterial: {fileID: 2100000, guid: f2bcfbbaacbc301488cbe0e9091c842a, type: 2}

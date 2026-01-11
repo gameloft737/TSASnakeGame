@@ -280,8 +280,47 @@ public class ClassicModeManager : MonoBehaviour
     
     private void SwitchToTopDownCamera()
     {
+        SwitchToTopDownCameraInternal(false);
+    }
+    
+    /// <summary>
+    /// Switches to top-down camera with an instant cut (no blend)
+    /// Used when returning from menus to avoid spinning camera effect
+    /// </summary>
+    private void SwitchToTopDownCameraWithCut()
+    {
+        SwitchToTopDownCameraInternal(true);
+    }
+    
+    private void SwitchToTopDownCameraInternal(bool useCut)
+    {
         if (topDownCamera != null)
         {
+            // If using cut, set the Cinemachine Brain to cut blend temporarily
+            if (useCut && cameraManager != null)
+            {
+                CinemachineBrain brain = cameraManager.GetCinemachineBrain();
+                if (brain != null)
+                {
+                    // Store original blend and set to cut
+                    var originalBlend = brain.DefaultBlend;
+                    brain.DefaultBlend = new CinemachineBlendDefinition(
+                        CinemachineBlendDefinition.Styles.Cut, 0f);
+                    
+                    // Set priorities
+                    topDownCamera.Priority = 100;
+                    if (cameraManager.normalCam != null)
+                        cameraManager.normalCam.Priority = 0;
+                    if (cameraManager.pauseCam != null)
+                        cameraManager.pauseCam.Priority = 0;
+                    
+                    // Restore original blend after a short delay
+                    StartCoroutine(RestoreBlendAfterDelay(brain, originalBlend, 0.1f));
+                    return;
+                }
+            }
+            
+            // Standard priority switch (with default blend)
             topDownCamera.Priority = 100;
             
             if (cameraManager != null)
@@ -295,6 +334,18 @@ public class ClassicModeManager : MonoBehaviour
         else
         {
             Debug.LogError("[ClassicModeManager] Cannot switch to top-down camera - it's not assigned!");
+        }
+    }
+    
+    private System.Collections.IEnumerator RestoreBlendAfterDelay(
+        CinemachineBrain brain,
+        CinemachineBlendDefinition originalBlend,
+        float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        if (brain != null)
+        {
+            brain.DefaultBlend = originalBlend;
         }
     }
     
@@ -335,13 +386,14 @@ public class ClassicModeManager : MonoBehaviour
         // Restore the correct camera
         if (isClassicMode)
         {
-            // Switch back to top-down camera
-            SwitchToTopDownCamera();
-            Debug.Log("[ClassicModeManager] Menu closed - restoring top-down camera");
+            // Use cut transition to avoid spinning when returning to top-down camera
+            SwitchToTopDownCameraWithCut();
+            Debug.Log("[ClassicModeManager] Menu closed - restoring top-down camera with cut");
         }
         else
         {
             // Switch back to normal camera when not in classic mode
+            // CameraManager handles the cut transition internally
             SwitchToNormalCamera();
             Debug.Log("[ClassicModeManager] Menu closed - restoring normal camera");
         }

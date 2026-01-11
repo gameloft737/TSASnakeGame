@@ -244,6 +244,9 @@ public class TurretAbility : BaseAbility
 
     private void ShootAtTarget(Transform target)
     {
+        // Play turret shooting sound
+        SoundManager.Play("Turret", gameObject);
+        
         Vector3 spawnPosition = originPoint != null ? originPoint.position : playerTransform.position + spawnOffset;
         
         // Aim at the target's center position using NavMeshAgent height

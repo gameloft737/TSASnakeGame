@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae62ae374309c9746bf2a216458eb6dc, type: 3}
   m_Name: Armor
   m_EditorClassIdentifier: 
-  abilityName: Damage Reduction
+  abilityName: Shield
   description: Take 5% less damage
-  icon: {fileID: 21300000, guid: bfc1c08fa00c04549991db87a06ad137, type: 3}
+  icon: {fileID: 21300000, guid: ee00b3ec156d4ed49be0c23cc9017bc8, type: 3}
   abilityPrefab: {fileID: 4429866570375712362, guid: 43f094cd62198bc4cb372b33a6df4d06, type: 3}
   abilityType: 0
   maxLevel: 5

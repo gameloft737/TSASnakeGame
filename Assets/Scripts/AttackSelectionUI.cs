@@ -79,7 +79,8 @@ public class AttackSelectionUI : MonoBehaviour
     private FallbackOption selectedFallback = FallbackOption.None;
     private Attack selectedSwapAttack = null;
     private bool isUIOpen = false;
-    private bool isTransitioning = false;
+    private bool isOpeningTransition = false;  // True only during opening animation
+    private bool isClosingTransition = false;  // True only during closing animation
     private Coroutine currentTransition = null;
     private const float ANIM_TIME = 0.66f;
     
@@ -106,7 +107,8 @@ public class AttackSelectionUI : MonoBehaviour
         if (deathScreenPanel) deathScreenPanel.SetActive(false);
         if (dof) dof.active = false;
         isUIOpen = false;
-        isTransitioning = false;
+        isOpeningTransition = false;
+        isClosingTransition = false;
     }
 
     private void FindReferences()
@@ -123,10 +125,14 @@ public class AttackSelectionUI : MonoBehaviour
 
     public void ShowAttackSelection(AttackManager manager)
     {
-        if (isUIOpen || isTransitioning) return;
+        // Don't open if already open or currently closing
+        if (isUIOpen || isClosingTransition) return;
         if (abilityCollector != null && abilityCollector.IsUIOpen()) return;
         
         attackManager = manager;
+        
+        // If we're in the middle of opening, just let it continue
+        if (isOpeningTransition && currentTransition != null) return;
         
         if (currentTransition != null)
         {
@@ -139,8 +145,18 @@ public class AttackSelectionUI : MonoBehaviour
     
     private IEnumerator OpenUI()
     {
-        isTransitioning = true;
+        isOpeningTransition = true;
+        isClosingTransition = false;
         isUIOpen = true;
+        
+        // Play attack menu open sound
+        SoundManager.Play("AttackMenuOpen", gameObject);
+        
+        // Lower game music volume while menu is open
+        if (waveManager != null)
+        {
+            SoundManager.SetVolume("GameMusic", waveManager.gameObject, 0.3f);
+        }
         
         // Notify ClassicModeManager that menu is opening
         if (ClassicModeManager.Instance != null)
@@ -169,7 +185,7 @@ public class AttackSelectionUI : MonoBehaviour
         
         yield return new WaitForSecondsRealtime(ANIM_TIME);
         
-        isTransitioning = false;
+        isOpeningTransition = false;
         currentTransition = null;
         
         if (uiAnimator && isUIOpen)
@@ -760,21 +776,36 @@ public class AttackSelectionUI : MonoBehaviour
         }
     }
 
-    private void OnContinueClicked() 
-    { 
-        if (isTransitioning) return;
+    private void OnContinueClicked()
+    {
+        // Only block if we're already closing - allow clicking during opening animation
+        if (isClosingTransition) return;
+        
+        // If we're still in the opening transition, stop it and proceed to close
+        if (isOpeningTransition && currentTransition != null)
+        {
+            StopCoroutine(currentTransition);
+            isOpeningTransition = false;
+        }
         
         if (currentTransition != null)
         {
             StopCoroutine(currentTransition);
         }
         
-        currentTransition = StartCoroutine(CloseUI()); 
+        currentTransition = StartCoroutine(CloseUI());
     }
 
     private IEnumerator CloseUI()
     {
-        isTransitioning = true;
+        isClosingTransition = true;
+        isOpeningTransition = false;
+        
+        // Restore game music volume
+        if (waveManager != null)
+        {
+            SoundManager.SetVolume("GameMusic", waveManager.gameObject, 1f);
+        }
         
         ApplySelection();
         
@@ -815,7 +846,8 @@ public class AttackSelectionUI : MonoBehaviour
         frozenEnemies.Clear();
         
         isUIOpen = false;
-        isTransitioning = false;
+        isClosingTransition = false;
+        isOpeningTransition = false;
         currentTransition = null;
         
         if (uiAnimator)

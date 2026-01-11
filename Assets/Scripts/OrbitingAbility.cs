@@ -77,6 +77,10 @@ public class OrbitingAbility : BaseAbility
     {
         base.ActivateAbility();
         CreateOrbitingObjects();
+        
+        // Play orbiting weapon sound (looping)
+        SoundManager.Play("OrbitingWeapon", gameObject);
+        
         Debug.Log($"OrbitingAbility: Activated at level {currentLevel} with {GetOrbitCount()} orbiting objects");
     }
     
@@ -402,6 +406,10 @@ public class OrbitingAbility : BaseAbility
     protected override void DeactivateAbility()
     {
         base.DeactivateAbility();
+        
+        // Stop orbiting weapon sound
+        SoundManager.Stop("OrbitingWeapon", gameObject);
+        
         ClearOrbitingObjects();
         enemyHitCooldowns.Clear();
     }

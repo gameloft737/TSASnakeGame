@@ -1,4 +1,3 @@
-
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -7,46 +6,59 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
+/// Represents a single tutorial page with its own panel GameObject
+/// </summary>
+[System.Serializable]
+public class TutorialPanelPage
+{
+    [Tooltip("The panel GameObject for this tutorial page")]
+    public GameObject panelObject;
+    
+    [Tooltip("The Next button on this panel (optional - will auto-find if not set)")]
+    public Button nextButton;
+    
+    [Tooltip("The Close button on this panel (optional - will auto-find if not set)")]
+    public Button closeButton;
+}
+
+/// <summary>
+/// Represents a single tutorial page with title and instructions (legacy support)
+/// </summary>
+[System.Serializable]
+public class TutorialPage
+{
+    [Tooltip("Title for this tutorial page")]
+    public string title = "Tutorial";
+    
+    [Tooltip("Instructions text for this tutorial page")]
+    [TextArea(5, 15)]
+    public string instructions = "Instructions go here...";
+}
+
+/// <summary>
 /// Manages tutorial panels that can be shown after subtitles to display instructions.
+/// Supports multiple separate panel GameObjects with Next button navigation.
 /// Pauses the game and disables the pause menu while the tutorial is active.
 /// 
 /// SETUP INSTRUCTIONS:
-/// 1. Create a Canvas for the tutorial panel (or use an existing UI Canvas)
-/// 2. Create a Panel as a child of the Canvas with your tutorial content
-/// 3. Add a TextMeshProUGUI for the instructions text
-/// 4. Add a Button for the continue button
-/// 5. Create an empty GameObject and add this script
-/// 6. Assign the references in the Inspector
+/// 1. Create a Canvas for the tutorial panels (or use an existing UI Canvas)
+/// 2. Create separate Panel GameObjects for each tutorial page
+/// 3. Each panel should have its own Next button (except the last) and Close button (on the last)
+/// 4. Create an empty GameObject and add this script
+/// 5. Drag your panel GameObjects into the "Tutorial Panels" list
 /// 
 /// USAGE:
-/// - Call TutorialPanelManager.Instance.ShowTutorial() to display the tutorial
-/// - The panel will pause the game and disable the pause menu
-/// - When the player clicks Continue, the game resumes
+/// - Call TutorialPanelManager.Instance.ShowTutorial() to display the tutorial panels in sequence
+/// - The first panel shows, click Next to go to the next panel
+/// - On the last panel, click Close to resume the game
 /// </summary>
 public class TutorialPanelManager : MonoBehaviour
 {
     public static TutorialPanelManager Instance { get; private set; }
     
-    [Header("UI References")]
-    [Tooltip("The main tutorial panel GameObject")]
-    [SerializeField] private GameObject tutorialPanel;
-    
-    [Tooltip("The text component for displaying instructions")]
-    [SerializeField] private TextMeshProUGUI instructionsText;
-    
-    [Tooltip("The continue button")]
-    [SerializeField] private Button continueButton;
-    
-    [Tooltip("Optional: Title text component")]
-    [SerializeField] private TextMeshProUGUI titleText;
-    
-    [Header("Default Content")]
-    [Tooltip("Default title for the tutorial panel")]
-    [SerializeField] private string defaultTitle = "How to Play";
-    
-    [Tooltip("Default instructions text")]
-    [TextArea(5, 15)]
-    [SerializeField] private string defaultInstructions = "Welcome to the game!\n\nUse WASD to move.\nUse the mouse to look around.\nCollect apples to grow.\nDefeat enemies to survive!";
+    [Header("Tutorial Panels")]
+    [Tooltip("List of tutorial panel pages. Each page is a separate GameObject that will be shown in sequence.")]
+    [SerializeField] private List<TutorialPanelPage> tutorialPanels = new List<TutorialPanelPage>();
     
     [Header("Settings")]
     [Tooltip("Should the game pause when the tutorial is shown?")]
@@ -57,19 +69,6 @@ public class TutorialPanelManager : MonoBehaviour
     
     [Tooltip("Should the cursor be visible when the tutorial is shown?")]
     [SerializeField] private bool showCursor = true;
-    
-    [Header("Animation")]
-    [Tooltip("Optional: Animator for the tutorial panel")]
-    [SerializeField] private Animator panelAnimator;
-    
-    [Tooltip("Animation trigger name for showing the panel")]
-    [SerializeField] private string showAnimTrigger = "Show";
-    
-    [Tooltip("Animation trigger name for hiding the panel")]
-    [SerializeField] private string hideAnimTrigger = "Hide";
-    
-    [Tooltip("Time to wait for hide animation before deactivating")]
-    [SerializeField] private float hideAnimDuration = 0.3f;
     
     [Header("References (Auto-found if not assigned)")]
     [SerializeField] private PlayerMovement playerMovement;
@@ -84,6 +83,7 @@ public class TutorialPanelManager : MonoBehaviour
     private bool isTutorialActive = false;
     private bool wasTimeScaleZero = false;
     private Action onTutorialClosed;
+    private int currentPageIndex = 0;
     
     /// <summary>
     /// Event fired when the tutorial panel is shown
@@ -99,6 +99,16 @@ public class TutorialPanelManager : MonoBehaviour
     /// Returns whether the tutorial panel is currently active
     /// </summary>
     public bool IsTutorialActive => isTutorialActive;
+    
+    /// <summary>
+    /// Returns the current page index (0-based)
+    /// </summary>
+    public int CurrentPageIndex => currentPageIndex;
+    
+    /// <summary>
+    /// Returns the total number of pages in the current tutorial
+    /// </summary>
+    public int TotalPages => tutorialPanels?.Count ?? 0;
     
     private void Awake()
     {
@@ -118,19 +128,8 @@ public class TutorialPanelManager : MonoBehaviour
     private void Start()
     {
         FindReferences();
-        
-        // Setup continue button
-        if (continueButton != null)
-        {
-            continueButton.onClick.AddListener(OnContinueClicked);
-        }
-        
-        // Ensure panel starts hidden
-        if (tutorialPanel != null)
-        {
-            tutorialPanel.SetActive(false);
-        }
-        
+        SetupPanelButtons();
+        HideAllPanels();
         isTutorialActive = false;
     }
     
@@ -149,20 +148,75 @@ public class TutorialPanelManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Show the tutorial panel with default content
+    /// Setup button listeners for all tutorial panels
     /// </summary>
-    public void ShowTutorial(Action onClosed = null)
+    private void SetupPanelButtons()
     {
-        ShowTutorial(defaultTitle, defaultInstructions, onClosed);
+        for (int i = 0; i < tutorialPanels.Count; i++)
+        {
+            TutorialPanelPage page = tutorialPanels[i];
+            if (page.panelObject == null) continue;
+            
+            // Auto-find buttons if not assigned
+            if (page.nextButton == null)
+            {
+                Button[] buttons = page.panelObject.GetComponentsInChildren<Button>(true);
+                foreach (Button btn in buttons)
+                {
+                    if (btn.gameObject.name.ToLower().Contains("next"))
+                    {
+                        page.nextButton = btn;
+                        break;
+                    }
+                }
+            }
+            
+            if (page.closeButton == null)
+            {
+                Button[] buttons = page.panelObject.GetComponentsInChildren<Button>(true);
+                foreach (Button btn in buttons)
+                {
+                    if (btn.gameObject.name.ToLower().Contains("close"))
+                    {
+                        page.closeButton = btn;
+                        break;
+                    }
+                }
+            }
+            
+            // Add listeners
+            if (page.nextButton != null)
+            {
+                page.nextButton.onClick.RemoveAllListeners();
+                page.nextButton.onClick.AddListener(() => OnNextClicked());
+            }
+            
+            if (page.closeButton != null)
+            {
+                page.closeButton.onClick.RemoveAllListeners();
+                page.closeButton.onClick.AddListener(() => OnCloseClicked());
+            }
+        }
     }
     
     /// <summary>
-    /// Show the tutorial panel with custom content
+    /// Hide all tutorial panels
     /// </summary>
-    /// <param name="title">The title to display (optional)</param>
-    /// <param name="instructions">The instructions text to display</param>
-    /// <param name="onClosed">Callback when the tutorial is closed</param>
-    public void ShowTutorial(string title, string instructions, Action onClosed = null)
+    private void HideAllPanels()
+    {
+        foreach (TutorialPanelPage page in tutorialPanels)
+        {
+            if (page.panelObject != null)
+            {
+                page.panelObject.SetActive(false);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Show the tutorial using the configured panel GameObjects
+    /// </summary>
+    public void ShowTutorial(Action onClosed = null)
     {
         if (isTutorialActive)
         {
@@ -171,34 +225,24 @@ public class TutorialPanelManager : MonoBehaviour
             return;
         }
         
+        if (tutorialPanels.Count == 0)
+        {
+            Debug.LogWarning("[TutorialPanelManager] No tutorial panels configured!");
+            return;
+        }
+        
         isTutorialActive = true;
         onTutorialClosed = onClosed;
+        currentPageIndex = 0;
         
         if (debugMode)
-            Debug.Log($"[TutorialPanelManager] Showing tutorial: {title}");
+            Debug.Log("[TutorialPanelManager] Showing tutorial with " + tutorialPanels.Count + " panels");
         
-        // Set content
-        if (titleText != null && !string.IsNullOrEmpty(title))
-        {
-            titleText.text = title;
-        }
+        // Hide all panels first
+        HideAllPanels();
         
-        if (instructionsText != null)
-        {
-            instructionsText.text = instructions;
-        }
-        
-        // Show panel
-        if (tutorialPanel != null)
-        {
-            tutorialPanel.SetActive(true);
-            
-            // Play show animation if available
-            if (panelAnimator != null && !string.IsNullOrEmpty(showAnimTrigger))
-            {
-                panelAnimator.SetTrigger(showAnimTrigger);
-            }
-        }
+        // Show the first panel
+        DisplayCurrentPanel();
         
         // Disable pause menu
         if (disablePauseMenu)
@@ -223,35 +267,55 @@ public class TutorialPanelManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Show the tutorial panel after a delay (useful for showing after subtitles)
+    /// Show the tutorial panel with a single page (legacy support for LevelUIManager)
     /// </summary>
-    public void ShowTutorialAfterDelay(float delay, string title = null, string instructions = null, Action onClosed = null)
+    public void ShowTutorial(string title, string instructions, Action onClosed = null)
     {
-        StartCoroutine(ShowTutorialDelayed(delay, title, instructions, onClosed));
+        // For legacy support, just show the panel-based tutorial
+        ShowTutorial(onClosed);
     }
     
-    private IEnumerator ShowTutorialDelayed(float delay, string title, string instructions, Action onClosed)
+    /// <summary>
+    /// Display the current panel and hide others
+    /// </summary>
+    private void DisplayCurrentPanel()
     {
-        yield return new WaitForSeconds(delay);
+        if (tutorialPanels == null || currentPageIndex < 0 || currentPageIndex >= tutorialPanels.Count)
+            return;
         
-        if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(instructions))
+        // Hide all panels
+        HideAllPanels();
+        
+        // Show current panel
+        TutorialPanelPage currentPage = tutorialPanels[currentPageIndex];
+        if (currentPage.panelObject != null)
         {
-            ShowTutorial(
-                string.IsNullOrEmpty(title) ? defaultTitle : title,
-                string.IsNullOrEmpty(instructions) ? defaultInstructions : instructions,
-                onClosed
-            );
+            currentPage.panelObject.SetActive(true);
         }
-        else
+        
+        if (debugMode)
+            Debug.Log("[TutorialPanelManager] Displaying panel " + (currentPageIndex + 1) + "/" + tutorialPanels.Count);
+    }
+    
+    /// <summary>
+    /// Called when the Next button is clicked
+    /// </summary>
+    private void OnNextClicked()
+    {
+        if (currentPageIndex < tutorialPanels.Count - 1)
         {
-            ShowTutorial(onClosed);
+            currentPageIndex++;
+            DisplayCurrentPanel();
+            
+            if (debugMode)
+                Debug.Log("[TutorialPanelManager] Advanced to panel " + (currentPageIndex + 1));
         }
     }
     
     /// <summary>
-    /// Called when the continue button is clicked
+    /// Called when the Close button is clicked
     /// </summary>
-    private void OnContinueClicked()
+    private void OnCloseClicked()
     {
         HideTutorial();
     }
@@ -269,34 +333,16 @@ public class TutorialPanelManager : MonoBehaviour
         if (debugMode)
             Debug.Log("[TutorialPanelManager] Hiding tutorial");
         
-        // Play hide animation if available
-        if (panelAnimator != null && !string.IsNullOrEmpty(hideAnimTrigger))
-        {
-            panelAnimator.SetTrigger(hideAnimTrigger);
-            StartCoroutine(HidePanelAfterAnimation());
-        }
-        else
-        {
-            // No animation, hide immediately
-            CompleteTutorialHide();
-        }
-    }
-    
-    private IEnumerator HidePanelAfterAnimation()
-    {
-        yield return new WaitForSecondsRealtime(hideAnimDuration);
         CompleteTutorialHide();
     }
     
     private void CompleteTutorialHide()
     {
         isTutorialActive = false;
+        currentPageIndex = 0;
         
-        // Hide panel
-        if (tutorialPanel != null)
-        {
-            tutorialPanel.SetActive(false);
-        }
+        // Hide all panels
+        HideAllPanels();
         
         // Re-enable pause menu
         if (disablePauseMenu)
@@ -326,14 +372,6 @@ public class TutorialPanelManager : MonoBehaviour
     
     private void DisablePauseMenus()
     {
-        // Disable SnakePauseMenu
-        if (SnakePauseMenu.Instance != null)
-        {
-            // SnakePauseMenu doesn't have a disable method, so we'll need to track this differently
-            // For now, we'll rely on the tutorial being active check
-        }
-        
-        // Disable SnakeScenePauseManager
         if (SnakeScenePauseManager.Instance != null)
         {
             SnakeScenePauseManager.Instance.DisablePausing();
@@ -344,7 +382,6 @@ public class TutorialPanelManager : MonoBehaviour
     
     private void EnablePauseMenus()
     {
-        // Re-enable SnakeScenePauseManager
         if (SnakeScenePauseManager.Instance != null)
         {
             SnakeScenePauseManager.Instance.EnablePausing();
@@ -358,7 +395,6 @@ public class TutorialPanelManager : MonoBehaviour
         wasTimeScaleZero = Time.timeScale == 0f;
         Time.timeScale = 0f;
         
-        // Freeze player and game systems
         if (playerMovement != null)
             playerMovement.SetFrozen(true);
         if (mouseLookAt != null)
@@ -368,7 +404,6 @@ public class TutorialPanelManager : MonoBehaviour
         if (waveManager != null)
             waveManager.PauseWave();
         
-        // Freeze all abilities
         if (abilityManager != null)
         {
             foreach (BaseAbility ability in abilityManager.GetActiveAbilities())
@@ -378,7 +413,6 @@ public class TutorialPanelManager : MonoBehaviour
             }
         }
         
-        // Freeze all enemies
         AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
         foreach (AppleEnemy enemy in enemies)
         {
@@ -397,7 +431,6 @@ public class TutorialPanelManager : MonoBehaviour
             Time.timeScale = 1f;
         }
         
-        // Unfreeze player and game systems
         if (playerMovement != null)
             playerMovement.SetFrozen(false);
         if (mouseLookAt != null)
@@ -407,7 +440,6 @@ public class TutorialPanelManager : MonoBehaviour
         if (waveManager != null)
             waveManager.ResumeWave();
         
-        // Unfreeze all abilities
         if (abilityManager != null)
         {
             foreach (BaseAbility ability in abilityManager.GetActiveAbilities())
@@ -417,7 +449,6 @@ public class TutorialPanelManager : MonoBehaviour
             }
         }
         
-        // Unfreeze all enemies
         AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
         foreach (AppleEnemy enemy in enemies)
         {
@@ -431,7 +462,6 @@ public class TutorialPanelManager : MonoBehaviour
     
     private void OnDestroy()
     {
-        // Ensure game is resumed if this object is destroyed while tutorial is active
         if (isTutorialActive)
         {
             Time.timeScale = 1f;
@@ -449,9 +479,6 @@ public class TutorialPanelManager : MonoBehaviour
 [UnityEditor.CustomEditor(typeof(TutorialPanelManager))]
 public class TutorialPanelManagerEditor : UnityEditor.Editor
 {
-    private string testTitle = "Test Tutorial";
-    private string testInstructions = "This is a test tutorial.\n\nClick Continue to close.";
-    
     public override void OnInspectorGUI()
     {
         TutorialPanelManager manager = (TutorialPanelManager)target;
@@ -465,13 +492,17 @@ public class TutorialPanelManagerEditor : UnityEditor.Editor
         {
             UnityEditor.EditorGUILayout.BeginVertical("box");
             
-            testTitle = UnityEditor.EditorGUILayout.TextField("Test Title", testTitle);
-            UnityEditor.EditorGUILayout.LabelField("Test Instructions:");
-            testInstructions = UnityEditor.EditorGUILayout.TextArea(testInstructions, GUILayout.Height(60));
-            
-            if (GUILayout.Button("Show Test Tutorial"))
+            UnityEditor.EditorGUILayout.LabelField("Current State:", manager.IsTutorialActive ? "Active" : "Inactive");
+            if (manager.IsTutorialActive)
             {
-                manager.ShowTutorial(testTitle, testInstructions);
+                UnityEditor.EditorGUILayout.LabelField("Page:", (manager.CurrentPageIndex + 1) + " / " + manager.TotalPages);
+            }
+            
+            UnityEditor.EditorGUILayout.Space(5);
+            
+            if (GUILayout.Button("Show Tutorial"))
+            {
+                manager.ShowTutorial();
             }
             
             if (manager.IsTutorialActive)

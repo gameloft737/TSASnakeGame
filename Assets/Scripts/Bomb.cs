@@ -126,6 +126,9 @@ public class Bomb : MonoBehaviour
         if (hasExploded) return;
         hasExploded = true;
         
+        // Play bomb explosion sound
+        SoundManager.Play("Bomb", gameObject);
+        
         // Hide the bomb visual immediately, but don't destroy the GameObject yet
         // We need the GameObject alive to run coroutines
         if (bombObj != null)

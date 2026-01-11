@@ -113,5 +113,5 @@ MonoBehaviour:
       value: 8
     - statName: ExplosionDamage
       value: 20
-  maxLevel: 7
+  maxLevel: 6
   evolutionData: {fileID: 11400000, guid: 6c83b33a077f0ca42a421ee585d8d92f, type: 2}

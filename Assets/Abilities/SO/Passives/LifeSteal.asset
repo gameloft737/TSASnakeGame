@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   abilityName: Life Steal
   description: Heal 5% of the damage you deal
-  icon: {fileID: 21300000, guid: bfc1c08fa00c04549991db87a06ad137, type: 3}
+  icon: {fileID: 21300000, guid: c475707443db11148a37a007a384a173, type: 3}
   abilityPrefab: {fileID: 7007039193495557538, guid: c1fd7c5c7e51e5d4b80f27d92c9815ae, type: 3}
   abilityType: 0
   maxLevel: 5

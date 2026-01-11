@@ -45,6 +45,10 @@ public class WaveManager : MonoBehaviour
     private void Start()
     {
         FindReferences();
+        
+        // Start playing game music (looping background music)
+        SoundManager.Play("GameMusic", gameObject);
+        
         StartWave();
     }
 
@@ -208,8 +212,12 @@ public class WaveManager : MonoBehaviour
         {
             if (!enabled)
             {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                // Only set velocity if not already kinematic to avoid warnings
+                if (!rb.isKinematic)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
                 rb.isKinematic = true;
             }
             else

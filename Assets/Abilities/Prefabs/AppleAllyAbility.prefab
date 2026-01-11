@@ -48,13 +48,17 @@ MonoBehaviour:
   maxLevel: 6
   upgradeData: {fileID: 0}
   baseAllyCount: 1
-  baseConversionRange: 15
-  baseConversionCooldown: 10
+  baseSpawnRadius: 3
+  baseSpawnCooldown: 10
+  allyPrefab: {fileID: 2643215100729108461, guid: 5db01c636cc86b04a8b36b8880440f46, type: 3}
   attachmentToShow: {fileID: 0}
+  attachmentObjectName: 
+  attachmentObjectTag: 
+  searchInPlayerChildren: 1
   allyMaterial: {fileID: 0}
-  allyTintColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  allyTintColor: {r: 1, g: 1, b: 1, a: 1}
   allyDamageMultiplier: 1
   allyHealthMultiplier: 1
-  conversionSound: {fileID: 0}
+  spawnSound: {fileID: 0}
   audioSource: {fileID: 0}
-  conversionEffectPrefab: {fileID: 0}
+  spawnEffectPrefab: {fileID: 0}

@@ -4,21 +4,22 @@ using System;
 using System.Collections;
 
 /// <summary>
-/// Manages screen fade effects (fade to white, fade from white, etc.)
-/// Uses a full-screen UI Image to create the fade effect.
+/// Manages screen fade effects (fade to black, fade from black, etc.)
+/// Uses a CanvasGroup on a Panel for the fade effect.
 /// 
 /// SETUP INSTRUCTIONS:
 /// 1. Create a Canvas in your scene (if you don't have one for UI)
-/// 2. Create an Image as a child of the Canvas
-/// 3. Set the Image to stretch to fill the entire screen (anchor to all corners)
-/// 4. Set the Image color to white with alpha = 0 (transparent)
-/// 5. Make sure the Image is rendered on top of everything (set Sort Order on Canvas or use a separate Canvas)
-/// 6. Create an empty GameObject and add this script
-/// 7. Assign the fade Image to the "Fade Image" field
+/// 2. Create a Panel as a child of the Canvas
+/// 3. Add a CanvasGroup component to the Panel
+/// 4. Set the Panel to stretch to fill the entire screen (anchor to all corners)
+/// 5. Set the Panel's Image color to black (or your desired fade color)
+/// 6. Make sure the Panel is rendered on top of everything (set Sort Order on Canvas or use a separate Canvas)
+/// 7. Create an empty GameObject and add this script
+/// 8. Assign the Panel's CanvasGroup to the "Fade Panel" field
 /// 
 /// USAGE:
-/// - Call ScreenFadeManager.Instance.FadeToWhite() to fade the screen to white
-/// - Call ScreenFadeManager.Instance.FadeFromWhite() to fade from white to clear
+/// - Call ScreenFadeManager.Instance.FadeToBlack() to fade the screen to black
+/// - Call ScreenFadeManager.Instance.FadeFromBlack() to fade from black to clear
 /// - Use the callback parameter to execute code when the fade completes
 /// </summary>
 public class ScreenFadeManager : MonoBehaviour
@@ -26,45 +27,41 @@ public class ScreenFadeManager : MonoBehaviour
     public static ScreenFadeManager Instance { get; private set; }
     
     [Header("References")]
-    [Tooltip("The UI Image used for the fade effect. Should be a full-screen white image.")]
-    [SerializeField] private Image fadeImage;
+    [Tooltip("The CanvasGroup on the fade panel. Should be a full-screen panel with a black Image.")]
+    [SerializeField] private CanvasGroup fadePanel;
+    
+    [Tooltip("Optional: The Image component on the fade panel. Used to ensure correct color.")]
+    [SerializeField] private Image fadePanelImage;
     
     [Header("Settings")]
     [Tooltip("Default duration for fade effects")]
     [SerializeField] private float defaultFadeDuration = 1f;
     
-    [Tooltip("If true, starts the game with a fade from white")]
+    [Tooltip("If true, starts the scene with a fade from black")]
     [SerializeField] private bool fadeInOnStart = true;
     
-    [Tooltip("Delay before the initial fade from white starts")]
+    [Tooltip("Delay before the initial fade from black starts")]
     [SerializeField] private float initialFadeDelay = 0.5f;
     
-    [Header("Initial Fade Settings")]
-    [Tooltip("If true, shows a subtitle after the initial fade completes")]
-    [SerializeField] private bool showSubtitleAfterInitialFade = true;
-    
-    [Tooltip("The subtitle text to show after initial fade")]
-    [TextArea(2, 5)]
-    [SerializeField] private string initialSubtitleText = "Level 1";
-    
-    [Tooltip("Duration to show the initial subtitle")]
-    [SerializeField] private float initialSubtitleDuration = 3f;
+    [Tooltip("The color to fade to/from (usually black)")]
+    [SerializeField] private Color fadeColor = Color.black;
     
     [Header("Debug")]
     [SerializeField] private bool debugMode = false;
     
     private Coroutine activeFadeCoroutine;
     private bool isFading = false;
+    private bool hasInitialized = false;
     
     /// <summary>
-    /// Event fired when a fade to white completes
+    /// Event fired when a fade to black completes
     /// </summary>
-    public event Action OnFadeToWhiteComplete;
+    public event Action OnFadeToBlackComplete;
     
     /// <summary>
-    /// Event fired when a fade from white completes
+    /// Event fired when a fade from black completes
     /// </summary>
-    public event Action OnFadeFromWhiteComplete;
+    public event Action OnFadeFromBlackComplete;
     
     private void Awake()
     {
@@ -72,6 +69,7 @@ public class ScreenFadeManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ScreenFadeManager] Instance created");
         }
         else if (Instance != this)
         {
@@ -80,76 +78,132 @@ public class ScreenFadeManager : MonoBehaviour
             return;
         }
         
-        // Validate fade image
-        if (fadeImage == null)
+        // Validate fade panel
+        if (fadePanel == null)
         {
-            Debug.LogError("[ScreenFadeManager] Fade Image is not assigned! Please assign a full-screen UI Image.");
+            Debug.LogError("[ScreenFadeManager] Fade Panel is not assigned! Please assign a CanvasGroup on a full-screen Panel.");
             return;
         }
         
-        // If fading in on start, make sure the image starts fully opaque (white)
+        // Try to get the Image component if not assigned
+        if (fadePanelImage == null)
+        {
+            fadePanelImage = fadePanel.GetComponent<Image>();
+            if (fadePanelImage == null)
+            {
+                fadePanelImage = fadePanel.GetComponentInChildren<Image>();
+            }
+        }
+        
+        // Ensure the fade panel image has the correct color
+        if (fadePanelImage != null)
+        {
+            fadePanelImage.color = fadeColor;
+            Debug.Log($"[ScreenFadeManager] Set fade panel image color to: {fadeColor}");
+        }
+        else
+        {
+            Debug.LogWarning("[ScreenFadeManager] No Image component found on fade panel. Make sure the panel has an Image with the correct color.");
+        }
+        
+        Debug.Log($"[ScreenFadeManager] Fade Panel found: {fadePanel.gameObject.name}, fadeInOnStart: {fadeInOnStart}");
+        
+        // If fading in on start, make sure the panel starts fully opaque
         if (fadeInOnStart)
         {
             SetFadeAlpha(1f);
+            fadePanel.gameObject.SetActive(true);
+            // Ensure the panel blocks raycasts during fade
+            fadePanel.blocksRaycasts = true;
+            fadePanel.interactable = false;
+            Debug.Log("[ScreenFadeManager] Panel set to opaque (alpha=1), active=true");
         }
         else
         {
             SetFadeAlpha(0f);
+            fadePanel.gameObject.SetActive(false);
+            Debug.Log("[ScreenFadeManager] Panel set to clear (alpha=0), active=false");
         }
+        
+        hasInitialized = true;
     }
     
     private void Start()
     {
-        if (fadeInOnStart && fadeImage != null)
+        Debug.Log($"[ScreenFadeManager] Start called. fadeInOnStart: {fadeInOnStart}, fadePanel null: {fadePanel == null}");
+        if (fadeInOnStart && fadePanel != null)
         {
+            // Re-ensure the panel is set up correctly at Start (in case something changed it)
+            SetFadeAlpha(1f);
+            fadePanel.gameObject.SetActive(true);
+            
+            Debug.Log("[ScreenFadeManager] Starting initial fade sequence");
             StartCoroutine(InitialFadeSequence());
         }
     }
     
     /// <summary>
-    /// Handles the initial fade from white when the game starts
+    /// Called when the script is enabled - ensures fade state is maintained
+    /// </summary>
+    private void OnEnable()
+    {
+        // If we're supposed to fade in on start and haven't completed the initial fade yet,
+        // make sure the panel stays opaque
+        if (fadeInOnStart && hasInitialized && fadePanel != null && !isFading)
+        {
+            // Only force alpha if we haven't started fading yet
+            if (activeFadeCoroutine == null)
+            {
+                SetFadeAlpha(1f);
+                fadePanel.gameObject.SetActive(true);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Handles the initial fade from black when the scene starts
     /// </summary>
     private IEnumerator InitialFadeSequence()
     {
-        // Wait for the initial delay
-        yield return new WaitForSeconds(initialFadeDelay);
+        // Ensure panel is fully opaque before we start
+        SetFadeAlpha(1f);
+        fadePanel.gameObject.SetActive(true);
         
-        if (debugMode)
-            Debug.Log("[ScreenFadeManager] Starting initial fade from white");
+        Debug.Log($"[ScreenFadeManager] InitialFadeSequence started, current alpha: {GetCurrentAlpha()}, waiting {initialFadeDelay}s");
         
-        // Fade from white
-        yield return FadeFromWhiteCoroutine(defaultFadeDuration, () =>
+        // Wait for the initial delay (use realtime so it works even if game starts paused)
+        // During this time, keep ensuring the panel stays opaque
+        float delayElapsed = 0f;
+        while (delayElapsed < initialFadeDelay)
         {
-            if (debugMode)
-                Debug.Log("[ScreenFadeManager] Initial fade complete");
-            
-            // Show the initial subtitle if configured
-            if (showSubtitleAfterInitialFade && !string.IsNullOrEmpty(initialSubtitleText))
+            // Keep the panel opaque during the delay
+            if (fadePanel.alpha < 1f)
             {
-                if (SubtitleUI.Instance != null)
-                {
-                    SubtitleUI.Instance.ShowSubtitle(initialSubtitleText, initialSubtitleDuration);
-                    if (debugMode)
-                        Debug.Log($"[ScreenFadeManager] Showing initial subtitle: {initialSubtitleText}");
-                }
-                else
-                {
-                    Debug.LogWarning("[ScreenFadeManager] SubtitleUI.Instance is null. Cannot show initial subtitle.");
-                }
+                fadePanel.alpha = 1f;
             }
+            delayElapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+        
+        Debug.Log($"[ScreenFadeManager] Starting initial fade from black, alpha before fade: {GetCurrentAlpha()}");
+        
+        // Fade from black
+        yield return FadeFromBlackCoroutine(defaultFadeDuration, () =>
+        {
+            Debug.Log("[ScreenFadeManager] Initial fade complete");
         });
     }
     
     /// <summary>
-    /// Fade the screen to white
+    /// Fade the screen to black
     /// </summary>
     /// <param name="duration">Duration of the fade (uses default if <= 0)</param>
     /// <param name="onComplete">Callback when fade completes</param>
-    public void FadeToWhite(float duration = -1f, Action onComplete = null)
+    public void FadeToBlack(float duration = -1f, Action onComplete = null)
     {
-        if (fadeImage == null)
+        if (fadePanel == null)
         {
-            Debug.LogError("[ScreenFadeManager] Cannot fade - Fade Image is not assigned!");
+            Debug.LogError("[ScreenFadeManager] Cannot fade - Fade Panel is not assigned!");
             onComplete?.Invoke();
             return;
         }
@@ -161,19 +215,19 @@ public class ScreenFadeManager : MonoBehaviour
             StopCoroutine(activeFadeCoroutine);
         }
         
-        activeFadeCoroutine = StartCoroutine(FadeToWhiteCoroutine(fadeDuration, onComplete));
+        activeFadeCoroutine = StartCoroutine(FadeToBlackCoroutine(fadeDuration, onComplete));
     }
     
     /// <summary>
-    /// Fade the screen from white to clear
+    /// Fade the screen from black to clear
     /// </summary>
     /// <param name="duration">Duration of the fade (uses default if <= 0)</param>
     /// <param name="onComplete">Callback when fade completes</param>
-    public void FadeFromWhite(float duration = -1f, Action onComplete = null)
+    public void FadeFromBlack(float duration = -1f, Action onComplete = null)
     {
-        if (fadeImage == null)
+        if (fadePanel == null)
         {
-            Debug.LogError("[ScreenFadeManager] Cannot fade - Fade Image is not assigned!");
+            Debug.LogError("[ScreenFadeManager] Cannot fade - Fade Panel is not assigned!");
             onComplete?.Invoke();
             return;
         }
@@ -185,23 +239,23 @@ public class ScreenFadeManager : MonoBehaviour
             StopCoroutine(activeFadeCoroutine);
         }
         
-        activeFadeCoroutine = StartCoroutine(FadeFromWhiteCoroutine(fadeDuration, onComplete));
+        activeFadeCoroutine = StartCoroutine(FadeFromBlackCoroutine(fadeDuration, onComplete));
     }
     
     /// <summary>
-    /// Fade to white, then fade back from white
+    /// Fade to black, then fade back from black
     /// </summary>
-    /// <param name="fadeInDuration">Duration of fade to white</param>
-    /// <param name="holdDuration">How long to hold at full white</param>
-    /// <param name="fadeOutDuration">Duration of fade from white</param>
-    /// <param name="onFadeToWhiteComplete">Callback when fade to white completes (before hold)</param>
+    /// <param name="fadeInDuration">Duration of fade to black</param>
+    /// <param name="holdDuration">How long to hold at full black</param>
+    /// <param name="fadeOutDuration">Duration of fade from black</param>
+    /// <param name="onFadeToBlackComplete">Callback when fade to black completes (before hold)</param>
     /// <param name="onComplete">Callback when entire sequence completes</param>
-    public void FadeToWhiteAndBack(float fadeInDuration = -1f, float holdDuration = 0.5f, float fadeOutDuration = -1f, 
-        Action onFadeToWhiteComplete = null, Action onComplete = null)
+    public void FadeToBlackAndBack(float fadeInDuration = -1f, float holdDuration = 0.5f, float fadeOutDuration = -1f, 
+        Action onFadeToBlackComplete = null, Action onComplete = null)
     {
-        if (fadeImage == null)
+        if (fadePanel == null)
         {
-            Debug.LogError("[ScreenFadeManager] Cannot fade - Fade Image is not assigned!");
+            Debug.LogError("[ScreenFadeManager] Cannot fade - Fade Panel is not assigned!");
             onComplete?.Invoke();
             return;
         }
@@ -214,25 +268,25 @@ public class ScreenFadeManager : MonoBehaviour
             StopCoroutine(activeFadeCoroutine);
         }
         
-        activeFadeCoroutine = StartCoroutine(FadeToWhiteAndBackCoroutine(inDuration, holdDuration, outDuration, onFadeToWhiteComplete, onComplete));
+        activeFadeCoroutine = StartCoroutine(FadeToBlackAndBackCoroutine(inDuration, holdDuration, outDuration, onFadeToBlackComplete, onComplete));
     }
     
-    private IEnumerator FadeToWhiteCoroutine(float duration, Action onComplete)
+    private IEnumerator FadeToBlackCoroutine(float duration, Action onComplete)
     {
         isFading = true;
         
-        if (debugMode)
-            Debug.Log($"[ScreenFadeManager] Fading to white over {duration}s");
+        Debug.Log($"[ScreenFadeManager] Fading to black over {duration}s, current alpha: {GetCurrentAlpha()}");
         
         float startAlpha = GetCurrentAlpha();
         float elapsed = 0f;
         
-        // Make sure the image is active
-        fadeImage.gameObject.SetActive(true);
+        // Make sure the panel is active
+        fadePanel.gameObject.SetActive(true);
         
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            // Use unscaledDeltaTime so fades work even when game is paused
+            elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
             float alpha = Mathf.Lerp(startAlpha, 1f, t);
             SetFadeAlpha(alpha);
@@ -243,86 +297,105 @@ public class ScreenFadeManager : MonoBehaviour
         isFading = false;
         activeFadeCoroutine = null;
         
-        if (debugMode)
-            Debug.Log("[ScreenFadeManager] Fade to white complete");
+        Debug.Log("[ScreenFadeManager] Fade to black complete");
         
-        OnFadeToWhiteComplete?.Invoke();
+        OnFadeToBlackComplete?.Invoke();
         onComplete?.Invoke();
     }
     
-    private IEnumerator FadeFromWhiteCoroutine(float duration, Action onComplete)
+    private IEnumerator FadeFromBlackCoroutine(float duration, Action onComplete)
     {
         isFading = true;
         
-        if (debugMode)
-            Debug.Log($"[ScreenFadeManager] Fading from white over {duration}s");
-        
+        // Ensure we start from fully opaque
         float startAlpha = GetCurrentAlpha();
+        if (startAlpha < 0.99f)
+        {
+            Debug.LogWarning($"[ScreenFadeManager] FadeFromBlack starting with alpha {startAlpha}, forcing to 1.0");
+            startAlpha = 1f;
+            SetFadeAlpha(1f);
+        }
+        
+        Debug.Log($"[ScreenFadeManager] Fading from black over {duration}s, current alpha: {startAlpha}");
+        
         float elapsed = 0f;
+        
+        // Make sure the panel is active and visible
+        fadePanel.gameObject.SetActive(true);
+        fadePanel.blocksRaycasts = true;
         
         while (elapsed < duration)
         {
-            elapsed += Time.deltaTime;
+            // Use unscaledDeltaTime so fades work even when game is paused
+            elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-            float alpha = Mathf.Lerp(startAlpha, 0f, t);
+            
+            // Use smooth step for a nicer fade curve
+            float smoothT = t * t * (3f - 2f * t);
+            float alpha = Mathf.Lerp(startAlpha, 0f, smoothT);
+            
             SetFadeAlpha(alpha);
+            
+            if (debugMode && Time.frameCount % 10 == 0)
+            {
+                Debug.Log($"[ScreenFadeManager] Fade progress: t={t:F2}, alpha={alpha:F2}");
+            }
+            
             yield return null;
         }
         
         SetFadeAlpha(0f);
         
-        // Optionally disable the image when fully transparent
-        fadeImage.gameObject.SetActive(false);
+        // Disable the panel when fully transparent
+        fadePanel.blocksRaycasts = false;
+        fadePanel.gameObject.SetActive(false);
         
         isFading = false;
         activeFadeCoroutine = null;
         
-        if (debugMode)
-            Debug.Log("[ScreenFadeManager] Fade from white complete");
+        Debug.Log("[ScreenFadeManager] Fade from black complete");
         
-        OnFadeFromWhiteComplete?.Invoke();
+        OnFadeFromBlackComplete?.Invoke();
         onComplete?.Invoke();
     }
     
-    private IEnumerator FadeToWhiteAndBackCoroutine(float fadeInDuration, float holdDuration, float fadeOutDuration,
-        Action onFadeToWhiteComplete, Action onComplete)
+    private IEnumerator FadeToBlackAndBackCoroutine(float fadeInDuration, float holdDuration, float fadeOutDuration,
+        Action onFadeToBlackComplete, Action onComplete)
     {
-        // Fade to white
-        yield return FadeToWhiteCoroutine(fadeInDuration, null);
+        // Fade to black
+        yield return FadeToBlackCoroutine(fadeInDuration, null);
         
-        onFadeToWhiteComplete?.Invoke();
+        onFadeToBlackComplete?.Invoke();
         
-        // Hold at white
+        // Hold at black (use WaitForSecondsRealtime so it works when paused)
         if (holdDuration > 0)
         {
-            yield return new WaitForSeconds(holdDuration);
+            yield return new WaitForSecondsRealtime(holdDuration);
         }
         
-        // Fade from white
-        yield return FadeFromWhiteCoroutine(fadeOutDuration, null);
+        // Fade from black
+        yield return FadeFromBlackCoroutine(fadeOutDuration, null);
         
         onComplete?.Invoke();
     }
     
     /// <summary>
-    /// Set the fade image alpha directly
+    /// Set the fade panel alpha directly
     /// </summary>
     private void SetFadeAlpha(float alpha)
     {
-        if (fadeImage != null)
+        if (fadePanel != null)
         {
-            Color color = fadeImage.color;
-            color.a = alpha;
-            fadeImage.color = color;
+            fadePanel.alpha = alpha;
         }
     }
     
     /// <summary>
-    /// Get the current alpha of the fade image
+    /// Get the current alpha of the fade panel
     /// </summary>
     private float GetCurrentAlpha()
     {
-        return fadeImage != null ? fadeImage.color.a : 0f;
+        return fadePanel != null ? fadePanel.alpha : 0f;
     }
     
     /// <summary>
@@ -331,13 +404,13 @@ public class ScreenFadeManager : MonoBehaviour
     public bool IsFading => isFading;
     
     /// <summary>
-    /// Immediately set the screen to fully white (no fade)
+    /// Immediately set the screen to fully black (no fade)
     /// </summary>
-    public void SetWhite()
+    public void SetBlack()
     {
-        if (fadeImage != null)
+        if (fadePanel != null)
         {
-            fadeImage.gameObject.SetActive(true);
+            fadePanel.gameObject.SetActive(true);
             SetFadeAlpha(1f);
         }
     }
@@ -347,10 +420,10 @@ public class ScreenFadeManager : MonoBehaviour
     /// </summary>
     public void SetClear()
     {
-        if (fadeImage != null)
+        if (fadePanel != null)
         {
             SetFadeAlpha(0f);
-            fadeImage.gameObject.SetActive(false);
+            fadePanel.gameObject.SetActive(false);
         }
     }
 }
@@ -378,30 +451,30 @@ public class ScreenFadeManagerEditor : UnityEditor.Editor
             
             UnityEditor.EditorGUILayout.BeginHorizontal();
             
-            if (GUILayout.Button("Fade To White"))
+            if (GUILayout.Button("Fade To Black"))
             {
-                manager.FadeToWhite(testDuration);
+                manager.FadeToBlack(testDuration);
             }
             
-            if (GUILayout.Button("Fade From White"))
+            if (GUILayout.Button("Fade From Black"))
             {
-                manager.FadeFromWhite(testDuration);
+                manager.FadeFromBlack(testDuration);
             }
             
             UnityEditor.EditorGUILayout.EndHorizontal();
             
-            if (GUILayout.Button("Fade To White And Back"))
+            if (GUILayout.Button("Fade To Black And Back"))
             {
-                manager.FadeToWhiteAndBack(testDuration, 0.5f, testDuration);
+                manager.FadeToBlackAndBack(testDuration, 0.5f, testDuration);
             }
             
             UnityEditor.EditorGUILayout.Space(5);
             
             UnityEditor.EditorGUILayout.BeginHorizontal();
             
-            if (GUILayout.Button("Set White (Instant)"))
+            if (GUILayout.Button("Set Black (Instant)"))
             {
-                manager.SetWhite();
+                manager.SetBlack();
             }
             
             if (GUILayout.Button("Set Clear (Instant)"))
