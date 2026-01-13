@@ -264,7 +264,7 @@ public class SnakeScenePauseManager : MonoBehaviour
         }
         
         // Freeze all enemies
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)
@@ -326,7 +326,7 @@ public class SnakeScenePauseManager : MonoBehaviour
         }
         
         // Unfreeze all enemies
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)

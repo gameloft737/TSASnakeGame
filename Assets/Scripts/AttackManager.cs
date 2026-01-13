@@ -16,13 +16,17 @@ public class AttackManager : MonoBehaviour
     
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
-[SerializeField] private GameObject fuelObj;
+    [SerializeField] private GameObject fuelObj;
+    
     // The player's single attack
     private Attack CurrentAttack => attacks.Count > 0 ? attacks[0] : null;
     
     private bool isHoldingAttack = false;
     private bool isFrozen = false; // Whether attacks are frozen (for ability selection)
     [SerializeField] private WaveManager waveManager;
+    
+    // Cached animator parameter hashes for performance
+    private Dictionary<string, int> animatorHashCache = new Dictionary<string, int>(8);
 
     private void Start()
     {
@@ -94,12 +98,16 @@ public class AttackManager : MonoBehaviour
         // Player can only have one attack
         if (attacks.Count > 0)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning($"Player already has an attack: {attacks[0].attackName}. Cannot add {newAttack.attackName}");
+            #endif
             return false;
         }
         
         attacks.Add(newAttack);
+        #if UNITY_EDITOR
         Debug.Log($"Set player attack: {newAttack.attackName}");
+        #endif
         
         ApplyCurrentVariation();
         CurrentAttack?.SetAsCurrentAttack();
@@ -136,7 +144,9 @@ public class AttackManager : MonoBehaviour
         }
         
         attacks.Clear();
+        #if UNITY_EDITOR
         Debug.Log("Cleared all attacks");
+        #endif
         OnAttacksChanged?.Invoke();
     }
     
@@ -220,20 +230,26 @@ public class AttackManager : MonoBehaviour
         
         if (snakeBody == null)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("AttackManager: Cannot apply evolution visuals - SnakeBody not found!");
+            #endif
             return;
         }
         
         if (attack == null)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("AttackManager: Cannot apply evolution visuals - Attack is null!");
+            #endif
             return;
         }
         
         EvolutionRequirement evolution = attack.GetCurrentEvolution();
         if (evolution == null)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning($"AttackManager: No evolution found for {attack.attackName} at level {attack.GetCurrentLevel()}");
+            #endif
             return;
         }
         
@@ -246,16 +262,20 @@ public class AttackManager : MonoBehaviour
             // Check if this evolution is actually unlocked
             if (!upgradeData.evolutionData.IsEvolutionUnlocked(evolution, abilityManager))
             {
+                #if UNITY_EDITOR
                 Debug.LogWarning($"Evolution {evolution.evolutionName} for {attack.attackName} is not unlocked - skipping visual application");
+                #endif
                 return;
             }
         }
         
         // Check if materials are assigned
+        #if UNITY_EDITOR
         if (evolution.evolutionHeadMaterial == null && evolution.evolutionBodyMaterial == null)
         {
             Debug.LogWarning($"Evolution {evolution.evolutionName} has no materials assigned! Please assign evolutionHeadMaterial and/or evolutionBodyMaterial in the EvolutionData asset.");
         }
+        #endif
         
         // Apply evolution materials and attachment
         snakeBody.ApplyAttackVariation(
@@ -264,9 +284,11 @@ public class AttackManager : MonoBehaviour
             evolution.evolutionAttachment
         );
         
+        #if UNITY_EDITOR
         Debug.Log($"Applied evolution visuals for {attack.attackName}: {evolution.evolutionName}" +
                   $" (Head Material: {(evolution.evolutionHeadMaterial != null ? evolution.evolutionHeadMaterial.name : "none")}" +
                   $", Body Material: {(evolution.evolutionBodyMaterial != null ? evolution.evolutionBodyMaterial.name : "none")})");
+        #endif
     }
     
     /// <summary>
@@ -274,22 +296,30 @@ public class AttackManager : MonoBehaviour
     /// </summary>
     public void RefreshEvolutionVisuals()
     {
+        #if UNITY_EDITOR
         Debug.Log($"RefreshEvolutionVisuals called. CurrentAttack: {(CurrentAttack != null ? CurrentAttack.attackName : "null")}");
+        #endif
         
         if (CurrentAttack == null)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("RefreshEvolutionVisuals: No current attack!");
+            #endif
             return;
         }
         
         if (CurrentAttack.IsAtEvolutionLevel())
         {
+            #if UNITY_EDITOR
             Debug.Log($"CurrentAttack {CurrentAttack.attackName} is at evolution level {CurrentAttack.GetCurrentLevel()}");
+            #endif
             ApplyEvolutionVisuals(CurrentAttack);
         }
         else
         {
+            #if UNITY_EDITOR
             Debug.Log($"CurrentAttack {CurrentAttack.attackName} is NOT at evolution level (level {CurrentAttack.GetCurrentLevel()})");
+            #endif
         }
     }
 
@@ -318,11 +348,25 @@ public class AttackManager : MonoBehaviour
         return CurrentAttack.CanActivate();
     }
 
+    /// <summary>
+    /// Gets or creates a cached hash for an animator parameter name.
+    /// Avoids string hashing every frame.
+    /// </summary>
+    private int GetAnimatorHash(string paramName)
+    {
+        if (!animatorHashCache.TryGetValue(paramName, out int hash))
+        {
+            hash = Animator.StringToHash(paramName);
+            animatorHashCache[paramName] = hash;
+        }
+        return hash;
+    }
+    
     public void TriggerAnimation(string triggerName)
     {
         if (animator != null && !string.IsNullOrEmpty(triggerName))
         {
-            animator.SetTrigger(triggerName);
+            animator.SetTrigger(GetAnimatorHash(triggerName));
         }
     }
     
@@ -330,7 +374,7 @@ public class AttackManager : MonoBehaviour
     {
         if (animator != null && !string.IsNullOrEmpty(boolName))
         {
-            animator.SetBool(boolName, value);
+            animator.SetBool(GetAnimatorHash(boolName), value);
         }
     }
     

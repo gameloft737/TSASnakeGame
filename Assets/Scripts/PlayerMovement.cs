@@ -107,11 +107,15 @@ public class PlayerMovement : MonoBehaviour
         {
             // Snap orientation to nearest cardinal direction
             SnapOrientationToCardinal();
+            #if UNITY_EDITOR
             Debug.Log("[PlayerMovement] Classic mode enabled - movement restricted to 4 directions");
+            #endif
         }
         else
         {
+            #if UNITY_EDITOR
             Debug.Log("[PlayerMovement] Classic mode disabled");
+            #endif
         }
     }
     

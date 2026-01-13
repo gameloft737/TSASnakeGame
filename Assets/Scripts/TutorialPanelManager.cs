@@ -413,7 +413,7 @@ public class TutorialPanelManager : MonoBehaviour
             }
         }
         
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)
@@ -449,7 +449,7 @@ public class TutorialPanelManager : MonoBehaviour
             }
         }
         
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)

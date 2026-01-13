@@ -8,6 +8,7 @@ public class FuelUI : MonoBehaviour
     [SerializeField] private Slider fuelSlider;
     [SerializeField] private Image fillImage; // Optional: reference to slider's fill image
     [SerializeField] private TextMeshProUGUI fuelText; // Optional: text display
+    [SerializeField] private TextMeshProUGUI additionalText; // Optional: additional text that shows/hides with fuel UI
     
     [Header("Visual Settings")]
     [SerializeField] private Gradient fuelGradient; // Color changes based on fuel level
@@ -38,6 +39,12 @@ public class FuelUI : MonoBehaviour
         {
             fillImage = fuelSlider.fillRect?.GetComponent<Image>();
         }
+        
+        // Hide additional text initially (will be shown when attack is active)
+        if (additionalText != null)
+        {
+            additionalText.gameObject.SetActive(false);
+        }
     }
 
     private void Update()
@@ -48,6 +55,12 @@ public class FuelUI : MonoBehaviour
     private void UpdateFuelDisplay()
     {
         Attack currentAttack = attackManager?.GetCurrentAttack();
+        
+        // Show/hide additional text based on whether there's an active attack
+        if (additionalText != null)
+        {
+            additionalText.gameObject.SetActive(currentAttack != null);
+        }
         
         if (currentAttack == null) return;
 
@@ -106,6 +119,38 @@ public class FuelUI : MonoBehaviour
     {
         // You can add animation/effects here
         Debug.Log("Fuel depleted!");
+    }
+    
+    /// <summary>
+    /// Sets the additional text content that appears with the fuel UI
+    /// </summary>
+    /// <param name="text">The text to display</param>
+    public void SetAdditionalText(string text)
+    {
+        if (additionalText != null)
+        {
+            additionalText.text = text;
+        }
+    }
+    
+    /// <summary>
+    /// Gets the current additional text content
+    /// </summary>
+    public string GetAdditionalText()
+    {
+        return additionalText != null ? additionalText.text : string.Empty;
+    }
+    
+    /// <summary>
+    /// Shows or hides the additional text
+    /// </summary>
+    /// <param name="visible">Whether the text should be visible</param>
+    public void SetAdditionalTextVisible(bool visible)
+    {
+        if (additionalText != null)
+        {
+            additionalText.gameObject.SetActive(visible);
+        }
     }
 
     // Optional: Show activation threshold line

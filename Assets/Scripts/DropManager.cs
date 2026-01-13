@@ -27,8 +27,8 @@ public class DropManager : MonoBehaviour
     [SerializeField] private bool useDropPoints = false;
     
     private float autoSpawnTimer = 0f;
-    private List<Transform> dropPoints = new List<Transform>();
-    private List<AbilityDrop> activeDrops = new List<AbilityDrop>();
+    private List<Transform> dropPoints = new List<Transform>(16);
+    private List<AbilityDrop> activeDrops = new List<AbilityDrop>(16);
 
     private void Start()
     {
@@ -47,8 +47,8 @@ public class DropManager : MonoBehaviour
 
     private void Update()
     {
-        // Clean up null references from collected/destroyed drops
-        activeDrops.RemoveAll(drop => drop == null);
+        // Clean up null references from collected/destroyed drops (no lambda allocation)
+        CleanupNullDrops();
         
         if (autoSpawn)
         {
@@ -61,14 +61,29 @@ public class DropManager : MonoBehaviour
             }
         }
     }
+    
+    /// <summary>
+    /// Removes null entries from activeDrops list without lambda allocation.
+    /// Uses reverse iteration to avoid index shifting issues.
+    /// </summary>
+    private void CleanupNullDrops()
+    {
+        for (int i = activeDrops.Count - 1; i >= 0; i--)
+        {
+            if (activeDrops[i] == null)
+            {
+                activeDrops.RemoveAt(i);
+            }
+        }
+    }
 
     /// <summary>
     /// Gets the current number of active drops in the world
     /// </summary>
     public int GetActiveDropCount()
     {
-        // Clean up null references first
-        activeDrops.RemoveAll(drop => drop == null);
+        // Clean up null references first (no lambda allocation)
+        CleanupNullDrops();
         return activeDrops.Count;
     }
     
@@ -90,18 +105,32 @@ public class DropManager : MonoBehaviour
         // Check if we've reached the maximum number of drops
         if (!CanSpawnDrop())
         {
+            #if UNITY_EDITOR
             Debug.Log($"[DropManager] Cannot spawn drop - maximum of {maxDrops} drops already active ({GetActiveDropCount()})");
+            #endif
             return;
         }
         
-        GameObject drop = Instantiate(dropPrefab, position, Quaternion.identity);
+        // Use object pool if available, otherwise instantiate
+        GameObject drop;
+        if (ObjectPool.Instance != null)
+        {
+            drop = ObjectPool.Instance.Spawn(dropPrefab, position, Quaternion.identity);
+        }
+        else
+        {
+            drop = Instantiate(dropPrefab, position, Quaternion.identity);
+        }
+        
         AbilityDrop dropScript = drop.GetComponent<AbilityDrop>();
         
         // Track the active drop
         if (dropScript != null)
         {
             activeDrops.Add(dropScript);
+            #if UNITY_EDITOR
             Debug.Log($"[DropManager] Spawned drop. Active drops: {activeDrops.Count}/{maxDrops}");
+            #endif
         }
     }
 
@@ -138,13 +167,17 @@ public class DropManager : MonoBehaviour
     {
         if (!useDropPoints || dropPoints.Count == 0)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("Drop points not configured!");
+            #endif
             return;
         }
         
         if (index < 0 || index >= dropPoints.Count)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning($"Drop point index {index} out of range!");
+            #endif
             return;
         }
         
@@ -174,7 +207,9 @@ public class DropManager : MonoBehaviour
             dropPoints.Add(child);
         }
         
+        #if UNITY_EDITOR
         Debug.Log($"Cached {dropPoints.Count} drop points from {dropPointsContainer.name}");
+        #endif
     }
     
     /// <summary>
@@ -189,7 +224,9 @@ public class DropManager : MonoBehaviour
     {
         if (abilityPrefabs.Count == 0)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("No ability prefabs registered in DropManager! Add abilities to the list in inspector.");
+            #endif
             return null;
         }
         

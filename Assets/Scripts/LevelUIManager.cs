@@ -1,15 +1,17 @@
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 
 /// <summary>
 /// Defines what type of trigger condition to use
 /// </summary>
 public enum LevelTriggerType
 {
-    XPLevel,        // Triggers when player reaches a specific XP level
+    XPLevel,        // Triggers when player reaches a specific XP level (rank)
     WaveNumber      // Triggers when a specific wave starts
 }
 
@@ -29,7 +31,8 @@ public enum LevelUIActionType
     FadeToBlackAndBack,     // Fade to black, hold, then fade back
     LoadScene,              // Load a new scene (with optional fade)
     FadeAndLoadScene,       // Fade to white, then load a new scene
-    ShowTutorialPanel       // Show a tutorial panel that pauses the game
+    ShowTutorialPanel,      // Show a tutorial panel that pauses the game
+    ShowLevelAnnouncement   // Show a level announcement with slide animation
 }
 
 /// <summary>
@@ -39,16 +42,16 @@ public enum LevelUIActionType
 public class LevelUITrigger
 {
     [Header("Trigger Condition")]
-    [Tooltip("What type of trigger to use (XP Level or Wave Number)")]
+    [Tooltip("What type of trigger to use (XP Level/Rank or Wave Number)")]
     public LevelTriggerType triggerType = LevelTriggerType.XPLevel;
     
-    [Tooltip("The level/wave number that triggers this action")]
+    [Tooltip("The rank/wave number that triggers this action")]
     public int triggerValue = 1;
     
     [Tooltip("If true, this trigger can only fire once per game session")]
     public bool triggerOnce = true;
     
-    [Tooltip("If true, waits for the Attack Selection UI to close before executing this trigger. Useful for levels 2+ where the attack menu appears.")]
+    [Tooltip("If true, waits for the Attack Selection UI to close before executing this trigger. Useful for ranks 2+ where the attack menu appears.")]
     public bool waitForAttackUI = false;
     
     [Header("Action")]
@@ -113,6 +116,10 @@ public class LevelUITrigger
     [TextArea(3, 8)]
     public string tutorialInstructions = "";
     
+    [Header("Level Announcement Settings (for ShowLevelAnnouncement action)")]
+    [Tooltip("The level number to announce (if 0, will auto-calculate from rank)")]
+    public int announcementLevel = 0;
+    
     [Header("Optional Delay")]
     [Tooltip("Delay in seconds before executing the action")]
     public float delay = 0f;
@@ -130,7 +137,7 @@ public class LevelUITrigger
     }
     
     /// <summary>
-    /// Checks if this trigger should fire for the given level/wave
+    /// Checks if this trigger should fire for the given rank/wave
     /// </summary>
     public bool ShouldTrigger(LevelTriggerType type, int value)
     {
@@ -141,17 +148,22 @@ public class LevelUITrigger
 }
 
 /// <summary>
-/// Manages UI triggers based on player level and wave progression.
+/// Manages UI triggers based on player rank and wave progression.
 /// Listens to XPManager and WaveManager events and executes configured triggers.
+/// 
+/// TERMINOLOGY:
+/// - Rank: The XP level from XPManager (what was previously called "level")
+/// - Level: A milestone reached every N ranks (configurable via ranksPerLevel)
 ///
 /// SETUP INSTRUCTIONS:
 /// 1. Create an empty GameObject in your scene and name it "LevelUIManager"
 /// 2. Add this script to that GameObject
 /// 3. Configure your triggers directly in the "Triggers" list
 /// 4. Make sure you have SubtitleUI in your scene if using subtitle triggers
+/// 5. For level announcements, assign a TextMeshProUGUI and its RectTransform
 ///
 /// TRIGGER TYPES:
-/// - XP Level: Triggers when player reaches a specific XP level (from XPManager)
+/// - XP Level (Rank): Triggers when player reaches a specific rank (from XPManager)
 /// - Wave Number: Triggers when a specific wave starts (from WaveManager)
 ///
 /// ACTION TYPES:
@@ -167,13 +179,14 @@ public class LevelUITrigger
 /// - LoadScene: Load a new scene immediately
 /// - FadeAndLoadScene: Fade to white, then load a new scene
 /// - ShowTutorialPanel: Show a tutorial panel that pauses the game
+/// - ShowLevelAnnouncement: Show a level announcement with slide-in, hover, slide-out animation
 /// </summary>
 public class LevelUIManager : MonoBehaviour
 {
     public static LevelUIManager Instance { get; private set; }
     
     [Header("Triggers")]
-    [Tooltip("List of UI triggers that fire at specific levels or waves")]
+    [Tooltip("List of UI triggers that fire at specific ranks or waves")]
     [SerializeField] private List<LevelUITrigger> triggers = new List<LevelUITrigger>();
     
     [Header("References (Auto-found if not assigned)")]
@@ -181,8 +194,58 @@ public class LevelUIManager : MonoBehaviour
     [SerializeField] private WaveManager waveManager;
     [SerializeField] private AttackSelectionUI attackSelectionUI;
     
+    [Header("Level Announcement UI")]
+    [Tooltip("The TextMeshProUGUI component for displaying level announcements")]
+    [SerializeField] private TextMeshProUGUI levelAnnouncementText;
+    
+    [Tooltip("The RectTransform of the level announcement (for animation)")]
+    [SerializeField] private RectTransform levelAnnouncementRect;
+    
+    [Tooltip("How many ranks equal one level (default: 10)")]
+    [SerializeField] private int ranksPerLevel = 10;
+    
+    [Tooltip("If true, automatically show level announcement when reaching level milestones")]
+    [SerializeField] private bool autoShowLevelAnnouncements = true;
+    
+    [Header("Win Condition")]
+    [Tooltip("The rank at which the player wins the game (0 = disabled)")]
+    [SerializeField] private int winRank = 50;
+    
+    [Tooltip("The text to display when the player wins")]
+    [SerializeField] private string winText = "You Won!";
+    
+    [Tooltip("If true, automatically show win announcement when reaching win rank")]
+    [SerializeField] private bool autoShowWinAnnouncement = true;
+    
+    [Header("Level Announcement Animation Settings")]
+    [Tooltip("Duration of the slide-in animation")]
+    [SerializeField] private float slideInDuration = 0.5f;
+    
+    [Tooltip("Duration to hover in the center")]
+    [SerializeField] private float hoverDuration = 2f;
+    
+    [Tooltip("Duration of the slide-out animation")]
+    [SerializeField] private float slideOutDuration = 0.5f;
+    
+    [Tooltip("How far off-screen the text starts (in pixels from center)")]
+    [SerializeField] private float offScreenOffset = 1000f;
+    
+    [Tooltip("Amplitude of the hover wobble effect")]
+    [SerializeField] private float wobbleAmplitude = 10f;
+    
+    [Tooltip("Speed of the hover wobble effect")]
+    [SerializeField] private float wobbleSpeed = 3f;
+    
+    [Tooltip("Easing curve for slide animations")]
+    [SerializeField] private AnimationCurve slideEaseCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+    
     [Header("Debug")]
     [SerializeField] private bool debugMode = false;
+    
+    // Track the last announced level to avoid duplicates
+    private int lastAnnouncedLevel = 0;
+    private Coroutine levelAnnouncementCoroutine;
+    private bool hasWon = false;
     
     private void Awake()
     {
@@ -215,30 +278,22 @@ public class LevelUIManager : MonoBehaviour
             Debug.Log($"[LevelUIManager] Initialized with {triggers.Count} triggers");
         }
         
-        // Check current level on start and trigger any matching triggers
-        // This handles the case where player starts at level 1 and has a level 1 trigger
+        // Check current rank on start and trigger any matching triggers
         StartCoroutine(CheckInitialState());
     }
     
-    /// <summary>
-    /// Checks the initial level/wave state and triggers any matching triggers
-    /// Uses a coroutine to wait one frame so all systems are initialized
-    /// </summary>
     private IEnumerator CheckInitialState()
     {
-        // Wait one frame for all systems to initialize
         yield return null;
         
-        // Check current XP level
         if (xpManager != null)
         {
-            int currentLevel = xpManager.GetCurrentLevel();
+            int currentRank = xpManager.GetCurrentLevel();
             if (debugMode)
-                Debug.Log($"[LevelUIManager] Checking initial level: {currentLevel}");
-            ProcessTriggers(LevelTriggerType.XPLevel, currentLevel);
+                Debug.Log($"[LevelUIManager] Checking initial rank: {currentRank}");
+            ProcessTriggers(LevelTriggerType.XPLevel, currentRank);
         }
         
-        // Check current wave (wave 0 = wave 1 in display)
         if (waveManager != null)
         {
             int currentWave = waveManager.GetCurrentWaveIndex() + 1;
@@ -265,7 +320,7 @@ public class LevelUIManager : MonoBehaviour
             attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
             
         if (xpManager == null)
-            Debug.LogWarning("[LevelUIManager] XPManager not found. XP Level triggers will not work.");
+            Debug.LogWarning("[LevelUIManager] XPManager not found. XP Rank triggers will not work.");
             
         if (waveManager == null)
             Debug.LogWarning("[LevelUIManager] WaveManager not found. Wave triggers will not work.");
@@ -273,10 +328,8 @@ public class LevelUIManager : MonoBehaviour
     
     private void SubscribeToEvents()
     {
-        // Subscribe to XP level up events
-        XPManager.OnLeveledUp += OnLevelUp;
+        XPManager.OnLeveledUp += OnRankUp;
         
-        // Subscribe to wave start events
         if (waveManager != null)
         {
             waveManager.OnWaveStarted.AddListener(OnWaveStarted);
@@ -285,33 +338,57 @@ public class LevelUIManager : MonoBehaviour
     
     private void UnsubscribeFromEvents()
     {
-        // Unsubscribe from XP level up events
-        XPManager.OnLeveledUp -= OnLevelUp;
+        XPManager.OnLeveledUp -= OnRankUp;
         
-        // Unsubscribe from wave start events
         if (waveManager != null)
         {
             waveManager.OnWaveStarted.RemoveListener(OnWaveStarted);
         }
     }
     
-    /// <summary>
-    /// Called when the player levels up
-    /// </summary>
-    private void OnLevelUp(int newLevel)
+    private void OnRankUp(int newRank)
     {
         if (debugMode)
-            Debug.Log($"[LevelUIManager] Player reached level {newLevel}");
+            Debug.Log($"[LevelUIManager] Player reached rank {newRank}");
             
-        ProcessTriggers(LevelTriggerType.XPLevel, newLevel);
+        ProcessTriggers(LevelTriggerType.XPLevel, newRank);
+        
+        // Check for win condition first
+        if (autoShowWinAnnouncement && winRank > 0 && newRank >= winRank && !hasWon)
+        {
+            hasWon = true;
+            // Wait for attack selection UI to close before showing win announcement
+            StartCoroutine(ShowWinAnnouncementAfterAttackUI());
+            return; // Don't show level announcement if we just won
+        }
+        
+        if (autoShowLevelAnnouncements && ranksPerLevel > 0)
+        {
+            int currentLevel = GetLevelFromRank(newRank);
+            if (currentLevel > lastAnnouncedLevel && currentLevel > 0)
+            {
+                lastAnnouncedLevel = currentLevel;
+                ShowLevelAnnouncement(currentLevel);
+            }
+        }
     }
     
-    /// <summary>
-    /// Called when a new wave starts
-    /// </summary>
+    public int GetLevelFromRank(int rank)
+    {
+        return rank / ranksPerLevel;
+    }
+    
+    public int GetCurrentLevel()
+    {
+        if (xpManager != null)
+        {
+            return GetLevelFromRank(xpManager.GetCurrentLevel());
+        }
+        return 0;
+    }
+    
     private void OnWaveStarted(int waveIndex)
     {
-        // Wave index is 0-based, but we display as 1-based
         int waveNumber = waveIndex + 1;
         
         if (debugMode)
@@ -320,9 +397,6 @@ public class LevelUIManager : MonoBehaviour
         ProcessTriggers(LevelTriggerType.WaveNumber, waveNumber);
     }
     
-    /// <summary>
-    /// Process all triggers for the given type and value
-    /// </summary>
     private void ProcessTriggers(LevelTriggerType type, int value)
     {
         foreach (var trigger in triggers)
@@ -334,25 +408,19 @@ public class LevelUIManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Execute a single trigger's action
-    /// </summary>
     private void ExecuteTrigger(LevelUITrigger trigger)
     {
         if (trigger == null) return;
         
-        // Mark as triggered
         trigger.hasTriggered = true;
         
         if (debugMode)
             Debug.Log($"[LevelUIManager] Executing trigger: {trigger.actionType} at {trigger.triggerType} {trigger.triggerValue}");
         
-        // Check if we need to wait for attack UI to close
         if (trigger.waitForAttackUI)
         {
             StartCoroutine(ExecuteTriggerAfterAttackUI(trigger));
         }
-        // Execute with delay if specified
         else if (trigger.delay > 0)
         {
             StartCoroutine(ExecuteTriggerDelayed(trigger, trigger.delay));
@@ -363,25 +431,133 @@ public class LevelUIManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Waits for the Attack Selection UI to close before executing the trigger
-    /// </summary>
     private IEnumerator ExecuteTriggerAfterAttackUI(LevelUITrigger trigger)
     {
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Waiting for Attack UI to close before executing trigger: {trigger.actionType}");
-        
-        // First, wait for the attack UI to open (it might not be open yet when level up happens)
-        // Give it a small window to open
-        float waitForOpenTime = 0.5f;
         float elapsed = 0f;
-        
-        while (elapsed < waitForOpenTime)
+        while (elapsed < 0.5f)
         {
-            if (attackSelectionUI != null && attackSelectionUI.IsUIOpen())
-            {
-                break; // UI is open, proceed to wait for it to close
-            }
+            if (attackSelectionUI != null && attackSelectionUI.IsUIOpen()) break;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        if (attackSelectionUI != null)
+            while (attackSelectionUI.IsUIOpen()) yield return null;
+        if (trigger.delay > 0) yield return new WaitForSeconds(trigger.delay);
+        ExecuteTriggerAction(trigger);
+    }
+    
+    private IEnumerator ExecuteTriggerDelayed(LevelUITrigger trigger, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ExecuteTriggerAction(trigger);
+    }
+    
+    private void ExecuteTriggerAction(LevelUITrigger trigger)
+    {
+        switch (trigger.actionType)
+        {
+            case LevelUIActionType.ShowSubtitle:
+                ShowSubtitle(trigger.subtitleText, trigger.subtitleDuration);
+                break;
+            case LevelUIActionType.ShowGameObject:
+                if (trigger.targetGameObject != null) trigger.targetGameObject.SetActive(true);
+                break;
+            case LevelUIActionType.HideGameObject:
+                if (trigger.targetGameObject != null) trigger.targetGameObject.SetActive(false);
+                break;
+            case LevelUIActionType.ToggleGameObject:
+                if (trigger.targetGameObject != null) trigger.targetGameObject.SetActive(!trigger.targetGameObject.activeSelf);
+                break;
+            case LevelUIActionType.PlayAnimation:
+                if (trigger.targetAnimator != null && !string.IsNullOrEmpty(trigger.animationName))
+                {
+                    if (trigger.useAnimatorTrigger) trigger.targetAnimator.SetTrigger(trigger.animationName);
+                    else trigger.targetAnimator.Play(trigger.animationName);
+                }
+                break;
+            case LevelUIActionType.InvokeUnityEvent:
+                trigger.onTriggered?.Invoke();
+                break;
+            case LevelUIActionType.FadeToBlack:
+                if (ScreenFadeManager.Instance != null)
+                    ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () => {
+                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
+                    });
+                break;
+            case LevelUIActionType.FadeFromBlack:
+                if (ScreenFadeManager.Instance != null)
+                    ScreenFadeManager.Instance.FadeFromBlack(trigger.fadeDuration, () => {
+                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
+                    });
+                break;
+            case LevelUIActionType.FadeToBlackAndBack:
+                if (ScreenFadeManager.Instance != null)
+                    ScreenFadeManager.Instance.FadeToBlackAndBack(trigger.fadeDuration, trigger.fadeHoldDuration, trigger.fadeDuration, null, () => {
+                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
+                    });
+                break;
+            case LevelUIActionType.LoadScene:
+                if (!string.IsNullOrEmpty(trigger.sceneToLoad)) LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad);
+                break;
+            case LevelUIActionType.FadeAndLoadScene:
+                if (!string.IsNullOrEmpty(trigger.sceneToLoad) && ScreenFadeManager.Instance != null)
+                    ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () => LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad));
+                break;
+            case LevelUIActionType.ShowTutorialPanel:
+                if (TutorialPanelManager.Instance != null) TutorialPanelManager.Instance.ShowTutorial();
+                break;
+            case LevelUIActionType.ShowLevelAnnouncement:
+                int level = trigger.announcementLevel > 0 ? trigger.announcementLevel : GetLevelFromRank(xpManager?.GetCurrentLevel() ?? 0);
+                if (level > 0) ShowLevelAnnouncement(level);
+                break;
+        }
+    }
+    
+    private void LoadSceneInternal(string sceneName, bool additive)
+    {
+        SceneManager.LoadScene(sceneName, additive ? LoadSceneMode.Additive : LoadSceneMode.Single);
+    }
+    
+    public void LoadSceneWithFade(string sceneName, float fadeDuration = 1f, bool additive = false)
+    {
+        if (ScreenFadeManager.Instance != null)
+            ScreenFadeManager.Instance.FadeToBlack(fadeDuration, () => LoadSceneInternal(sceneName, additive));
+        else LoadSceneInternal(sceneName, additive);
+    }
+    
+    public void LoadSceneImmediate(string sceneName, bool additive = false) => LoadSceneInternal(sceneName, additive);
+    
+    public void ShowLevelAnnouncement(int level)
+    {
+        // Save checkpoint when a new level is announced
+        if (CheckpointManager.Instance != null)
+        {
+            CheckpointManager.Instance.SaveCheckpoint(level);
+            if (debugMode)
+                Debug.Log($"[LevelUIManager] Saved checkpoint at level {level}");
+        }
+        
+        ShowAnnouncement($"Level {level}");
+    }
+    
+    /// <summary>
+    /// Show the win announcement with the same animation style
+    /// </summary>
+    public void ShowWinAnnouncement()
+    {
+        ShowAnnouncement(winText);
+    }
+    
+    /// <summary>
+    /// Waits for the attack selection UI to close before showing the win announcement
+    /// </summary>
+    private IEnumerator ShowWinAnnouncementAfterAttackUI()
+    {
+        // First, wait a short time for the attack UI to potentially open
+        float elapsed = 0f;
+        while (elapsed < 0.5f)
+        {
+            if (attackSelectionUI != null && attackSelectionUI.IsUIOpen()) break;
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -393,401 +569,94 @@ public class LevelUIManager : MonoBehaviour
             {
                 yield return null;
             }
-            
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Attack UI closed, now executing trigger: {trigger.actionType}");
         }
         
-        // Apply any additional delay after the UI closes
-        if (trigger.delay > 0)
-        {
-            yield return new WaitForSeconds(trigger.delay);
-        }
+        // Add a small delay after the UI closes for a smoother experience
+        yield return new WaitForSeconds(0.5f);
         
-        ExecuteTriggerAction(trigger);
-    }
-    
-    private IEnumerator ExecuteTriggerDelayed(LevelUITrigger trigger, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        ExecuteTriggerAction(trigger);
+        // Show the win announcement
+        ShowAnnouncement(winText);
     }
     
     /// <summary>
-    /// Execute the actual action for a trigger
+    /// Show a custom announcement with the slide-in, wobble, slide-out animation
     /// </summary>
-    private void ExecuteTriggerAction(LevelUITrigger trigger)
+    public void ShowAnnouncement(string text)
     {
-        switch (trigger.actionType)
-        {
-            case LevelUIActionType.ShowSubtitle:
-                ShowSubtitle(trigger.subtitleText, trigger.subtitleDuration);
-                break;
-                
-            case LevelUIActionType.ShowGameObject:
-                if (trigger.targetGameObject != null)
-                {
-                    trigger.targetGameObject.SetActive(true);
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Showing GameObject: {trigger.targetGameObject.name}");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] ShowGameObject trigger has no target GameObject assigned!");
-                }
-                break;
-                
-            case LevelUIActionType.HideGameObject:
-                if (trigger.targetGameObject != null)
-                {
-                    trigger.targetGameObject.SetActive(false);
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Hiding GameObject: {trigger.targetGameObject.name}");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] HideGameObject trigger has no target GameObject assigned!");
-                }
-                break;
-                
-            case LevelUIActionType.ToggleGameObject:
-                if (trigger.targetGameObject != null)
-                {
-                    bool newState = !trigger.targetGameObject.activeSelf;
-                    trigger.targetGameObject.SetActive(newState);
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Toggled GameObject: {trigger.targetGameObject.name} to {newState}");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] ToggleGameObject trigger has no target GameObject assigned!");
-                }
-                break;
-                
-            case LevelUIActionType.PlayAnimation:
-                if (trigger.targetAnimator != null && !string.IsNullOrEmpty(trigger.animationName))
-                {
-                    if (trigger.useAnimatorTrigger)
-                    {
-                        trigger.targetAnimator.SetTrigger(trigger.animationName);
-                    }
-                    else
-                    {
-                        trigger.targetAnimator.Play(trigger.animationName);
-                    }
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Playing animation: {trigger.animationName}");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] PlayAnimation trigger has no Animator or animation name assigned!");
-                }
-                break;
-                
-            case LevelUIActionType.InvokeUnityEvent:
-                trigger.onTriggered?.Invoke();
-                if (debugMode)
-                    Debug.Log("[LevelUIManager] Invoked UnityEvent");
-                break;
-                
-            case LevelUIActionType.FadeToBlack:
-                if (ScreenFadeManager.Instance != null)
-                {
-                    ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () =>
-                    {
-                        if (trigger.showSubtitleAfterFade && !string.IsNullOrEmpty(trigger.fadeSubtitleText))
-                        {
-                            ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
-                        }
-                    });
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Fading to black over {trigger.fadeDuration}s");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] ScreenFadeManager.Instance is null! Make sure ScreenFadeManager exists in the scene.");
-                }
-                break;
-                
-            case LevelUIActionType.FadeFromBlack:
-                if (ScreenFadeManager.Instance != null)
-                {
-                    ScreenFadeManager.Instance.FadeFromBlack(trigger.fadeDuration, () =>
-                    {
-                        if (trigger.showSubtitleAfterFade && !string.IsNullOrEmpty(trigger.fadeSubtitleText))
-                        {
-                            ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
-                        }
-                    });
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Fading from black over {trigger.fadeDuration}s");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] ScreenFadeManager.Instance is null! Make sure ScreenFadeManager exists in the scene.");
-                }
-                break;
-                
-            case LevelUIActionType.FadeToBlackAndBack:
-                if (ScreenFadeManager.Instance != null)
-                {
-                    ScreenFadeManager.Instance.FadeToBlackAndBack(
-                        trigger.fadeDuration,
-                        trigger.fadeHoldDuration,
-                        trigger.fadeDuration,
-                        null, // onFadeToBlackComplete
-                        () =>
-                        {
-                            if (trigger.showSubtitleAfterFade && !string.IsNullOrEmpty(trigger.fadeSubtitleText))
-                            {
-                                ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
-                            }
-                        });
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Fading to black and back over {trigger.fadeDuration}s each, hold {trigger.fadeHoldDuration}s");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] ScreenFadeManager.Instance is null! Make sure ScreenFadeManager exists in the scene.");
-                }
-                break;
-                
-            case LevelUIActionType.LoadScene:
-                if (!string.IsNullOrEmpty(trigger.sceneToLoad))
-                {
-                    LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad);
-                    if (debugMode)
-                        Debug.Log($"[LevelUIManager] Loading scene: {trigger.sceneToLoad}");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] LoadScene trigger has no scene name assigned!");
-                }
-                break;
-                
-            case LevelUIActionType.FadeAndLoadScene:
-                if (!string.IsNullOrEmpty(trigger.sceneToLoad))
-                {
-                    if (ScreenFadeManager.Instance != null)
-                    {
-                        ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () =>
-                        {
-                            LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad);
-                        });
-                        if (debugMode)
-                            Debug.Log($"[LevelUIManager] Fading to black then loading scene: {trigger.sceneToLoad}");
-                    }
-                    else
-                    {
-                        // Fallback: load scene without fade
-                        Debug.LogWarning("[LevelUIManager] ScreenFadeManager.Instance is null! Loading scene without fade.");
-                        LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad);
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] FadeAndLoadScene trigger has no scene name assigned!");
-                }
-                break;
-                
-            case LevelUIActionType.ShowTutorialPanel:
-                if (TutorialPanelManager.Instance != null)
-                {
-                    TutorialPanelManager.Instance.ShowTutorial();
-                    if (debugMode)
-                        Debug.Log("[LevelUIManager] Showing tutorial panel");
-                }
-                else
-                {
-                    Debug.LogWarning("[LevelUIManager] TutorialPanelManager.Instance is null! Make sure TutorialPanelManager exists in the scene.");
-                }
-                break;
-        }
+        if (levelAnnouncementText == null || levelAnnouncementRect == null) return;
+        if (levelAnnouncementCoroutine != null) StopCoroutine(levelAnnouncementCoroutine);
+        levelAnnouncementCoroutine = StartCoroutine(AnnouncementAnimation(text));
     }
     
-    /// <summary>
-    /// Internal method to load a scene
-    /// </summary>
-    private void LoadSceneInternal(string sceneName, bool additive)
+    private IEnumerator AnnouncementAnimation(string text)
     {
-        if (string.IsNullOrEmpty(sceneName))
+        levelAnnouncementText.text = text;
+        levelAnnouncementText.gameObject.SetActive(true);
+        
+        Vector2 centerPos = Vector2.zero;
+        Vector2 startPos = new Vector2(-offScreenOffset, 0);
+        Vector2 endPos = new Vector2(offScreenOffset, 0);
+        
+        float elapsed = 0f;
+        while (elapsed < slideInDuration)
         {
-            Debug.LogError("[LevelUIManager] Cannot load scene - scene name is empty!");
-            return;
+            elapsed += Time.deltaTime;
+            float t = slideEaseCurve.Evaluate(Mathf.Clamp01(elapsed / slideInDuration));
+            levelAnnouncementRect.anchoredPosition = Vector2.Lerp(startPos, centerPos, t);
+            yield return null;
+        }
+        levelAnnouncementRect.anchoredPosition = centerPos;
+        
+        elapsed = 0f;
+        while (elapsed < hoverDuration)
+        {
+            elapsed += Time.deltaTime;
+            float wobbleX = Mathf.Sin(elapsed * wobbleSpeed) * wobbleAmplitude * 0.3f;
+            float wobbleY = Mathf.Sin(elapsed * wobbleSpeed * 1.3f) * wobbleAmplitude + Mathf.Sin(elapsed * wobbleSpeed * 0.7f) * wobbleAmplitude * 0.5f;
+            float rotWobble = Mathf.Sin(elapsed * wobbleSpeed * 0.8f) * 2f;
+            levelAnnouncementRect.localRotation = Quaternion.Euler(0, 0, rotWobble);
+            levelAnnouncementRect.anchoredPosition = centerPos + new Vector2(wobbleX, wobbleY);
+            yield return null;
+        }
+        levelAnnouncementRect.localRotation = Quaternion.identity;
+        
+        elapsed = 0f;
+        Vector2 currentPos = levelAnnouncementRect.anchoredPosition;
+        while (elapsed < slideOutDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = slideEaseCurve.Evaluate(Mathf.Clamp01(elapsed / slideOutDuration));
+            levelAnnouncementRect.anchoredPosition = Vector2.Lerp(currentPos, endPos, t);
+            yield return null;
         }
         
-        LoadSceneMode mode = additive ? LoadSceneMode.Additive : LoadSceneMode.Single;
-        
-        try
-        {
-            SceneManager.LoadScene(sceneName, mode);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LevelUIManager] Failed to load scene '{sceneName}': {e.Message}");
-        }
+        levelAnnouncementText.gameObject.SetActive(false);
+        levelAnnouncementRect.anchoredPosition = startPos;
+        levelAnnouncementCoroutine = null;
     }
     
-    /// <summary>
-    /// Public method to load a scene with fade (can be called from other scripts)
-    /// </summary>
-    public void LoadSceneWithFade(string sceneName, float fadeDuration = 1f, bool additive = false)
-    {
-        if (string.IsNullOrEmpty(sceneName))
-        {
-            Debug.LogError("[LevelUIManager] Cannot load scene - scene name is empty!");
-            return;
-        }
-        
-        if (ScreenFadeManager.Instance != null)
-        {
-            ScreenFadeManager.Instance.FadeToBlack(fadeDuration, () =>
-            {
-                LoadSceneInternal(sceneName, additive);
-            });
-        }
-        else
-        {
-            Debug.LogWarning("[LevelUIManager] ScreenFadeManager not found. Loading scene without fade.");
-            LoadSceneInternal(sceneName, additive);
-        }
-    }
-    
-    /// <summary>
-    /// Public method to load a scene immediately (can be called from other scripts)
-    /// </summary>
-    public void LoadSceneImmediate(string sceneName, bool additive = false)
-    {
-        LoadSceneInternal(sceneName, additive);
-    }
-    
-    /// <summary>
-    /// Show a subtitle using the SubtitleUI system
-    /// </summary>
     private void ShowSubtitle(string text, float duration)
     {
-        if (string.IsNullOrEmpty(text))
-        {
-            Debug.LogWarning("[LevelUIManager] Attempted to show empty subtitle");
-            return;
-        }
-        
-        if (SubtitleUI.Instance != null)
-        {
+        if (!string.IsNullOrEmpty(text) && SubtitleUI.Instance != null)
             SubtitleUI.Instance.ShowSubtitle(text, duration);
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Showing subtitle: \"{text}\" for {duration}s");
-        }
-        else
-        {
-            Debug.LogWarning("[LevelUIManager] SubtitleUI.Instance is null! Make sure SubtitleUI exists in the scene.");
-        }
     }
     
-    /// <summary>
-    /// Manually trigger a subtitle at a specific level (useful for testing)
-    /// </summary>
-    public void TriggerSubtitleForLevel(int level, string text, float duration = 3f)
-    {
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Manually triggering subtitle for level {level}");
-            
-        ShowSubtitle(text, duration);
-    }
+    public void TriggerSubtitleForLevel(int level, string text, float duration = 3f) => ShowSubtitle(text, duration);
     
-    /// <summary>
-    /// Reset all triggers (call when restarting the game)
-    /// </summary>
     public void ResetAllTriggers()
     {
-        foreach (var trigger in triggers)
-        {
-            trigger.Reset();
-        }
-        
-        if (debugMode)
-            Debug.Log("[LevelUIManager] All triggers have been reset");
+        foreach (var trigger in triggers) trigger.Reset();
+        lastAnnouncedLevel = 0;
+        hasWon = false;
     }
     
-    /// <summary>
-    /// Add a runtime trigger (useful for dynamic content)
-    /// </summary>
-    public void AddRuntimeTrigger(LevelUITrigger trigger)
-    {
-        if (trigger != null)
-        {
-            triggers.Add(trigger);
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Added runtime trigger: {trigger.actionType} at {trigger.triggerType} {trigger.triggerValue}");
-        }
-    }
+    public int GetWinRank() => winRank;
+    public void SetWinRank(int value) { winRank = Mathf.Max(0, value); }
+    public bool HasWon() => hasWon;
     
-    /// <summary>
-    /// Remove a runtime trigger
-    /// </summary>
-    public void RemoveRuntimeTrigger(LevelUITrigger trigger)
-    {
-        if (trigger != null && triggers.Contains(trigger))
-        {
-            triggers.Remove(trigger);
-            if (debugMode)
-                Debug.Log("[LevelUIManager] Removed runtime trigger");
-        }
-    }
-    
-    /// <summary>
-    /// Get all triggers
-    /// </summary>
+    public void AddRuntimeTrigger(LevelUITrigger trigger) { if (trigger != null) triggers.Add(trigger); }
+    public void RemoveRuntimeTrigger(LevelUITrigger trigger) { if (trigger != null) triggers.Remove(trigger); }
     public List<LevelUITrigger> GetTriggers() => triggers;
+    public int GetRanksPerLevel() => ranksPerLevel;
+    public void SetRanksPerLevel(int value) { ranksPerLevel = Mathf.Max(1, value); }
 }
-
-#if UNITY_EDITOR
-[UnityEditor.CustomEditor(typeof(LevelUIManager))]
-public class LevelUIManagerEditor : UnityEditor.Editor
-{
-    private int testLevel = 1;
-    private int testWave = 1;
-    private string testSubtitle = "Test subtitle message";
-    private float testDuration = 3f;
-    
-    public override void OnInspectorGUI()
-    {
-        LevelUIManager manager = (LevelUIManager)target;
-        
-        DrawDefaultInspector();
-        
-        UnityEditor.EditorGUILayout.Space(15);
-        UnityEditor.EditorGUILayout.LabelField("Testing Tools", UnityEditor.EditorStyles.boldLabel);
-        
-        // Only show testing tools in play mode
-        if (Application.isPlaying)
-        {
-            UnityEditor.EditorGUILayout.BeginVertical("box");
-            
-            // Test subtitle
-            UnityEditor.EditorGUILayout.LabelField("Test Subtitle", UnityEditor.EditorStyles.boldLabel);
-            testSubtitle = UnityEditor.EditorGUILayout.TextField("Message", testSubtitle);
-            testDuration = UnityEditor.EditorGUILayout.FloatField("Duration", testDuration);
-            
-            if (GUILayout.Button("Show Test Subtitle"))
-            {
-                manager.TriggerSubtitleForLevel(0, testSubtitle, testDuration);
-            }
-            
-            UnityEditor.EditorGUILayout.Space(10);
-            
-            // Reset triggers
-            if (GUILayout.Button("Reset All Triggers"))
-            {
-                manager.ResetAllTriggers();
-            }
-            
-            UnityEditor.EditorGUILayout.EndVertical();
-        }
-        else
-        {
-            UnityEditor.EditorGUILayout.HelpBox("Enter Play Mode to access testing tools.", UnityEditor.MessageType.Info);
-        }
-    }
-}
-#endif

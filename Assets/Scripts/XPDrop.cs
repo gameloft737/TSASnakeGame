@@ -3,8 +3,9 @@ using UnityEngine;
 /// <summary>
 /// XP drop that can be collected by the player
 /// Optimized to use static player reference and reduced Update frequency
+/// Supports object pooling for better performance
 /// </summary>
-public class XPDrop : MonoBehaviour
+public class XPDrop : MonoBehaviour, IPooledObject
 {
     [Header("XP Settings")]
     [SerializeField] private int xpValue = 10;
@@ -38,18 +39,28 @@ public class XPDrop : MonoBehaviour
     private float attractRangeSqr;
     private float collectRangeSqr;
     
+    
     private void Awake()
     {
         // Cache squared distances to avoid sqrt in distance checks
         attractRangeSqr = attractRange * attractRange;
         collectRangeSqr = collectRange * collectRange;
+        rb = GetComponent<Rigidbody>();
     }
     
     private void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        InitializeXPDrop();
+    }
+    
+    /// <summary>
+    /// Initializes the XP drop - called on Start and when spawned from pool
+    /// </summary>
+    private void InitializeXPDrop()
+    {
         spawnTime = Time.time;
         startPosition = transform.position;
+        hasScattered = false;
         
         // Use static cached player - only search once across all XP drops
         if (!s_playerSearched)
@@ -65,6 +76,9 @@ public class XPDrop : MonoBehaviour
         // Apply initial scatter force
         if (rb != null)
         {
+            rb.isKinematic = false;
+            rb.linearVelocity = Vector3.zero;
+            
             Vector3 scatterDirection = new Vector3(
                 Random.Range(-1f, 1f),
                 Random.Range(0.5f, 1f),
@@ -75,8 +89,47 @@ public class XPDrop : MonoBehaviour
             scatterEndTime = Time.time + scatterDuration;
         }
         
-        // Destroy after lifetime
-        Destroy(gameObject, lifetime);
+        // Schedule despawn after lifetime (works with both pooled and non-pooled)
+        CancelInvoke(nameof(DespawnOrDestroy));
+        Invoke(nameof(DespawnOrDestroy), lifetime);
+    }
+    
+    /// <summary>
+    /// Called when spawned from object pool
+    /// </summary>
+    public void OnSpawnFromPool()
+    {
+        InitializeXPDrop();
+    }
+    
+    /// <summary>
+    /// Called when returned to object pool
+    /// </summary>
+    public void OnReturnToPool()
+    {
+        CancelInvoke(nameof(DespawnOrDestroy));
+        hasScattered = false;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.isKinematic = true;
+        }
+    }
+    
+    /// <summary>
+    /// Despawns to pool or destroys if not pooled
+    /// </summary>
+    private void DespawnOrDestroy()
+    {
+        PooledObject pooledObj = GetComponent<PooledObject>();
+        if (pooledObj != null)
+        {
+            pooledObj.ReturnToPool();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
     
     private void Update()
@@ -164,6 +217,14 @@ public class XPDrop : MonoBehaviour
     }
     
     /// <summary>
+    /// Initialize the XP drop with a specific value (alias for pooling compatibility)
+    /// </summary>
+    public void InitializeXPDrop(int xp)
+    {
+        Initialize(xp);
+    }
+    
+    /// <summary>
     /// Collect the XP
     /// </summary>
     private void Collect()
@@ -176,7 +237,8 @@ public class XPDrop : MonoBehaviour
             XPManager.Instance.AddXP(xpValue);
         }
         
-        Destroy(gameObject);
+        // Return to pool or destroy
+        DespawnOrDestroy();
     }
     
     /// <summary>

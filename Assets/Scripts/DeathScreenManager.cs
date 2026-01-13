@@ -39,10 +39,15 @@ public class DeathScreenManager : MonoBehaviour
     [SerializeField] private AttackSelectionUI attackSelectionUI;
     [SerializeField] private SnakePauseMenu pauseMenu;
     [SerializeField] private GameObject nonUI;
+    [SerializeField] private CheckpointManager checkpointManager;
     
     [Header("Scene Settings")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
     [SerializeField] private bool reloadCurrentScene = true;
+    
+    [Header("Checkpoint Settings")]
+    [Tooltip("If true, uses checkpoint system to restore player state instead of reloading scene")]
+    [SerializeField] private bool useCheckpointSystem = true;
     
     private bool isDeathScreenActive = false;
     private Canvas deathCanvas;
@@ -146,6 +151,8 @@ public class DeathScreenManager : MonoBehaviour
         if (attackSelectionUI == null) attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
         if (pauseMenu == null) pauseMenu = SnakePauseMenu.Instance;
         if (pauseMenu == null) pauseMenu = FindFirstObjectByType<SnakePauseMenu>();
+        if (checkpointManager == null) checkpointManager = CheckpointManager.Instance;
+        if (checkpointManager == null) checkpointManager = FindFirstObjectByType<CheckpointManager>();
         
         // Try to get death screen panel from AttackSelectionUI if not assigned
         if (deathScreenPanel == null && attackSelectionUI != null)
@@ -408,27 +415,50 @@ public class DeathScreenManager : MonoBehaviour
     
     /// <summary>
     /// Called when the restart button is clicked.
-    /// Resets the game to its initial state.
+    /// Uses checkpoint system to restore player state to last level milestone.
     /// </summary>
     public void OnRestartClicked()
     {
         Debug.Log("[DeathScreenManager] Restart clicked");
         
-        // Re-enable pause menu before scene reload
+        // Re-enable pause menu
         if (pauseMenu != null)
         {
             pauseMenu.enabled = true;
         }
         
+        // Try to use checkpoint system first
+        if (useCheckpointSystem)
+        {
+            // Find checkpoint manager if not cached
+            if (checkpointManager == null)
+            {
+                checkpointManager = CheckpointManager.Instance;
+                if (checkpointManager == null)
+                    checkpointManager = FindFirstObjectByType<CheckpointManager>();
+            }
+            
+            if (checkpointManager != null && checkpointManager.HasCheckpoint())
+            {
+                Debug.Log($"[DeathScreenManager] Restoring checkpoint at level {checkpointManager.GetCheckpointLevel()}");
+                HideDeathScreen();
+                checkpointManager.RestoreCheckpoint();
+                return;
+            }
+            else
+            {
+                Debug.Log("[DeathScreenManager] No checkpoint available, falling back to scene reload");
+            }
+        }
+        
+        // Fallback: reload scene if checkpoint system is disabled or no checkpoint exists
         if (reloadCurrentScene)
         {
-            // Reload the current scene - this is the cleanest way to reset everything
             Scene currentScene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(currentScene.name);
         }
         else
         {
-            // Manual reset (alternative approach if scene reload is not desired)
             StartCoroutine(ResetGameState());
         }
     }

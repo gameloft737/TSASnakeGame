@@ -28,7 +28,7 @@ public class SnakePauseMenu : MonoBehaviour
     
     [Header("Scene Names")]
     [Tooltip("Name of the main menu scene to load when quitting")]
-    public string mainMenuSceneName = "MainMenu";
+    public string mainMenuSceneName = "Arcade";
     
     [Header("References")]
     [Tooltip("Reference to player movement to freeze when paused")]
@@ -217,7 +217,7 @@ public class SnakePauseMenu : MonoBehaviour
         }
         
         // Freeze all enemies
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)
@@ -282,7 +282,7 @@ public class SnakePauseMenu : MonoBehaviour
         }
         
         // Unfreeze all enemies
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)

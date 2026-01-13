@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   abilityName: Force Field
   description: Creates a damaging aura around you that hurts nearby enemies
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 562dbfefe6986664e9b079622dc25f86, type: 3}
   abilityPrefab: {fileID: 4147873560298843179, guid: 8b0f646b337b29d4abb01a98f10f6a95, type: 3}
   abilityType: 1
   maxLevel: 6

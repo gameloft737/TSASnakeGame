@@ -424,11 +424,34 @@ public class EndingCutsceneTrigger : MonoBehaviour
 
     private void LoadSnakeScene()
     {
-        Debug.Log($"EndingCutsceneTrigger: Loading scene '{snakeSceneName}'");
-
-        if (!string.IsNullOrEmpty(snakeSceneName))
+        // Always log the current state for debugging
+        Debug.Log($"EndingCutsceneTrigger: LoadSnakeScene called - EndlessModeManager.IsEndlessMode = {EndlessModeManager.IsEndlessMode}");
+        
+        // Determine which scene to load based on mode
+        string sceneToLoad;
+        
+        if (EndlessModeManager.IsEndlessMode)
         {
-            SceneManager.LoadScene(snakeSceneName);
+            // Endless mode - load SnakeEndless scene
+            sceneToLoad = "SnakeEndless";
+            Debug.Log($"EndingCutsceneTrigger: Endless mode active - loading '{sceneToLoad}'");
+        }
+        else
+        {
+            // Regular mode - load Snake scene
+            sceneToLoad = snakeSceneName;
+            
+            // If snakeSceneName is empty or default, use "Snake" for regular mode
+            if (string.IsNullOrEmpty(sceneToLoad) || sceneToLoad == "SnakeScene")
+            {
+                sceneToLoad = "Snake";
+            }
+            Debug.Log($"EndingCutsceneTrigger: Regular mode - loading '{sceneToLoad}'");
+        }
+
+        if (!string.IsNullOrEmpty(sceneToLoad))
+        {
+            SceneManager.LoadScene(sceneToLoad);
         }
         else
         {

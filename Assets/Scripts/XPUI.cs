@@ -82,7 +82,7 @@ public class XPUI : MonoBehaviour
     
     public void UpdateLevel(int level)
     {
-        if (levelText) levelText.text = $"Lv. {level}";
+        if (levelText) levelText.text = $"Rank {level}";
     }
     
     private void OnLevelUp(int newLevel)

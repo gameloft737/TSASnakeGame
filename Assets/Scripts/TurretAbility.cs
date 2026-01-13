@@ -206,9 +206,10 @@ public class TurretAbility : BaseAbility
 
     private AppleEnemy FindNearestApple()
     {
-        AppleEnemy[] apples = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType for better performance
+        var apples = AppleEnemy.GetAllActiveEnemies();
         
-        if (apples.Length == 0) return null;
+        if (apples.Count == 0) return null;
         
         AppleEnemy nearest = null;
         // Apply range multiplier from PlayerStats to detection range

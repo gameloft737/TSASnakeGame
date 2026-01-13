@@ -232,8 +232,8 @@ public class ClassicModeManager : MonoBehaviour
             playerMovement.SetClassicMode(true, gridCellSize, classicMoveInterval);
         }
         
-        // Enable classic mode on all existing apple enemies
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Enable classic mode on all existing apple enemies - use static list for better performance
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         cachedEnemies.Clear();
         foreach (var enemy in enemies)
         {
@@ -261,8 +261,8 @@ public class ClassicModeManager : MonoBehaviour
             playerMovement.SetClassicMode(false);
         }
         
-        // Disable classic mode on all apple enemies
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Disable classic mode on all apple enemies - use static list for better performance
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (var enemy in enemies)
         {
             if (enemy != null)

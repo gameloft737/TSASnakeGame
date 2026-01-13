@@ -213,7 +213,8 @@ public class FrostAuraAbility : BaseAbility
         float slowPercent = GetSlowPercent();
         
         HashSet<AppleEnemy> enemiesInRange = new HashSet<AppleEnemy>();
-        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType for better performance
+        var allEnemies = AppleEnemy.GetAllActiveEnemies();
         
         foreach (BodyPart part in snakeBody.bodyParts)
         {

@@ -18,13 +18,14 @@ MonoBehaviour:
   abilityType: 1
   levels:
   - levelName: Level 1
-    description: Creates a protective force field that damages enemies on contact for 10 damage
+    description: Creates a protective force field that damages enemies on contact
+      for 10 damage
     damage: 10
     cooldown: 0.5
     duration: 0
     customStats:
     - statName: radius
-      value: 3
+      value: 1
   - levelName: Level 2
     description: Slightly larger force field radius
     damage: 12
@@ -32,7 +33,7 @@ MonoBehaviour:
     duration: 0
     customStats:
     - statName: radius
-      value: 4
+      value: 2
   - levelName: Level 3
     description: Expanded force field coverage
     damage: 14
@@ -40,7 +41,7 @@ MonoBehaviour:
     duration: 0
     customStats:
     - statName: radius
-      value: 5
+      value: 3
   - levelName: Level 4
     description: Large force field with moderate damage
     damage: 16
@@ -48,22 +49,22 @@ MonoBehaviour:
     duration: 0
     customStats:
     - statName: radius
-      value: 7
+      value: 4
   - levelName: Level 5
-    description: Massive force field radius
+    description: Expanded force field radius
     damage: 18
     cooldown: 0.3
     duration: 0
     customStats:
     - statName: radius
-      value: 9
+      value: 4
   - levelName: Level 6
-    description: Maximum radius force field - covers a huge area
+    description: Maximum radius force field
     damage: 20
     cooldown: 0.25
     duration: 0
     customStats:
     - statName: radius
-      value: 12
+      value: 6
   maxLevel: 6
   evolutionData: {fileID: 0}

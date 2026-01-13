@@ -12,7 +12,10 @@ public class SnakeBody : MonoBehaviour
     [SerializeField] private float segmentSpacing = 0.5f;
     
     [Header("Constraint Settings")]
-    [SerializeField] private int constraintIterations = 3; // More iterations = more stable but slower
+    [SerializeField] private int constraintIterations = 2; // Reduced from 3 - still stable but faster
+    [SerializeField] private bool useAdaptiveConstraints = true; // Only run extra iterations when needed
+    private float lastHeadSpeed = 0f;
+    private Rigidbody cachedHeadRigidbody; // Cached to avoid GetComponent every frame
     
     [Header("Growth Settings")]
     [Tooltip("Base number of apples needed to add a segment")]
@@ -55,6 +58,12 @@ public class SnakeBody : MonoBehaviour
         // Set static references for AppleEnemy optimization
         SnakeHealth health = GetComponent<SnakeHealth>();
         AppleEnemy.SetSnakeReferences(this, health);
+        
+        // Cache head rigidbody for performance
+        if (head != null)
+        {
+            cachedHeadRigidbody = head.GetComponent<Rigidbody>();
+        }
         
         // Get head renderer if not assigned
         if (headRenderer == null)
@@ -112,7 +121,9 @@ public class SnakeBody : MonoBehaviour
             IncreaseSize(1);
             segmentsAddedFromApples++;
             
+            #if UNITY_EDITOR
             Debug.Log($"[SnakeBody] Added segment from eating apples! Total segments from apples: {segmentsAddedFromApples}, Total apples eaten: {totalApplesEaten}");
+            #endif
             
             // Reset counter for next segment
             applesForCurrentSegment = 0;
@@ -121,7 +132,9 @@ public class SnakeBody : MonoBehaviour
             int newThreshold = Mathf.RoundToInt(currentApplesThreshold * growthMultiplier);
             currentApplesThreshold = Mathf.Min(newThreshold, maxApplesPerSegment);
             
+            #if UNITY_EDITOR
             Debug.Log($"[SnakeBody] Next segment requires {currentApplesThreshold} apples");
+            #endif
         }
     }
     
@@ -162,7 +175,9 @@ public class SnakeBody : MonoBehaviour
         if (context.performed)
         {
             IncreaseSize(1);
+            #if UNITY_EDITOR
             Debug.Log($"Added segment! Total body length: {bodyLength}");
+            #endif
         }
     }
 
@@ -178,20 +193,44 @@ public class SnakeBody : MonoBehaviour
 
     void LateUpdate()
     {
-        // Run multiple constraint iterations to ensure stable distances
-        // This is the key to preventing overlapping and maintaining consistent spacing
-        for (int iteration = 0; iteration < constraintIterations; iteration++)
+        int partCount = bodyParts.Count;
+        if (partCount == 0) return;
+        
+        // Adaptive constraint iterations based on movement speed
+        int iterations = constraintIterations;
+        if (useAdaptiveConstraints && cachedHeadRigidbody != null)
+        {
+            // Use cached rigidbody reference
+            lastHeadSpeed = cachedHeadRigidbody.linearVelocity.magnitude;
+            
+            // Use fewer iterations when moving slowly, more when moving fast
+            if (lastHeadSpeed < 2f)
+            {
+                iterations = 1; // Slow movement - 1 iteration is enough
+            }
+            else if (lastHeadSpeed > 8f)
+            {
+                iterations = 3; // Fast movement - need more stability
+            }
+        }
+        
+        // Run constraint iterations
+        for (int iteration = 0; iteration < iterations; iteration++)
         {
             // Forward pass: from head to tail
-            for (int i = 0; i < bodyParts.Count; i++)
+            for (int i = 0; i < partCount; i++)
             {
                 bodyParts[i].EnforceConstraint();
             }
             
-            // Backward pass: from tail to head (helps with stability)
-            for (int i = bodyParts.Count - 1; i >= 0; i--)
+            // Only do backward pass on first iteration for stability
+            // Subsequent iterations only need forward pass
+            if (iteration == 0)
             {
-                bodyParts[i].EnforceConstraint();
+                for (int i = partCount - 1; i >= 0; i--)
+                {
+                    bodyParts[i].EnforceConstraint();
+                }
             }
         }
     }
@@ -293,7 +332,9 @@ public class SnakeBody : MonoBehaviour
     /// </summary>
     public void ApplyAttackVariation(Material headMaterial, Material bodyMaterial, GameObject attachmentObject)
     {
+        #if UNITY_EDITOR
         Debug.Log($"SnakeBody.ApplyAttackVariation called - HeadMaterial: {(headMaterial != null ? headMaterial.name : "null")}, BodyMaterial: {(bodyMaterial != null ? bodyMaterial.name : "null")}, Attachment: {(attachmentObject != null ? attachmentObject.name : "null")}");
+        #endif
         
         // Only apply head material if provided (evolution attacks)
         if (headMaterial != null)
@@ -301,7 +342,9 @@ public class SnakeBody : MonoBehaviour
             if (headRenderer != null)
             {
                 headRenderer.material = headMaterial;
+                #if UNITY_EDITOR
                 Debug.Log($"Applied head material: {headMaterial.name} to {headRenderer.gameObject.name}");
+                #endif
             }
             else
             {
@@ -317,16 +360,22 @@ public class SnakeBody : MonoBehaviour
                     if (headRenderer != null)
                     {
                         headRenderer.material = headMaterial;
+                        #if UNITY_EDITOR
                         Debug.Log($"Found and applied head material: {headMaterial.name} to {headRenderer.gameObject.name}");
+                        #endif
                     }
                     else
                     {
+                        #if UNITY_EDITOR
                         Debug.LogWarning("SnakeBody: Cannot apply head material - no Renderer found on head!");
+                        #endif
                     }
                 }
                 else
                 {
+                    #if UNITY_EDITOR
                     Debug.LogWarning("SnakeBody: Cannot apply head material - head transform is null!");
+                    #endif
                 }
             }
         }
@@ -338,15 +387,19 @@ public class SnakeBody : MonoBehaviour
             currentBodyMaterial = bodyMaterial;
             
             int appliedCount = 0;
-            foreach (BodyPart part in bodyParts)
+            int partCount = bodyParts.Count;
+            for (int i = 0; i < partCount; i++)
             {
+                BodyPart part = bodyParts[i];
                 if (part != null)
                 {
                     part.SetMaterial(bodyMaterial);
                     appliedCount++;
                 }
             }
+            #if UNITY_EDITOR
             Debug.Log($"Applied body material: {bodyMaterial.name} to {appliedCount} body parts");
+            #endif
         }
         
         // Always handle attachment changes
@@ -360,7 +413,9 @@ public class SnakeBody : MonoBehaviour
         {
             currentAttachment = attachmentObject;
             currentAttachment.SetActive(true);
+            #if UNITY_EDITOR
             Debug.Log($"Enabled attachment: {attachmentObject.name}");
+            #endif
         }
     }
     

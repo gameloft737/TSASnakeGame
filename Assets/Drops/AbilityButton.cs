@@ -19,10 +19,14 @@ public class AbilityButton : MonoBehaviour
     [SerializeField] private Color normalColor = Color.white;
     [SerializeField] private Color newColor = new Color(0.5f, 0.8f, 1f);  // Light blue for new abilities
     [SerializeField] private Color maxLevelColor = Color.yellow;
+    [SerializeField] private Color healColor = new Color(0.4f, 1f, 0.4f);  // Green for heal bonus
+    [SerializeField] private Color speedBoostColor = new Color(1f, 0.8f, 0.2f);  // Yellow/gold for speed boost
 
     private AbilitySO abilitySO;  // The Ability ScriptableObject to associate with this button
+    private BonusOption bonusOption;  // The bonus option (when all abilities are maxed)
     private AbilityCollector abilityCollector;  // The ability collector to add the ability to the player
     private AbilityManager abilityManager;  // Reference to check current ability levels
+    private bool isBonusOption = false;  // Whether this button is for a bonus option
 
     private void Awake()
     {
@@ -110,6 +114,8 @@ public class AbilityButton : MonoBehaviour
     public void Initialize(AbilitySO ability, AbilityCollector collector)
     {
         abilitySO = ability;
+        bonusOption = null;
+        isBonusOption = false;
         abilityCollector = collector;
         
         // Find the ability manager to check current levels
@@ -123,6 +129,95 @@ public class AbilityButton : MonoBehaviour
         }
 
         UpdateDisplay();
+    }
+    
+    /// <summary>
+    /// Initialize the button with a bonus option (heal or speed boost) when all abilities are maxed
+    /// </summary>
+    /// <param name="option">The BonusOption to associate with this button</param>
+    /// <param name="collector">The AbilityCollector that will handle applying the bonus</param>
+    public void InitializeBonusOption(BonusOption option, AbilityCollector collector)
+    {
+        bonusOption = option;
+        abilitySO = null;
+        isBonusOption = true;
+        abilityCollector = collector;
+        
+        // Set up the button click listener
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(OnButtonClicked);
+        }
+
+        UpdateBonusOptionDisplay();
+    }
+    
+    /// <summary>
+    /// Updates the display for a bonus option (heal or speed boost)
+    /// </summary>
+    private void UpdateBonusOptionDisplay()
+    {
+        if (bonusOption == null) return;
+        
+        // Set the icon if available
+        if (abilityIcon != null && bonusOption.icon != null)
+        {
+            abilityIcon.sprite = bonusOption.icon;
+            abilityIcon.enabled = true;
+        }
+
+        // Set the option name text
+        if (abilityNameText != null)
+        {
+            abilityNameText.text = bonusOption.optionName;
+        }
+        
+        // Hide level text for bonus options (they don't have levels)
+        if (levelText != null)
+        {
+            levelText.text = "";
+        }
+        
+        // Set description text
+        if (descriptionText != null)
+        {
+            descriptionText.text = bonusOption.description;
+        }
+        
+        // Set background color based on bonus type
+        if (backgroundImage != null)
+        {
+            switch (bonusOption.bonusType)
+            {
+                case BonusType.Heal:
+                    backgroundImage.color = healColor;
+                    break;
+                case BonusType.SpeedBoost:
+                    backgroundImage.color = speedBoostColor;
+                    break;
+                default:
+                    backgroundImage.color = normalColor;
+                    break;
+            }
+        }
+        
+        // Hide indicators for bonus options
+        if (newIndicator != null)
+        {
+            newIndicator.SetActive(false);
+        }
+        
+        if (upgradeIndicator != null)
+        {
+            upgradeIndicator.SetActive(false);
+        }
+        
+        // Hide evolution pairing text for bonus options
+        if (evolutionPairingText != null)
+        {
+            evolutionPairingText.gameObject.SetActive(false);
+        }
     }
     
     /// <summary>
@@ -285,7 +380,13 @@ public class AbilityButton : MonoBehaviour
     // This method will be called when the player clicks the button
     private void OnButtonClicked()
     {
-        if (abilitySO != null && abilityCollector != null)
+        if (abilityCollector == null) return;
+        
+        if (isBonusOption && bonusOption != null)
+        {
+            abilityCollector.SelectBonusOption(bonusOption);  // Select this bonus option and close the UI
+        }
+        else if (abilitySO != null)
         {
             abilityCollector.SelectAbility(abilitySO);  // Select this ability and close the UI
         }

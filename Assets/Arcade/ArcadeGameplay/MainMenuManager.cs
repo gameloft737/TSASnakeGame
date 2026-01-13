@@ -236,7 +236,7 @@ public class MainMenuManager : MonoBehaviour
     {
         if (playButton != null)
         {
-            playButton.onClick.AddListener(OnPlayClicked);
+            playButton.onClick.AddListener(OnRegularPlayClicked);
         }
         
         if (settingsButton != null)
@@ -283,7 +283,25 @@ public class MainMenuManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Called when the Play button is clicked
+    /// Called when the regular Play button is clicked (not endless mode).
+    /// Sets regular mode and starts the game.
+    /// </summary>
+    public void OnRegularPlayClicked()
+    {
+        if (isTransitioning) return;
+        
+        // Set regular mode before starting the game
+        // This ensures the EndingCutsceneTrigger will load the correct scene (Snake)
+        if (EndlessModeManager.Instance != null)
+        {
+            EndlessModeManager.Instance.SetRegularMode();
+        }
+        
+        OnPlayClicked();
+    }
+    
+    /// <summary>
+    /// Called when the Play button is clicked (can be called by endless mode too)
     /// </summary>
     public void OnPlayClicked()
     {

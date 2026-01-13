@@ -25,14 +25,24 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private float spawnCheckInterval = 0.25f;
     [SerializeField] private float countSyncInterval = 1.0f; // How often to sync enemy counts
     
-    private List<GameObject> activeEnemies = new List<GameObject>();
-    private Dictionary<GameObject, EnemySpawnConfig> enemyToConfigMap = new Dictionary<GameObject, EnemySpawnConfig>();
+    private List<GameObject> activeEnemies = new List<GameObject>(64); // Pre-allocated capacity
+    private Dictionary<GameObject, EnemySpawnConfig> enemyToConfigMap = new Dictionary<GameObject, EnemySpawnConfig>(64);
+    private List<GameObject> deadEnemiesCache = new List<GameObject>(16); // Reusable list for cleanup
     
     private WaveData currentWaveData;
     private List<EnemySpawnConfig> currentInfiniteConfigs;
     private bool isSpawningActive = false;
     private bool isInfiniteMode = false;
     private Coroutine spawnLoopCoroutine;
+    
+    // Cached WaitForSeconds to avoid GC allocations
+    private WaitForSeconds spawnCheckWait;
+    
+    private void Awake()
+    {
+        // Cache WaitForSeconds to avoid allocations in coroutine
+        spawnCheckWait = new WaitForSeconds(spawnCheckInterval);
+    }
     
     private void Start()
     {
@@ -91,12 +101,16 @@ public class EnemySpawner : MonoBehaviour
         if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
         spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
         
+        #if UNITY_EDITOR
         Debug.Log($"[EnemySpawner] Started infinite wave spawning with {configs.Count} enemy types, isInfiniteMode={isInfiniteMode}");
+        #endif
     }
     
     public void StopSpawning()
     {
+        #if UNITY_EDITOR
         Debug.Log("[EnemySpawner] StopSpawning called");
+        #endif
         isSpawningActive = false;
         if (spawnLoopCoroutine != null)
         {
@@ -111,12 +125,16 @@ public class EnemySpawner : MonoBehaviour
     /// </summary>
     public void ResumeSpawning()
     {
+        #if UNITY_EDITOR
         Debug.Log($"[EnemySpawner] ResumeSpawning called. isInfiniteMode={isInfiniteMode}, hasConfigs={(isInfiniteMode ? currentInfiniteConfigs != null : currentWaveData != null)}");
+        #endif
         
         // Don't resume if already spawning
         if (isSpawningActive && spawnLoopCoroutine != null)
         {
+            #if UNITY_EDITOR
             Debug.Log("[EnemySpawner] Already spawning, no need to resume");
+            #endif
             return;
         }
         
@@ -126,18 +144,24 @@ public class EnemySpawner : MonoBehaviour
             isSpawningActive = true;
             if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
             spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
+            #if UNITY_EDITOR
             Debug.Log("[EnemySpawner] Resumed infinite wave spawning");
+            #endif
         }
         else if (!isInfiniteMode && currentWaveData != null)
         {
             isSpawningActive = true;
             if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
             spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
+            #if UNITY_EDITOR
             Debug.Log("[EnemySpawner] Resumed legacy wave spawning");
+            #endif
         }
         else
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("[EnemySpawner] Cannot resume spawning - no valid configuration");
+            #endif
         }
     }
     
@@ -151,7 +175,9 @@ public class EnemySpawner : MonoBehaviour
     
     private IEnumerator SpawnLoopCoroutine()
     {
+        #if UNITY_EDITOR
         Debug.Log($"[EnemySpawner] SpawnLoopCoroutine started. isInfiniteMode={isInfiniteMode}, isSpawningActive={isSpawningActive}");
+        #endif
         
         float lastSyncTime = Time.time;
         
@@ -170,8 +196,10 @@ public class EnemySpawner : MonoBehaviour
             
             if (configsToUse == null || configsToUse.Count == 0)
             {
+                #if UNITY_EDITOR
                 Debug.LogWarning($"[EnemySpawner] No configs to use! isInfiniteMode={isInfiniteMode}, currentInfiniteConfigs null={currentInfiniteConfigs == null}");
-                yield return new WaitForSeconds(spawnCheckInterval);
+                #endif
+                yield return spawnCheckWait;
                 continue;
             }
             
@@ -190,39 +218,51 @@ public class EnemySpawner : MonoBehaviour
                 }
             }
             
-            yield return new WaitForSeconds(spawnCheckInterval);
+            yield return spawnCheckWait;
         }
         
+        #if UNITY_EDITOR
         Debug.Log($"[EnemySpawner] SpawnLoopCoroutine ended. isSpawningActive={isSpawningActive}");
+        #endif
     }
     
     /// <summary>
     /// Syncs the currentOnScreen counts with actual living enemies.
     /// This fixes any desync that might occur if enemies are destroyed without proper notification.
+    /// Optimized to avoid allocations by reusing cached list.
     /// </summary>
     private void SyncEnemyCounts(List<EnemySpawnConfig> configs)
     {
-        // Clean up null entries from activeEnemies list
-        activeEnemies.RemoveAll(e => e == null);
+        // Clean up null entries from activeEnemies list using manual iteration (avoids delegate allocation)
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            if (activeEnemies[i] == null)
+            {
+                activeEnemies.RemoveAt(i);
+            }
+        }
         
-        // Clean up null entries from enemyToConfigMap
-        List<GameObject> deadEnemies = new List<GameObject>();
+        // Clean up null entries from enemyToConfigMap using cached list
+        deadEnemiesCache.Clear();
         foreach (var kvp in enemyToConfigMap)
         {
             if (kvp.Key == null)
             {
-                deadEnemies.Add(kvp.Key);
+                deadEnemiesCache.Add(kvp.Key);
             }
         }
-        foreach (var deadEnemy in deadEnemies)
+        
+        int deadCount = deadEnemiesCache.Count;
+        for (int i = 0; i < deadCount; i++)
         {
-            enemyToConfigMap.Remove(deadEnemy);
+            enemyToConfigMap.Remove(deadEnemiesCache[i]);
         }
         
         // Reset all config counts
-        foreach (var config in configs)
+        int configCount = configs.Count;
+        for (int i = 0; i < configCount; i++)
         {
-            config.currentOnScreen = 0;
+            configs[i].currentOnScreen = 0;
         }
         
         // Recount based on actual living enemies
@@ -239,26 +279,43 @@ public class EnemySpawner : MonoBehaviour
     {
         if (!config.enemyPrefab)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("EnemySpawnConfig has no prefab assigned!");
+            #endif
             return;
         }
         
         int zoneIndex = GetRandomZoneIndex(config);
         if (zoneIndex < 0 || zoneIndex >= spawnZones.Count)
         {
+            #if UNITY_EDITOR
             Debug.LogError($"Invalid spawn zone index: {zoneIndex}");
+            #endif
             return;
         }
         
         BoxCollider spawnZone = spawnZones[zoneIndex].zoneCollider;
         if (!spawnZone)
         {
+            #if UNITY_EDITOR
             Debug.LogError($"Spawn zone at index {zoneIndex} has no collider!");
+            #endif
             return;
         }
         
         Vector3 spawnPos = GetRandomPositionInBox(spawnZone);
-        GameObject enemy = Instantiate(config.enemyPrefab, spawnPos, Quaternion.identity);
+        
+        // Use object pooling instead of Instantiate for better performance
+        GameObject enemy = null;
+        if (ObjectPool.Instance != null)
+        {
+            enemy = ObjectPool.Instance.Spawn(config.enemyPrefab, spawnPos, Quaternion.identity);
+        }
+        else
+        {
+            enemy = Instantiate(config.enemyPrefab, spawnPos, Quaternion.identity);
+        }
+        
         activeEnemies.Add(enemy);
         
         enemyToConfigMap[enemy] = config;
@@ -329,7 +386,14 @@ public class EnemySpawner : MonoBehaviour
     
     public int GetActiveEnemyCount()
     {
-        activeEnemies.RemoveAll(e => e == null);
+        // Remove null entries using manual iteration (avoids delegate allocation)
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            if (activeEnemies[i] == null)
+            {
+                activeEnemies.RemoveAt(i);
+            }
+        }
         return activeEnemies.Count;
     }
     
@@ -337,9 +401,20 @@ public class EnemySpawner : MonoBehaviour
     {
         StopSpawning();
         
+        // Use object pooling to return enemies instead of destroying them
         foreach (var enemy in activeEnemies)
         {
-            if (enemy) Destroy(enemy);
+            if (enemy)
+            {
+                if (ObjectPool.Instance != null)
+                {
+                    ObjectPool.Instance.Despawn(enemy);
+                }
+                else
+                {
+                    Destroy(enemy);
+                }
+            }
         }
         
         activeEnemies.Clear();

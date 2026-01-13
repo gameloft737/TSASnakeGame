@@ -255,41 +255,51 @@ public class HomingProjectileAttack : Attack
         return projectile;
     }
     
+    // Cached list to avoid allocations during targeting
+    private static List<(AppleEnemy enemy, float distSqr)> s_enemiesWithDist = new List<(AppleEnemy, float)>(64);
+    private static List<AppleEnemy> s_targetResults = new List<AppleEnemy>(8);
+    
     /// <summary>
-    /// Finds the closest enemies within targeting range
+    /// Finds the closest enemies within targeting range.
+    /// Uses AppleEnemy's static list instead of FindObjectsByType for better performance.
     /// </summary>
     private List<AppleEnemy> FindClosestEnemies(int maxCount)
     {
-        List<AppleEnemy> result = new List<AppleEnemy>();
+        s_targetResults.Clear();
+        s_enemiesWithDist.Clear();
+        
         float currentRange = GetTargetingRange();
         float rangeSqr = currentRange * currentRange;
+        Vector3 firePos = firePoint.position;
         
-        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType
+        // This is much faster as it avoids the expensive scene query
+        var allEnemies = AppleEnemy.GetAllActiveEnemies();
+        int enemyCount = allEnemies.Count;
         
-        // Create a list of enemies with distances
-        List<(AppleEnemy enemy, float distSqr)> enemiesWithDist = new List<(AppleEnemy, float)>();
-        
-        foreach (AppleEnemy enemy in allEnemies)
+        for (int i = 0; i < enemyCount; i++)
         {
-            if (enemy == null || enemy.IsFrozen()) continue;
+            AppleEnemy enemy = allEnemies[i];
+            if (enemy == null || enemy.IsFrozen() || enemy.IsAlly()) continue;
             
-            float distSqr = (enemy.transform.position - firePoint.position).sqrMagnitude;
+            float distSqr = (enemy.transform.position - firePos).sqrMagnitude;
             if (distSqr <= rangeSqr)
             {
-                enemiesWithDist.Add((enemy, distSqr));
+                s_enemiesWithDist.Add((enemy, distSqr));
             }
         }
         
         // Sort by distance
-        enemiesWithDist.Sort((a, b) => a.distSqr.CompareTo(b.distSqr));
+        s_enemiesWithDist.Sort((a, b) => a.distSqr.CompareTo(b.distSqr));
         
         // Take the closest ones
-        for (int i = 0; i < Mathf.Min(maxCount, enemiesWithDist.Count); i++)
+        int resultCount = Mathf.Min(maxCount, s_enemiesWithDist.Count);
+        for (int i = 0; i < resultCount; i++)
         {
-            result.Add(enemiesWithDist[i].enemy);
+            s_targetResults.Add(s_enemiesWithDist[i].enemy);
         }
         
-        return result;
+        return s_targetResults;
     }
     
     // Stat getters with upgrade data support
@@ -525,18 +535,25 @@ public class HomingProjectile : MonoBehaviour
         transform.position += moveDirection * speed * Time.deltaTime;
     }
     
+    /// <summary>
+    /// Finds a new target using AppleEnemy's static list for better performance.
+    /// </summary>
     private void FindNewTarget()
     {
         float closestDistSqr = targetingRange * targetingRange;
         AppleEnemy closest = null;
+        Vector3 myPos = transform.position;
         
-        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType
+        var allEnemies = AppleEnemy.GetAllActiveEnemies();
+        int count = allEnemies.Count;
         
-        foreach (AppleEnemy enemy in allEnemies)
+        for (int i = 0; i < count; i++)
         {
-            if (enemy == null || enemy.IsFrozen()) continue;
+            AppleEnemy enemy = allEnemies[i];
+            if (enemy == null || enemy.IsFrozen() || enemy.IsAlly()) continue;
             
-            float distSqr = (enemy.transform.position - transform.position).sqrMagnitude;
+            float distSqr = (enemy.transform.position - myPos).sqrMagnitude;
             if (distSqr < closestDistSqr)
             {
                 closestDistSqr = distSqr;
@@ -566,7 +583,8 @@ public class HomingProjectile : MonoBehaviour
     }
     
     /// <summary>
-    /// Creates an explosion that damages nearby enemies
+    /// Creates an explosion that damages nearby enemies.
+    /// Uses AppleEnemy's static list for better performance.
     /// </summary>
     private void CreateExplosion()
     {
@@ -588,12 +606,15 @@ public class HomingProjectile : MonoBehaviour
         }
         
         // Find and damage all enemies in explosion radius
+        // Use AppleEnemy's static list instead of FindObjectsByType
         float radiusSqr = explosionRadius * explosionRadius;
-        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        var allEnemies = AppleEnemy.GetAllActiveEnemies();
+        int count = allEnemies.Count;
         
-        foreach (AppleEnemy nearbyEnemy in allEnemies)
+        for (int i = 0; i < count; i++)
         {
-            if (nearbyEnemy == null || nearbyEnemy.IsFrozen()) continue;
+            AppleEnemy nearbyEnemy = allEnemies[i];
+            if (nearbyEnemy == null || nearbyEnemy.IsFrozen() || nearbyEnemy.IsAlly()) continue;
             
             float distSqr = (nearbyEnemy.transform.position - explosionPos).sqrMagnitude;
             if (distSqr <= radiusSqr)
@@ -604,7 +625,9 @@ public class HomingProjectile : MonoBehaviour
                 float finalDamage = explosionDamage * Mathf.Max(0.3f, falloff); // Minimum 30% damage
                 
                 nearbyEnemy.TakeDamage(finalDamage);
+                #if UNITY_EDITOR
                 Debug.Log($"Explosion hit {nearbyEnemy.name} for {finalDamage:F1} damage!");
+                #endif
             }
         }
     }

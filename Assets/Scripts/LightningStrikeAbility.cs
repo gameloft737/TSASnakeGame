@@ -179,8 +179,8 @@ public class LightningStrikeAbility : BaseAbility
         float currentRange = GetStrikeRange();
         float rangeSqr = currentRange * currentRange;
         
-        // Find all AppleEnemy objects
-        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType for better performance
+        var allEnemies = AppleEnemy.GetAllActiveEnemies();
         
         foreach (AppleEnemy enemy in allEnemies)
         {

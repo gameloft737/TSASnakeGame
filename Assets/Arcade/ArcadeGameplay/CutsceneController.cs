@@ -1,8 +1,16 @@
 using UnityEngine;
+using System;
 using System.Collections; // Needed for IEnumerator
 
 public class CutsceneController : MonoBehaviour
 {
+    public static CutsceneController Instance { get; private set; }
+    
+    /// <summary>
+    /// Event fired when the cutscene ends and gameplay begins
+    /// </summary>
+    public event Action OnCutsceneEnded;
+    
     [Header("Cameras")]
     public Camera mainCamera;          // Your player camera
     public Camera cutsceneCamera;      // Camera used for cutscene
@@ -37,6 +45,19 @@ public class CutsceneController : MonoBehaviour
 
     // Cached reference to FPS controller
     private EasyPeasyFirstPersonController.FirstPersonController fpsController;
+
+    private void Awake()
+    {
+        // Singleton pattern
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Debug.LogWarning("[CutsceneController] Multiple instances detected. Using first instance.");
+        }
+    }
 
     /// <summary>
     /// Call this method to start the cutscene
@@ -168,6 +189,10 @@ public class CutsceneController : MonoBehaviour
         {
             Debug.LogWarning("CutsceneController: ObjectiveManager.Instance is null at cutscene end!");
         }
+        
+        // Fire the OnCutsceneEnded event for any listeners (e.g., ControlsSlideInPanel)
+        OnCutsceneEnded?.Invoke();
+        Debug.Log("CutsceneController: OnCutsceneEnded event fired");
     }
 
     /// <summary>

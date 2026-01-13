@@ -14,6 +14,9 @@ public class AbilityCollector : MonoBehaviour
     [Header("Available Abilities")]
     [SerializeField] private List<AbilitySO> availableAbilities = new List<AbilitySO>();
     [SerializeField] private int abilitiesToShow = 3;
+    
+    [Header("Bonus Options (When All Abilities Maxed)")]
+    [SerializeField] private List<BonusOption> bonusOptions = new List<BonusOption>();
 
     [Header("Audio")]
     [SerializeField] private AudioClip collectSound;
@@ -63,6 +66,7 @@ public class AbilityCollector : MonoBehaviour
 
     private AbilityManager abilityManager;
     private DepthOfField dof;
+    private SnakeHealth snakeHealth;
     
     private List<GameObject> spawnedButtons = new List<GameObject>();
     private List<GameObject> spawnedPassiveAbilityDisplays = new List<GameObject>();
@@ -70,6 +74,11 @@ public class AbilityCollector : MonoBehaviour
     private List<GameObject> spawnedAttackDisplays = new List<GameObject>();
     private List<AppleEnemy> frozenEnemies = new List<AppleEnemy>();
     private List<BaseAbility> frozenAbilities = new List<BaseAbility>();
+    
+    // Speed boost coroutine tracking
+    private Coroutine activeSpeedBoostCoroutine;
+    private float originalMaxSpeed;
+    private float originalDefaultSpeed;
     
     private bool isUIOpen = false;
     private const float ANIM_TIME = 0.66f;
@@ -104,6 +113,7 @@ public class AbilityCollector : MonoBehaviour
         if (enemySpawner == null) enemySpawner = FindFirstObjectByType<EnemySpawner>();
         if (attackSelectionUI == null) attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
         if (cursorLock == null) cursorLock = FindFirstObjectByType<CursorLock>();
+        if (snakeHealth == null) snakeHealth = FindFirstObjectByType<SnakeHealth>();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -185,6 +195,108 @@ public class AbilityCollector : MonoBehaviour
         if (newAbility != null) PlayEffect(transform.position, false);
         
         CloseCanvas();
+    }
+    
+    /// <summary>
+    /// Called when a bonus option is selected (heal or speed boost)
+    /// </summary>
+    public void SelectBonusOption(BonusOption option)
+    {
+        if (!isUIOpen || option == null) return;
+        
+        ApplyBonusOption(option);
+        PlayEffect(transform.position, false);
+        
+        CloseCanvas();
+    }
+    
+    /// <summary>
+    /// Applies the selected bonus option effect
+    /// </summary>
+    private void ApplyBonusOption(BonusOption option)
+    {
+        switch (option.bonusType)
+        {
+            case BonusType.Heal:
+                ApplyHeal(option);
+                break;
+            case BonusType.SpeedBoost:
+                ApplySpeedBoost(option);
+                break;
+        }
+    }
+    
+    private void ApplyHeal(BonusOption option)
+    {
+        if (snakeHealth == null)
+        {
+            snakeHealth = FindFirstObjectByType<SnakeHealth>();
+        }
+        
+        if (snakeHealth != null)
+        {
+            float healAmount = option.healAmount;
+            if (option.healIsPercentage)
+            {
+                healAmount = snakeHealth.GetMaxHealth() * (option.healAmount / 100f);
+            }
+            snakeHealth.Heal(healAmount);
+            Debug.Log($"[AbilityCollector] Applied heal bonus: {healAmount:F1} HP");
+        }
+    }
+    
+    private void ApplySpeedBoost(BonusOption option)
+    {
+        if (playerMovement == null)
+        {
+            playerMovement = FindFirstObjectByType<PlayerMovement>();
+        }
+        
+        if (playerMovement != null)
+        {
+            // Stop any existing speed boost
+            if (activeSpeedBoostCoroutine != null)
+            {
+                StopCoroutine(activeSpeedBoostCoroutine);
+                // Restore original speeds before starting new boost
+                playerMovement.maxSpeed = originalMaxSpeed;
+                playerMovement.defaultSpeed = originalDefaultSpeed;
+            }
+            
+            activeSpeedBoostCoroutine = StartCoroutine(SpeedBoostCoroutine(option));
+        }
+    }
+    
+    private IEnumerator SpeedBoostCoroutine(BonusOption option)
+    {
+        // Store original speeds
+        originalMaxSpeed = playerMovement.maxSpeed;
+        originalDefaultSpeed = playerMovement.defaultSpeed;
+        
+        // Apply speed boost
+        playerMovement.maxSpeed *= option.speedMultiplier;
+        playerMovement.defaultSpeed *= option.speedMultiplier;
+        
+        Debug.Log($"[AbilityCollector] Applied speed boost: {option.speedMultiplier}x for {option.speedBoostDuration}s");
+        
+        // Wait for duration (using unscaled time in case game is paused)
+        float elapsed = 0f;
+        while (elapsed < option.speedBoostDuration)
+        {
+            // Only count time when not frozen
+            if (!playerMovement.IsFrozen())
+            {
+                elapsed += Time.deltaTime;
+            }
+            yield return null;
+        }
+        
+        // Restore original speeds
+        playerMovement.maxSpeed = originalMaxSpeed;
+        playerMovement.defaultSpeed = originalDefaultSpeed;
+        
+        Debug.Log("[AbilityCollector] Speed boost ended");
+        activeSpeedBoostCoroutine = null;
     }
 
     private void CloseCanvas()
@@ -268,7 +380,8 @@ public class AbilityCollector : MonoBehaviour
         if (mouseLookAt != null) mouseLookAt.SetFrozen(true);
         if (attackManager != null) attackManager.SetFrozen(true);
 
-        AppleEnemy[] enemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType for better performance
+        var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
             if (enemy != null)
@@ -323,6 +436,14 @@ public class AbilityCollector : MonoBehaviour
         if (abilityButtonContainer == null || abilityButtonPrefab == null) return;
 
         List<AbilitySO> randomAbilities = GetRandomAbilities(abilitiesToShow);
+        
+        // If no valid abilities available (all maxed), show bonus options instead
+        if (randomAbilities.Count == 0)
+        {
+            PopulateBonusOptionButtons();
+            return;
+        }
+        
         foreach (AbilitySO ability in randomAbilities)
         {
             if (ability == null) continue;
@@ -331,6 +452,32 @@ public class AbilityCollector : MonoBehaviour
             AbilityButton abilityButton = buttonObj.GetComponent<AbilityButton>();
             if (abilityButton != null) abilityButton.Initialize(ability, this);
         }
+    }
+    
+    /// <summary>
+    /// Populates the UI with bonus option buttons when all abilities are maxed.
+    /// Uses the same AbilityButton prefab but initializes it with bonus option data.
+    /// </summary>
+    private void PopulateBonusOptionButtons()
+    {
+        if (abilityButtonContainer == null || abilityButtonPrefab == null) return;
+        
+        foreach (BonusOption option in bonusOptions)
+        {
+            if (option == null) continue;
+            
+            GameObject buttonObj = Instantiate(abilityButtonPrefab, abilityButtonContainer);
+            spawnedButtons.Add(buttonObj);
+            
+            // Use the AbilityButton component with bonus option initialization
+            AbilityButton abilityButton = buttonObj.GetComponent<AbilityButton>();
+            if (abilityButton != null)
+            {
+                abilityButton.InitializeBonusOption(option, this);
+            }
+        }
+        
+        Debug.Log($"[AbilityCollector] All abilities maxed - showing {bonusOptions.Count} bonus options");
     }
 
     private List<AbilitySO> GetRandomAbilities(int count)

@@ -38,6 +38,9 @@ public class AttackSelectionUI : MonoBehaviour
     [SerializeField] private Transform currentAttackContainer;
     [SerializeField] private GameObject currentAttackDisplayPrefab;
     
+    [Header("Did You Know Display")]
+    [SerializeField] private DidYouKnowDisplay didYouKnowDisplay;
+    
     [Header("References")]
     [SerializeField] private AttackManager attackManager;
     [SerializeField] private WaveManager waveManager;
@@ -177,6 +180,13 @@ public class AttackSelectionUI : MonoBehaviour
         SpawnButtons();
         PopulateCurrentAbilities();
         PopulateCurrentAttack();
+        
+        // Show and refresh Did You Know display
+        if (didYouKnowDisplay != null)
+        {
+            didYouKnowDisplay.gameObject.SetActive(true);
+            didYouKnowDisplay.DisplayRandomFact();
+        }
         
         StartCoroutine(DOFLerp(true));
         
@@ -822,6 +832,13 @@ public class AttackSelectionUI : MonoBehaviour
         // Don't switch camera here - let ClassicModeManager handle it
         ClearCurrentAbilityDisplays();
         ClearCurrentAttackDisplay();
+        
+        // Hide Did You Know display
+        if (didYouKnowDisplay != null)
+        {
+            didYouKnowDisplay.gameObject.SetActive(false);
+        }
+        
         if (nonUI) nonUI.SetActive(true);
         
         if (playerMovement) playerMovement.SetFrozen(false);
@@ -1022,7 +1039,8 @@ public class AttackSelectionUI : MonoBehaviour
         frozenEnemies.Clear();
         frozenAbilities.Clear();
         
-        foreach (AppleEnemy enemy in FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None))
+        // Use AppleEnemy's static list instead of FindObjectsByType for better performance
+        foreach (AppleEnemy enemy in AppleEnemy.GetAllActiveEnemies())
         {
             if (enemy)
             {

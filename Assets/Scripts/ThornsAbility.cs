@@ -230,7 +230,8 @@ public class ThornsAbility : BaseAbility
         float bonusDamage = GetBonusDamage();
         
         HashSet<AppleEnemy> damagedEnemies = new HashSet<AppleEnemy>();
-        AppleEnemy[] allEnemies = FindObjectsByType<AppleEnemy>(FindObjectsSortMode.None);
+        // Use AppleEnemy's static list instead of FindObjectsByType for better performance
+        var allEnemies = AppleEnemy.GetAllActiveEnemies();
         
         foreach (BodyPart part in snakeBody.bodyParts)
         {
