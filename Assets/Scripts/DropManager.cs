@@ -76,6 +76,38 @@ public class DropManager : MonoBehaviour
             }
         }
     }
+    
+    /// <summary>
+    /// Clears all active ability drops from the world.
+    /// Call this when restarting a level or respawning.
+    /// </summary>
+    public void ClearAllDrops()
+    {
+        CleanupNullDrops();
+        
+        for (int i = activeDrops.Count - 1; i >= 0; i--)
+        {
+            AbilityDrop drop = activeDrops[i];
+            if (drop != null && drop.gameObject != null)
+            {
+                // Use object pool if available
+                if (ObjectPool.Instance != null)
+                {
+                    ObjectPool.Instance.Despawn(drop.gameObject);
+                }
+                else
+                {
+                    Destroy(drop.gameObject);
+                }
+            }
+        }
+        
+        activeDrops.Clear();
+        
+        #if UNITY_EDITOR
+        Debug.Log("[DropManager] Cleared all ability drops");
+        #endif
+    }
 
     /// <summary>
     /// Gets the current number of active drops in the world

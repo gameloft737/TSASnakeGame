@@ -4,12 +4,17 @@ using System.Collections;
 
 public class SnakeHealth : MonoBehaviour
 {
+    public static SnakeHealth Instance { get; private set; }
+    
     [Header("Health Settings")]
     [SerializeField] private float baseMaxHealth = 100f;
     [SerializeField] private float currentHealth;
     
     // Cached max health (base + bonuses)
     private float maxHealth;
+    
+    // Invincibility flag - when true, player takes no damage
+    private bool isInvincible = false;
     
     [Header("References")]
     [SerializeField] private WaveManager waveManager;
@@ -27,6 +32,16 @@ public class SnakeHealth : MonoBehaviour
     
     private void Awake()
     {
+        // Singleton pattern
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Debug.LogWarning("[SnakeHealth] Multiple instances detected. Using first instance.");
+        }
+        
         // Initialize health early so it's ready when listeners subscribe
         UpdateMaxHealth();
         currentHealth = maxHealth;
@@ -84,6 +99,9 @@ public class SnakeHealth : MonoBehaviour
     public void TakeDamage(float damage)
     {
         if (isDead) return;
+        
+        // Don't take damage if invincible
+        if (isInvincible) return;
         
         // Don't take damage if we're in choice phase
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
@@ -216,6 +234,23 @@ public class SnakeHealth : MonoBehaviour
     public bool IsAlive()
     {
         return currentHealth > 0 && !isDead;
+    }
+    
+    /// <summary>
+    /// Sets the invincibility state. When invincible, the player takes no damage.
+    /// </summary>
+    public void SetInvincible(bool invincible)
+    {
+        isInvincible = invincible;
+        Debug.Log($"[SnakeHealth] Invincibility set to: {invincible}");
+    }
+    
+    /// <summary>
+    /// Returns whether the player is currently invincible.
+    /// </summary>
+    public bool IsInvincible()
+    {
+        return isInvincible;
     }
     
     private void StopPlayerAndAttacks()

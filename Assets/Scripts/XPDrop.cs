@@ -205,6 +205,39 @@ public class XPDrop : MonoBehaviour, IPooledObject
     }
     
     /// <summary>
+    /// Clears all XP drops from the scene.
+    /// Call this when restarting a level or respawning.
+    /// </summary>
+    public static void ClearAllXPDrops()
+    {
+        XPDrop[] allDrops = FindObjectsByType<XPDrop>(FindObjectsSortMode.None);
+        
+        foreach (XPDrop drop in allDrops)
+        {
+            if (drop != null && drop.gameObject != null)
+            {
+                // Cancel any pending despawn
+                drop.CancelInvoke(nameof(DespawnOrDestroy));
+                
+                // Use object pool if available
+                PooledObject pooledObj = drop.GetComponent<PooledObject>();
+                if (pooledObj != null)
+                {
+                    pooledObj.ReturnToPool();
+                }
+                else
+                {
+                    Destroy(drop.gameObject);
+                }
+            }
+        }
+        
+        #if UNITY_EDITOR
+        Debug.Log($"[XPDrop] Cleared {allDrops.Length} XP drops");
+        #endif
+    }
+    
+    /// <summary>
     /// Initialize the XP drop with a specific value
     /// </summary>
     public void Initialize(int xp)

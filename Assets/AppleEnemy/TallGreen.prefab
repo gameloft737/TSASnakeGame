@@ -5164,6 +5164,10 @@ PrefabInstance:
       value: NewApple
       objectReference: {fileID: 0}
     - target: {fileID: 8431195697733037332, guid: 8deec926d6ede134caff4ced57230059, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8431195697733037332, guid: 8deec926d6ede134caff4ced57230059, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 1151844921754575795, guid: ae7cd8a6aab76164281b3ea39c2a06cd, type: 3}

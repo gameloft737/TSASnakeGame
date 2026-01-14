@@ -245,9 +245,8 @@ public class SettingsManager : MonoBehaviour
     
     public void SetFullscreen(bool isFullscreen)
     {
-        Screen.fullScreen = isFullscreen;
-        PlayerPrefs.SetInt(FULLSCREEN_KEY, isFullscreen ? 1 : 0);
-        PlayerPrefs.Save();
+        // Use FullscreenPersistence for consistent fullscreen handling across scenes
+        FullscreenPersistence.SetFullscreen(isFullscreen);
     }
     
     public void SetVSync(bool enabled)

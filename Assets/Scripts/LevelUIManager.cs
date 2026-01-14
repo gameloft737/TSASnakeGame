@@ -66,6 +66,9 @@ public class LevelUITrigger
     [Tooltip("How long to show the subtitle (0 = use default duration)")]
     public float subtitleDuration = 3f;
     
+    [Tooltip("If true, makes the player invincible (takes no damage) when this trigger fires. Useful for end-game sequences.")]
+    public bool disablePlayerDamage = false;
+    
     [Header("GameObject Settings (for Show/Hide/Toggle actions)")]
     [Tooltip("The GameObject to show/hide/toggle")]
     public GameObject targetGameObject;
@@ -454,6 +457,17 @@ public class LevelUIManager : MonoBehaviour
     
     private void ExecuteTriggerAction(LevelUITrigger trigger)
     {
+        // Check if this trigger should disable player damage
+        if (trigger.disablePlayerDamage)
+        {
+            if (SnakeHealth.Instance != null)
+            {
+                SnakeHealth.Instance.SetInvincible(true);
+                if (debugMode)
+                    Debug.Log("[LevelUIManager] Player damage disabled by trigger");
+            }
+        }
+        
         switch (trigger.actionType)
         {
             case LevelUIActionType.ShowSubtitle:

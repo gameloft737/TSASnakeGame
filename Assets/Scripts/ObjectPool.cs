@@ -329,7 +329,7 @@ public class ObjectPool : MonoBehaviour
     }
     
     /// <summary>
-    /// Clears all objects from a pool
+    /// Clears all inactive objects from a pool (objects in the queue)
     /// </summary>
     public void ClearPool(string tag)
     {
@@ -346,6 +346,69 @@ public class ObjectPool : MonoBehaviour
         }
         
         activeCount[tag] = 0;
+    }
+    
+    /// <summary>
+    /// Despawns all active objects from all pools.
+    /// Call this when loading a new scene or restarting the game.
+    /// </summary>
+    public void DespawnAllActive()
+    {
+        // Find all active pooled objects in the scene
+        PooledObject[] allPooledObjects = FindObjectsByType<PooledObject>(FindObjectsSortMode.None);
+        
+        int despawnedCount = 0;
+        foreach (PooledObject pooledObj in allPooledObjects)
+        {
+            if (pooledObj != null && pooledObj.gameObject.activeInHierarchy)
+            {
+                Despawn(pooledObj.gameObject);
+                despawnedCount++;
+            }
+        }
+        
+        Debug.Log($"[ObjectPool] Despawned {despawnedCount} active pooled objects");
+    }
+    
+    /// <summary>
+    /// Despawns all active objects from a specific pool.
+    /// </summary>
+    public void DespawnAllActive(string tag)
+    {
+        if (!poolDictionary.ContainsKey(tag)) return;
+        
+        // Find all active pooled objects with this tag
+        PooledObject[] allPooledObjects = FindObjectsByType<PooledObject>(FindObjectsSortMode.None);
+        
+        int despawnedCount = 0;
+        foreach (PooledObject pooledObj in allPooledObjects)
+        {
+            if (pooledObj != null && pooledObj.poolTag == tag && pooledObj.gameObject.activeInHierarchy)
+            {
+                Despawn(pooledObj.gameObject);
+                despawnedCount++;
+            }
+        }
+        
+        Debug.Log($"[ObjectPool] Despawned {despawnedCount} active objects from pool '{tag}'");
+    }
+    
+    /// <summary>
+    /// Clears all pools completely (both active and inactive objects).
+    /// Use with caution - this destroys all pooled objects.
+    /// </summary>
+    public void ClearAllPools()
+    {
+        // First despawn all active objects
+        DespawnAllActive();
+        
+        // Then clear all pool queues
+        foreach (var kvp in poolDictionary)
+        {
+            ClearPool(kvp.Key);
+        }
+        
+        Debug.Log("[ObjectPool] Cleared all pools");
     }
     
     /// <summary>

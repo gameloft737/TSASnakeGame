@@ -68,6 +68,7 @@ public class CheckpointManager : MonoBehaviour
     private PlayerMovement playerMovement;
     private SnakeBody snakeBody;
     private XPUI xpUI;
+    private DropManager dropManager;
     
     private void Awake()
     {
@@ -95,6 +96,7 @@ public class CheckpointManager : MonoBehaviour
         if (playerMovement == null) playerMovement = FindFirstObjectByType<PlayerMovement>();
         if (snakeBody == null) snakeBody = FindFirstObjectByType<SnakeBody>();
         if (xpUI == null) xpUI = FindFirstObjectByType<XPUI>();
+        if (dropManager == null) dropManager = FindFirstObjectByType<DropManager>();
     }
     
     public void SaveCheckpoint(int levelMilestone)
@@ -219,7 +221,11 @@ public class CheckpointManager : MonoBehaviour
         FindReferences();
         if (debugMode) Debug.Log($"[CheckpointManager] Restoring checkpoint at level {currentCheckpoint.levelMilestone}");
         
+        // Clear all enemies, XP drops, and ability drops from the map
         if (enemySpawner != null) enemySpawner.ClearAllEnemies();
+        XPDrop.ClearAllXPDrops();
+        if (dropManager != null) dropManager.ClearAllDrops();
+        
         if (xpManager != null) xpManager.SetXP(currentCheckpoint.xp, currentCheckpoint.xpLevel, currentCheckpoint.xpToNextLevel);
         if (waveManager != null) waveManager.currentWaveIndex = currentCheckpoint.waveIndex;
         

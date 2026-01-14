@@ -84,8 +84,8 @@ MonoBehaviour:
   minVelocityForRotation: 0.1
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
-  minDamage: 30
-  maxDamage: 40
+  minDamage: 15
+  maxDamage: 15
   agentReEnableDelay: 0.5
   maxHealth: 500
   isMetal: 0
@@ -5187,6 +5187,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 8deec926d6ede134caff4ced57230059, type: 3}
       propertyPath: m_Name
       value: NewApple
+      objectReference: {fileID: 0}
+    - target: {fileID: 8431195697733037332, guid: 8deec926d6ede134caff4ced57230059, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8431195697733037332, guid: 8deec926d6ede134caff4ced57230059, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'

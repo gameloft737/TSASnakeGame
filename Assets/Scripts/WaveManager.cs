@@ -18,6 +18,7 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private AttackSelectionUI attackSelectionUI;
     [SerializeField] private PlayerMovement playerMovement;
     [SerializeField] private AttackManager attackManager;
+    [SerializeField] private DropManager dropManager;
     
     [Header("Events")]
     public UnityEvent OnWaveComplete;
@@ -58,10 +59,18 @@ public class WaveManager : MonoBehaviour
         if (!attackSelectionUI) attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
         if (!playerMovement) playerMovement = FindFirstObjectByType<PlayerMovement>();
         if (!attackManager) attackManager = FindFirstObjectByType<AttackManager>();
+        if (!dropManager) dropManager = FindFirstObjectByType<DropManager>();
     }
 
-    public void StartWave()
+    public void StartWave(bool clearMap = true)
     {
+        // Only clear map when explicitly requested (e.g., respawning, starting from arcade)
+        // Don't clear when continuing after level-up attack selection
+        if (clearMap)
+        {
+            ClearMapDrops();
+        }
+        
         if (useInfiniteWaves)
         {
             StartInfiniteWave();
@@ -70,6 +79,36 @@ public class WaveManager : MonoBehaviour
         {
             StartLegacyWave();
         }
+    }
+    
+    /// <summary>
+    /// Clears all enemies, XP drops, and ability drops from the map.
+    /// Called when starting a wave to ensure a clean playing field.
+    /// </summary>
+    private void ClearMapDrops()
+    {
+        // First, despawn all active pooled objects (this catches any pooled enemies/drops that persist across scenes)
+        if (ObjectPool.Instance != null)
+        {
+            ObjectPool.Instance.DespawnAllActive();
+        }
+        
+        // Clear all enemies (apples) - this handles non-pooled enemies and updates spawner tracking
+        if (enemySpawner != null)
+        {
+            enemySpawner.ClearAllEnemies();
+        }
+        
+        // Clear XP drops (handles both pooled and non-pooled)
+        XPDrop.ClearAllXPDrops();
+        
+        // Clear ability drops
+        if (dropManager != null)
+        {
+            dropManager.ClearAllDrops();
+        }
+        
+        Debug.Log("[WaveManager] Cleared all map objects (pooled objects, enemies, XP, and ability drops)");
     }
     
     public void StartCurrentWave()
@@ -184,7 +223,8 @@ public class WaveManager : MonoBehaviour
     {
         inChoicePhase = false;
         currentWaveIndex++;
-        StartWave();
+        // Don't clear the map when continuing after level-up - keep existing enemies
+        StartWave(clearMap: false);
     }
 
     public void ResetCurrentWave()

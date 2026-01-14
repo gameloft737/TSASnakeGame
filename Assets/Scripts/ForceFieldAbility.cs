@@ -224,18 +224,20 @@ public class ForceFieldAbility : BaseAbility
                 float distance = Mathf.Sqrt(dx * dx + dy * dy);
 
                 float alpha;
-                if (distance < 0.3f)
+                if (distance < 0.5f)
                 {
+                    // Solid center - larger solid area
                     alpha = 1f;
                 }
                 else if (distance < 1f)
                 {
-                    alpha = 1f - ((distance - 0.3f) / 0.7f);
-                    alpha = alpha * alpha;
+                    // Fade from 1.0 to 0.3 (less transparent at edges)
+                    // Linear fade instead of quadratic for less aggressive falloff
+                    alpha = 1f - ((distance - 0.5f) / 0.5f) * 0.7f;
                 }
                 else
                 {
-                    alpha = 0f;
+                    alpha = 0.3f;
                 }
 
                 pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);

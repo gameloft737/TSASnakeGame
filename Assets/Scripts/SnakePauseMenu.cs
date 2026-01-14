@@ -3,7 +3,7 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Manages the pause menu for the Snake game.
-/// Press Escape to pause/unpause the game.
+/// Press P to pause/unpause the game.
 /// </summary>
 public class SnakePauseMenu : MonoBehaviour
 {
@@ -90,8 +90,8 @@ public class SnakePauseMenu : MonoBehaviour
     
     private void Update()
     {
-        // Check for Escape key
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // Check for P key
+        if (Input.GetKeyDown(KeyCode.P))
         {
             // Don't allow pause if tutorial panel is active
             if (TutorialPanelManager.Instance != null && TutorialPanelManager.Instance.IsTutorialActive)

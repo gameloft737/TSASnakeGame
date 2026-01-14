@@ -13,69 +13,81 @@ MonoBehaviour:
   m_Name: AppleAlly
   m_EditorClassIdentifier: 
   abilityName: Apple Ally
-  abilityDescription: Convert enemy apples into allies that fight for you
+  abilityDescription: Spawn apple allies that fight for you
   abilityIcon: {fileID: 0}
   abilityType: 1
   levels:
   - levelName: Level 1
-    description: Convert 1 nearby apple with the most health into an ally
+    description: Spawn 1 apple ally every 12 seconds
     damage: 0
     cooldown: 12
     duration: 0
     customStats:
     - statName: allyCount
       value: 1
-    - statName: conversionRange
-      value: 15
+    - statName: spawnRadius
+      value: 3
+    - statName: maxAllies
+      value: 5
   - levelName: Level 2
-    description: Convert 2 apples into allies with faster cooldown
+    description: Spawn 2 apple allies every 10 seconds (max 7)
     damage: 0
     cooldown: 10
     duration: 0
     customStats:
     - statName: allyCount
       value: 2
-    - statName: conversionRange
-      value: 18
+    - statName: spawnRadius
+      value: 3.5
+    - statName: maxAllies
+      value: 7
   - levelName: Level 3
-    description: Convert 3 apples with increased range
+    description: Spawn 3 apple allies every 8 seconds (max 9)
     damage: 0
     cooldown: 8
     duration: 0
     customStats:
     - statName: allyCount
       value: 3
-    - statName: conversionRange
-      value: 22
+    - statName: spawnRadius
+      value: 4
+    - statName: maxAllies
+      value: 9
   - levelName: Level 4
-    description: Convert 4 apples - build your apple army
+    description: Spawn 4 apple allies every 7 seconds (max 11)
     damage: 0
     cooldown: 7
     duration: 0
     customStats:
     - statName: allyCount
       value: 4
-    - statName: conversionRange
-      value: 26
+    - statName: spawnRadius
+      value: 4.5
+    - statName: maxAllies
+      value: 11
   - levelName: Level 5
-    description: Convert 5 apples with massive range
+    description: Spawn 5 apple allies every 6 seconds (max 13)
     damage: 0
     cooldown: 6
     duration: 0
     customStats:
     - statName: allyCount
       value: 5
-    - statName: conversionRange
-      value: 30
+    - statName: spawnRadius
+      value: 5
+    - statName: maxAllies
+      value: 13
   - levelName: Level 6
-    description: Convert 7 apples - command an apple legion!
+    description: Spawn 7 apple allies every 5 seconds - command an apple legion! (max 15)
     damage: 0
     cooldown: 5
     duration: 0
     customStats:
     - statName: allyCount
       value: 7
-    - statName: conversionRange
-      value: 35
+    - statName: spawnRadius
+      value: 5.5
+    - statName: maxAllies
+      value: 15
   maxLevel: 6
   evolutionData: {fileID: 0}
