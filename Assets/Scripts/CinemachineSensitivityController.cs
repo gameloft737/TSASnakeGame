@@ -23,18 +23,18 @@ public class CinemachineSensitivityController : MonoBehaviour
     
     // PlayerPrefs key (same as SettingsManager)
     private const string SENSITIVITY_KEY = "MouseSensitivity";
-    private const float DEFAULT_SENSITIVITY = 50f;
+    private const float DEFAULT_SENSITIVITY = 6f;
     
     private float currentSensitivity;
     private float baseGainX = 1f;
     private float baseGainY = 1f;
     private bool initialized = false;
     
-    private void Start()
+    private void Awake()
     {
         Initialize();
         
-        // Load and apply sensitivity
+        // Load and apply sensitivity immediately in Awake to prevent high sensitivity on first frame
         if (loadFromPlayerPrefs)
         {
             LoadSensitivityFromSettings();

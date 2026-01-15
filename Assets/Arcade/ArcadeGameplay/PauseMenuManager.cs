@@ -85,8 +85,8 @@ public class PauseMenuManager : MonoBehaviour
     
     private void Update()
     {
-        // Check for Escape key
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // Check for Escape or P key
+        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
         {
             // Don't allow pausing if we're in the main menu
             if (!canPause || IsInMainMenu())

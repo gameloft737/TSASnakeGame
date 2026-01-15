@@ -32,8 +32,7 @@ public class SettingsManager : MonoBehaviour
     [Tooltip("Reference to the Cinemachine sensitivity controller for the snake game")]
     public CinemachineSensitivityController snakeCameraSensitivity;
     
-    [Header("Sensitivity Scaling")]
-    public float sensitivityMultiplier = 5f;
+    // Sensitivity is applied directly to FPS controller (0-100 range, no multiplier)
     
     private const string MASTER_VOLUME_KEY = "MasterVolume";
     private const string MUSIC_VOLUME_KEY = "MusicVolume";
@@ -58,9 +57,25 @@ public class SettingsManager : MonoBehaviour
         initialized = true;
         InitializeQualityDropdown();
         InitializeResolutions();
+        InitializeSensitivitySlider();
         FindFPSController();
         SetupListeners();
         LoadSettings();
+    }
+    
+    private void InitializeSensitivitySlider()
+    {
+        // Ensure the sensitivity slider has proper min/max values and starts at 6 (default)
+        if (sensitivitySlider != null)
+        {
+            sensitivitySlider.minValue = 0f;
+            sensitivitySlider.maxValue = 100f;
+            // Set default value to 6 if no saved preference exists
+            if (!PlayerPrefs.HasKey(SENSITIVITY_KEY))
+            {
+                sensitivitySlider.value = 6f;
+            }
+        }
     }
     
     private void OnEnable()
@@ -89,7 +104,8 @@ public class SettingsManager : MonoBehaviour
         if (fullscreenToggle) fullscreenToggle.SetIsOnWithoutNotify(fullscreen);
         if (vsyncToggle) vsyncToggle.SetIsOnWithoutNotify(vsync);
         
-        float sens = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        // Clamp sensitivity to 0-100 range to match FPS controller's Range attribute
+        float sens = Mathf.Clamp(PlayerPrefs.GetFloat(SENSITIVITY_KEY, 6f), 0f, 100f);
         bool invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
         
         if (sensitivitySlider) sensitivitySlider.SetValueWithoutNotify(sens);
@@ -192,7 +208,8 @@ public class SettingsManager : MonoBehaviour
         if (vsyncToggle) vsyncToggle.isOn = vsync;
         SetQuality(quality); SetFullscreen(fullscreen); SetVSync(vsync);
         
-        float sens = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        // Clamp sensitivity to 0-100 range to match FPS controller's Range attribute
+        float sens = Mathf.Clamp(PlayerPrefs.GetFloat(SENSITIVITY_KEY, 6f), 0f, 100f);
         bool invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
         if (sensitivitySlider) sensitivitySlider.value = sens;
         if (invertYToggle) invertYToggle.isOn = invertY;
@@ -258,13 +275,16 @@ public class SettingsManager : MonoBehaviour
     
     public void SetSensitivity(float sensitivity)
     {
+        // Clamp sensitivity to 0-100 range to match FPS controller's Range attribute
+        sensitivity = Mathf.Clamp(sensitivity, 0f, 100f);
+        
         PlayerPrefs.SetFloat(SENSITIVITY_KEY, sensitivity);
         PlayerPrefs.Save();
         if (sensitivityValueText) sensitivityValueText.text = sensitivity.ToString("F1");
         
-        // Apply to FPS controller if available
+        // Apply to FPS controller if available (already clamped above, direct 1:1 mapping)
         if (fpsController == null) FindFPSController();
-        if (fpsController != null) fpsController.mouseSensitivity = sensitivity * sensitivityMultiplier;
+        if (fpsController != null) fpsController.mouseSensitivity = sensitivity;
         
         // Apply to Snake Cinemachine camera if available
         if (snakeCameraSensitivity == null) FindSnakeCameraSensitivity();
@@ -281,14 +301,15 @@ public class SettingsManager : MonoBehaviour
     
     public void ReapplySensitivity()
     {
-        float sens = PlayerPrefs.GetFloat(SENSITIVITY_KEY, 50f);
+        // Clamp sensitivity to 0-100 range to match FPS controller's Range attribute
+        float sens = Mathf.Clamp(PlayerPrefs.GetFloat(SENSITIVITY_KEY, 6f), 0f, 100f);
         bool invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
         
-        // Apply to FPS controller if available
+        // Apply to FPS controller if available (direct 1:1 mapping, 0-100 range)
         if (fpsController == null) FindFPSController();
         if (fpsController != null)
         {
-            fpsController.mouseSensitivity = sens * sensitivityMultiplier;
+            fpsController.mouseSensitivity = sens;
             fpsController.invertY = invertY;
         }
         
@@ -308,7 +329,7 @@ public class SettingsManager : MonoBehaviour
         if (qualityDropdown) qualityDropdown.value = QualitySettings.names.Length - 1;
         if (fullscreenToggle) fullscreenToggle.isOn = true;
         if (vsyncToggle) vsyncToggle.isOn = true;
-        if (sensitivitySlider) sensitivitySlider.value = 50f;
+        if (sensitivitySlider) sensitivitySlider.value = 6f;
         if (invertYToggle) invertYToggle.isOn = false;
         SaveSettings();
     }

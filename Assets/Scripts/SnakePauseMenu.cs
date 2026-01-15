@@ -90,8 +90,8 @@ public class SnakePauseMenu : MonoBehaviour
     
     private void Update()
     {
-        // Check for P key
-        if (Input.GetKeyDown(KeyCode.P))
+        // Check for P or Escape key
+        if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.Escape))
         {
             // Don't allow pause if tutorial panel is active
             if (TutorialPanelManager.Instance != null && TutorialPanelManager.Instance.IsTutorialActive)

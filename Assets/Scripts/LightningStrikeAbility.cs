@@ -15,9 +15,12 @@ public class LightningStrikeAbility : BaseAbility
     [SerializeField] private float strikeRange = 15f; // Range to find enemies
     
     [Header("Visual Effects")]
-    [SerializeField] private GameObject lightningEffectPrefab; // Optional lightning VFX prefab
+    [SerializeField] private GameObject lightningEffectPrefab; // Optional lightning VFX prefab (for non-WebGL)
+    [SerializeField] private bool useWebGLEffect = true; // Use WebGL-friendly effect instead of VFX prefab
     [SerializeField] private float effectDuration = 0.3f; // How long the lightning effect lasts
     [SerializeField] private Color lightningColor = new Color(0.5f, 0.8f, 1f, 1f); // Light blue
+    [SerializeField] private Color lightningGlowColor = new Color(0.3f, 0.6f, 1f, 0.5f); // Glow color for WebGL effect
+    [SerializeField] private float lightningHeight = 15f; // Height from which lightning strikes (for WebGL effect)
     
     [Header("Audio")]
     [SerializeField] private string strikeSoundName = "lightning_strike";
@@ -203,8 +206,14 @@ public class LightningStrikeAbility : BaseAbility
         enemy.TakeDamage(damage);
         
         // Spawn visual effect
-        if (lightningEffectPrefab != null)
+        if (useWebGLEffect)
         {
+            // Use WebGL-friendly lightning effect
+            CreateWebGLLightningEffect(enemy.transform.position);
+        }
+        else if (lightningEffectPrefab != null)
+        {
+            // Use VFX prefab (may not work well on WebGL)
             GameObject effect = Instantiate(lightningEffectPrefab, enemy.transform.position, Quaternion.identity);
             Destroy(effect, effectDuration);
         }
@@ -215,6 +224,15 @@ public class LightningStrikeAbility : BaseAbility
         }
         
         Debug.Log($"Lightning struck {enemy.name} for {damage} damage!");
+    }
+    
+    /// <summary>
+    /// Creates a WebGL-friendly lightning effect using the WebGLLightningEffect component
+    /// </summary>
+    private void CreateWebGLLightningEffect(Vector3 targetPosition)
+    {
+        WebGLLightningEffect effect = WebGLLightningEffect.CreateStrike(targetPosition, lightningHeight, effectDuration);
+        effect.SetColors(lightningColor, Color.white, lightningGlowColor);
     }
     
     /// <summary>
