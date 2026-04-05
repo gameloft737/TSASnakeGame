@@ -81,6 +81,8 @@ public class AttackSelectionUI : MonoBehaviour
     private AbilitySO selectedAbility = null;
     private FallbackOption selectedFallback = FallbackOption.None;
     private Attack selectedSwapAttack = null;
+    private Attack selectedReplacedAttack = null;
+    private int selectedReplacedLevel = 1;
     private bool isUIOpen = false;
     private bool isOpeningTransition = false;  // True only during opening animation
     private bool isClosingTransition = false;  // True only during closing animation
@@ -100,6 +102,7 @@ public class AttackSelectionUI : MonoBehaviour
     private Dictionary<GameObject, AbilitySO> buttonToAbility = new Dictionary<GameObject, AbilitySO>();
     private Dictionary<GameObject, FallbackOption> buttonToFallback = new Dictionary<GameObject, FallbackOption>();
     private Dictionary<GameObject, Attack> buttonToSwapAttack = new Dictionary<GameObject, Attack>();
+    private Dictionary<GameObject, int> buttonToReplacedLevel = new Dictionary<GameObject, int>();
     
     private void Start()
     {
@@ -251,6 +254,8 @@ public class AttackSelectionUI : MonoBehaviour
         selectedAbility = null;
         selectedFallback = FallbackOption.None;
         selectedSwapAttack = null;
+        selectedReplacedAttack = null;
+        selectedReplacedLevel = 1;
 
         bool isFirstSelection = attackManager == null || attackManager.GetAttackCount() == 0;
         
@@ -316,6 +321,21 @@ public class AttackSelectionUI : MonoBehaviour
             }
         }
         
+        // Add replaced attacks as options if any exist
+        List<Attack> replacedAttacks = GetAvailableReplacedAttacks();
+        if (replacedAttacks.Count > 0)
+        {
+            for (int i = 0; i < replacedAttacks.Count; i++)
+            {
+                Attack replaced = replacedAttacks[i];
+                int level = attackManager.GetReplacedAttackLevels()[i];
+                if (replaced != null)
+                {
+                    options.Add(new ReplacedAttackOption { attack = replaced, level = level });
+                }
+            }
+        }
+        
         bool activeSlotsFull = abilityManager != null && !abilityManager.CanAddActiveAbility();
         
         foreach (AbilitySO abilitySO in possibleAbilities)
@@ -368,7 +388,48 @@ public class AttackSelectionUI : MonoBehaviour
             if (option is Attack attack) SpawnAttackButton(attack);
             else if (option is AbilitySO abilitySO) SpawnAbilityButton(abilitySO);
             else if (option is AttackSwapOption swapOption) SpawnSwapAttackButton(swapOption.swapToAttack);
+            else if (option is ReplacedAttackOption replacedOption) SpawnReplacedAttackButton(replacedOption.attack, replacedOption.level);
         }
+    }
+    
+    private void SpawnReplacedAttackButton(Attack attack, int level)
+    {
+        GameObject buttonObj = Instantiate(attackButtonPrefab, attackButtonContainer);
+        spawnedButtons.Add(buttonObj);
+        buttonToAttack[buttonObj] = attack;
+        
+        // Store the level info for use when selected
+        buttonToReplacedLevel[buttonObj] = level;
+        
+        AttackButton attackButton = buttonObj.GetComponent<AttackButton>();
+        if (attackButton)
+        {
+            // Show it as if player owns it (for display purposes)
+            attackButton.InitializeWithOwnership(attack, possibleAttacks.IndexOf(attack), this, false, true);
+            
+            // Set custom colors for replaced attacks
+            Color normalColor = new Color(0.8f, 0.8f, 1f); // light blue
+            Color selectedColor = Color.green;
+            attackButton.SetCustomColors(normalColor, selectedColor);
+        }
+        
+        Button button = buttonObj.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => OnReplacedAttackSelected(attack, level));
+        }
+    }
+    
+    private void OnReplacedAttackSelected(Attack attack, int level)
+    {
+        selectedReplacedAttack = attack;
+        selectedReplacedLevel = level;
+        selectedAttack = null;
+        selectedAbility = null;
+        selectedFallback = FallbackOption.None;
+        selectedSwapAttack = null;
+        UpdateButtonSelections();
     }
     
     private bool ShouldOfferAttackSwap(Attack currentAttack)
@@ -740,13 +801,13 @@ public class AttackSelectionUI : MonoBehaviour
 
     public void OnAttackButtonClicked(int attackIndex) { if (attackIndex >= 0 && attackIndex < possibleAttacks.Count) OnAttackSelected(possibleAttacks[attackIndex]); }
     
-    public void OnAttackSelected(Attack attack) { selectedAttack = attack; selectedAbility = null; selectedFallback = FallbackOption.None; selectedSwapAttack = null; UpdateButtonSelections(); }
+    public void OnAttackSelected(Attack attack) { selectedAttack = attack; selectedAbility = null; selectedFallback = FallbackOption.None; selectedSwapAttack = null; selectedReplacedAttack = null; UpdateButtonSelections(); }
     
-    public void OnAbilitySelected(AbilitySO abilitySO) { selectedAbility = abilitySO; selectedAttack = null; selectedFallback = FallbackOption.None; selectedSwapAttack = null; UpdateButtonSelections(); }
+    public void OnAbilitySelected(AbilitySO abilitySO) { selectedAbility = abilitySO; selectedAttack = null; selectedFallback = FallbackOption.None; selectedSwapAttack = null; selectedReplacedAttack = null; UpdateButtonSelections(); }
     
-    private void OnFallbackSelected(FallbackOption fallback) { selectedFallback = fallback; selectedAttack = null; selectedAbility = null; selectedSwapAttack = null; UpdateButtonSelections(); }
+    private void OnFallbackSelected(FallbackOption fallback) { selectedFallback = fallback; selectedAttack = null; selectedAbility = null; selectedSwapAttack = null; selectedReplacedAttack = null; UpdateButtonSelections(); }
     
-    private void OnSwapAttackSelected(Attack swapAttack) { selectedSwapAttack = swapAttack; selectedAttack = null; selectedAbility = null; selectedFallback = FallbackOption.None; UpdateButtonSelections(); }
+    private void OnSwapAttackSelected(Attack swapAttack) { selectedSwapAttack = swapAttack; selectedAttack = null; selectedAbility = null; selectedFallback = FallbackOption.None; selectedReplacedAttack = null; UpdateButtonSelections(); }
     
     private void UpdateButtonSelections()
     {
@@ -757,7 +818,7 @@ public class AttackSelectionUI : MonoBehaviour
             if (buttonToAttack.ContainsKey(buttonObj))
             {
                 Attack attack = buttonToAttack[buttonObj];
-                bool isSelected = attack == selectedAttack;
+                bool isSelected = attack == selectedAttack || attack == selectedReplacedAttack;
                 if (attackButton) attackButton.SetSelected(isSelected);
             }
             else if (buttonToAbility.ContainsKey(buttonObj))
@@ -888,6 +949,7 @@ public class AttackSelectionUI : MonoBehaviour
     {
         if (selectedFallback != FallbackOption.None) { ApplyFallbackOption(); return; }
         if (selectedSwapAttack != null) { ApplyAttackSwap(); return; }
+        if (selectedReplacedAttack != null) { ApplyReplacedAttack(); return; }
         if (selectedAbility != null && abilityManager != null) { abilityManager.AddAbility(selectedAbility.abilityPrefab, selectedAbility); return; }
         if (selectedAttack != null && attackManager != null)
         {
@@ -912,8 +974,9 @@ public class AttackSelectionUI : MonoBehaviour
         if (currentAttack == null) return;
         
         int currentLevel = currentAttack.GetCurrentLevel();
-        int maxSwapLevel = selectedSwapAttack.GetMaxLevel();
-        int targetLevel = Mathf.Min(currentLevel, maxSwapLevel);
+        
+        // Store the current attack with its level for potential reuse
+        attackManager.StoreReplacedAttack(currentAttack, currentLevel);
         
         // Clear the current attack
         attackManager.ClearAllAttacks();
@@ -921,21 +984,46 @@ public class AttackSelectionUI : MonoBehaviour
         // Add the new attack
         attackManager.AddAttack(selectedSwapAttack);
         
-        // Upgrade it to the target level (level 1 is base, so upgrade targetLevel - 1 times)
+        Debug.Log($"Swapped attack from {currentAttack.attackName} (Lvl {currentLevel}) to {selectedSwapAttack.attackName}");
+    }
+    
+    private void ApplyReplacedAttack()
+    {
+        if (selectedReplacedAttack == null || attackManager == null) return;
+        
+        Attack currentAttack = attackManager.GetCurrentAttack();
+        
+        // Store current attack if one exists (for potential later reuse)
+        if (currentAttack != null)
+        {
+            attackManager.StoreReplacedAttack(currentAttack, currentAttack.GetCurrentLevel());
+        }
+        
+        // Clear current attack
+        attackManager.ClearAllAttacks();
+        
+        // Add the replaced attack back
+        attackManager.AddAttack(selectedReplacedAttack);
+        
+        // Set the level to the stored level
+        int targetLevel = selectedReplacedLevel;
         for (int i = 1; i < targetLevel; i++)
         {
-            if (selectedSwapAttack.CanUpgrade())
+            if (selectedReplacedAttack.CanUpgrade())
             {
-                selectedSwapAttack.TryUpgrade();
+                selectedReplacedAttack.TryUpgrade();
             }
             else
             {
-                Debug.LogWarning($"Could not upgrade {selectedSwapAttack.attackName} to level {i + 1}");
+                Debug.LogWarning($"Could not upgrade {selectedReplacedAttack.attackName} to level {i + 1}");
                 break;
             }
         }
         
-        Debug.Log($"Swapped attack to {selectedSwapAttack.attackName} at level {selectedSwapAttack.GetCurrentLevel()}");
+        // Clear the replaced attacks list since we've selected one back
+        attackManager.ClearReplacedAttacks();
+        
+        Debug.Log($"Reverted to attack {selectedReplacedAttack.attackName} at level {selectedReplacedAttack.GetCurrentLevel()}");
     }
     
     private void ApplyFallbackOption()
@@ -1090,5 +1178,17 @@ public class AttackSelectionUI : MonoBehaviour
     private class AttackSwapOption
     {
         public Attack swapToAttack;
+    }
+    
+    private class ReplacedAttackOption
+    {
+        public Attack attack;
+        public int level;
+    }
+    
+    private List<Attack> GetAvailableReplacedAttacks()
+    {
+        if (attackManager == null) return new List<Attack>();
+        return attackManager.GetReplacedAttacks();
     }
 }

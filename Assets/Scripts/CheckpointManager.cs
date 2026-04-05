@@ -38,6 +38,9 @@ public class CheckpointData
     public int applesForCurrentSegment;
     public int currentApplesThreshold;
     public int segmentsAddedFromApples;
+    
+    // Game time for timer-based levels
+    public float gameStartTime;
 }
 
 [System.Serializable]
@@ -181,6 +184,12 @@ public class CheckpointManager : MonoBehaviour
         
         if (debugMode)
             Debug.Log($"[CheckpointManager] Saved checkpoint at level {levelMilestone}. Wave: {currentCheckpoint.waveIndex}, XP Level: {currentCheckpoint.xpLevel}, Attack: {currentCheckpoint.attackPrefabName} (Lv{currentCheckpoint.attackLevel}), Abilities: {currentCheckpoint.abilities.Count}, Body Segments: {currentCheckpoint.bodySegmentCount}, Position: {currentCheckpoint.playerPosition}");
+        
+        // Save game start time for timer-based levels
+        if (levelUIManager != null)
+        {
+            currentCheckpoint.gameStartTime = levelUIManager.GetGameStartTime();
+        }
     }
     
     private void SavePlayerStatsBonuses()
@@ -236,6 +245,8 @@ public class CheckpointManager : MonoBehaviour
             Attack currentAttack = attackManager.GetCurrentAttack();
             if (currentAttack != null && currentCheckpoint.attackLevel > 0)
                 currentAttack.SetLevel(currentCheckpoint.attackLevel);
+            
+            attackManager.RefreshEvolutionVisuals();
         }
         
         RestoreAbilities();
@@ -255,11 +266,9 @@ public class CheckpointManager : MonoBehaviour
             xpUI.UpdateLevel(currentCheckpoint.xpLevel);
         }
         
-        if (levelUIManager != null)
+        if (levelUIManager != null && currentCheckpoint.gameStartTime > 0)
         {
-            var type = typeof(LevelUIManager);
-            var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-            SetField(type, levelUIManager, "lastAnnouncedLevel", currentCheckpoint.levelMilestone, flags);
+            levelUIManager.SetGameStartTime(currentCheckpoint.gameStartTime);
         }
         
         if (cameraManager != null) cameraManager.SwitchToNormalCamera();

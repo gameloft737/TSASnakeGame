@@ -36,6 +36,11 @@ public class SnakeBody : MonoBehaviour
     private GameObject currentAttachment;
     private Material currentBodyMaterial; // Track current body material for new segments
     
+    // Original materials for resetting after death
+    private Material originalHeadMaterial;
+    private Material originalBodyMaterial;
+    private bool materialsCaptured = false;
+    
     public List<BodyPart> bodyParts = new List<BodyPart>();
     
     public static event Action OnBodyPartsInitialized;
@@ -73,6 +78,21 @@ public class SnakeBody : MonoBehaviour
             {
                 headRenderer = head.GetComponentInChildren<Renderer>();
             }
+        }
+        
+        // Capture original materials for resetting after death
+        if (!materialsCaptured && headRenderer != null)
+        {
+            originalHeadMaterial = headRenderer.material;
+            if (bodyParts.Count > 0 && bodyParts[0] != null)
+            {
+                Renderer firstBodyRenderer = bodyParts[0].GetComponent<Renderer>();
+                if (firstBodyRenderer != null)
+                {
+                    originalBodyMaterial = firstBodyRenderer.material;
+                }
+            }
+            materialsCaptured = true;
         }
 
         // Create body parts and set up the chain
@@ -448,6 +468,38 @@ public class SnakeBody : MonoBehaviour
         {
             currentAttachment.SetActive(false);
             currentAttachment = null;
+        }
+    }
+    
+    /// <summary>
+    /// Resets the snake's materials to original state (called when player dies to clear evolution materials).
+    /// </summary>
+    public void ClearEvolutionMaterials()
+    {
+        if (originalHeadMaterial != null && headRenderer != null)
+        {
+            headRenderer.material = originalHeadMaterial;
+            Debug.Log("[SnakeBody] Reset head material to original");
+        }
+        
+        if (originalBodyMaterial != null)
+        {
+            currentBodyMaterial = originalBodyMaterial;
+            foreach (BodyPart part in bodyParts)
+            {
+                if (part != null)
+                {
+                    part.SetMaterial(originalBodyMaterial);
+                }
+            }
+            Debug.Log("[SnakeBody] Reset body material to original");
+        }
+        
+        if (currentAttachment != null)
+        {
+            currentAttachment.SetActive(false);
+            currentAttachment = null;
+            Debug.Log("[SnakeBody] Cleared attachment");
         }
     }
     

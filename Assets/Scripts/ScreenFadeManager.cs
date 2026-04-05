@@ -271,6 +271,95 @@ public class ScreenFadeManager : MonoBehaviour
         activeFadeCoroutine = StartCoroutine(FadeToBlackAndBackCoroutine(inDuration, holdDuration, outDuration, onFadeToBlackComplete, onComplete));
     }
     
+    /// <summary>
+    /// Fade the screen to white
+    /// </summary>
+    public void FadeToWhite(float duration = -1f, Action onComplete = null)
+    {
+        if (fadePanel == null || fadePanelImage == null)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+        
+        float fadeDuration = duration > 0 ? duration : defaultFadeDuration;
+        
+        Color originalColor = fadeColor;
+        fadePanelImage.color = Color.white;
+        
+        if (activeFadeCoroutine != null) StopCoroutine(activeFadeCoroutine);
+        activeFadeCoroutine = StartCoroutine(FadeToWhiteCoroutine(fadeDuration, onComplete, originalColor));
+    }
+    
+    /// <summary>
+    /// Fade the screen from white to clear
+    /// </summary>
+    public void FadeFromWhite(float duration = -1f, Action onComplete = null)
+    {
+        if (fadePanel == null || fadePanelImage == null)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+        
+        float fadeDuration = duration > 0 ? duration : defaultFadeDuration;
+        
+        Color originalColor = fadeColor;
+        fadePanelImage.color = Color.white;
+        
+        if (activeFadeCoroutine != null) StopCoroutine(activeFadeCoroutine);
+        activeFadeCoroutine = StartCoroutine(FadeFromWhiteCoroutine(fadeDuration, onComplete, originalColor));
+    }
+    
+    private IEnumerator FadeToWhiteCoroutine(float duration, Action onComplete, Color restoreColor)
+    {
+        isFading = true;
+        fadePanel.gameObject.SetActive(true);
+        
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float alpha = Mathf.Lerp(0f, 1f, t);
+            SetFadeAlpha(alpha);
+            yield return null;
+        }
+        
+        SetFadeAlpha(1f);
+        isFading = false;
+        
+        // Restore original color
+        if (fadePanelImage != null) fadePanelImage.color = restoreColor;
+        
+        onComplete?.Invoke();
+    }
+    
+    private IEnumerator FadeFromWhiteCoroutine(float duration, Action onComplete, Color restoreColor)
+    {
+        isFading = true;
+        fadePanel.gameObject.SetActive(true);
+        
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float alpha = Mathf.Lerp(1f, 0f, t);
+            SetFadeAlpha(alpha);
+            yield return null;
+        }
+        
+        SetFadeAlpha(0f);
+        fadePanel.gameObject.SetActive(false);
+        isFading = false;
+        
+        // Restore original color
+        if (fadePanelImage != null) fadePanelImage.color = restoreColor;
+        
+        onComplete?.Invoke();
+    }
+    
     private IEnumerator FadeToBlackCoroutine(float duration, Action onComplete)
     {
         isFading = true;

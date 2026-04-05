@@ -11,6 +11,11 @@ public class AttackManager : MonoBehaviour
     [Tooltip("The player's single attack. Player can only have one attack that they upgrade.")]
     public List<Attack> attacks = new List<Attack>();
 
+    [Header("Replaced Attacks")]
+    [Tooltip("Attacks that were replaced during swap - stored with their level for potential reuse")]
+    private List<Attack> replacedAttacks = new List<Attack>();
+    private List<int> replacedAttackLevels = new List<int>();
+
     [Header("Animation")]
     [SerializeField] private Animator animator;
     
@@ -379,4 +384,22 @@ public class AttackManager : MonoBehaviour
     }
     
     public Animator GetAnimator() => animator;
+    
+    public List<Attack> GetReplacedAttacks() => replacedAttacks;
+    public List<int> GetReplacedAttackLevels() => replacedAttackLevels;
+    
+    public void StoreReplacedAttack(Attack attack, int level)
+    {
+        if (attack == null) return;
+        
+        replacedAttacks.Add(attack);
+        replacedAttackLevels.Add(level);
+        Debug.Log($"Stored replaced attack: {attack.attackName} at level {level}");
+    }
+    
+    public void ClearReplacedAttacks()
+    {
+        replacedAttacks.Clear();
+        replacedAttackLevels.Clear();
+    }
 }

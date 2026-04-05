@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: example-water-03
+  m_Name: WaterRed
   m_Shader: {fileID: -6465566751694194690, guid: 2cddf2ee6a74aca44af00f5a49bd2cf1, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -76,7 +76,7 @@ Material:
     - Vector1_36E8227: 0.17
     - Vector1_3D886DA1: 0.05
     - Vector1_46E42935: 0.5
-    - Vector1_47683D42: 1
+    - Vector1_47683D42: 0
     - Vector1_A0EAD698: 0.5
     - Vector1_A6A0BC26: 0.37
     - Vector1_B9F56378: 0.07
@@ -111,8 +111,8 @@ Material:
     - _WorkflowMode: 1
     - _ZWrite: 1
     m_Colors:
-    - Color_7D9A58EC: {r: 0.046279836, g: 0.47778645, b: 0.754717, a: 1}
-    - Color_F01C36BF: {r: 0.47346365, g: 0.098039195, b: 0.65882355, a: 1}
+    - Color_7D9A58EC: {r: 0.8113208, g: 0.09761038, b: 0.06582408, a: 1}
+    - Color_F01C36BF: {r: 0.5176471, g: 0, b: 0.08627451, a: 1}
     - Vector2_37B21477: {r: 1, g: 1, b: 0, a: 0}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}

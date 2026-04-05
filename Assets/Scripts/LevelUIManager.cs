@@ -2,6 +2,8 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -11,7 +13,7 @@ using TMPro;
 /// </summary>
 public enum LevelTriggerType
 {
-    XPLevel,        // Triggers when player reaches a specific XP level (rank)
+    TimerLevel,    // Triggers based on timer level (every N minutes)
     WaveNumber      // Triggers when a specific wave starts
 }
 
@@ -42,16 +44,16 @@ public enum LevelUIActionType
 public class LevelUITrigger
 {
     [Header("Trigger Condition")]
-    [Tooltip("What type of trigger to use (XP Level/Rank or Wave Number)")]
-    public LevelTriggerType triggerType = LevelTriggerType.XPLevel;
+    [Tooltip("What type of trigger to use (Timer Level or Wave Number)")]
+    public LevelTriggerType triggerType = LevelTriggerType.TimerLevel;
     
-    [Tooltip("The rank/wave number that triggers this action")]
+    [Tooltip("The timer level or wave number that triggers this action")]
     public int triggerValue = 1;
     
     [Tooltip("If true, this trigger can only fire once per game session")]
     public bool triggerOnce = true;
     
-    [Tooltip("If true, waits for the Attack Selection UI to close before executing this trigger. Useful for ranks 2+ where the attack menu appears.")]
+    [Tooltip("If true, waits for the Attack Selection UI to close before executing this trigger. Useful for levels 2+ where the attack menu appears.")]
     public bool waitForAttackUI = false;
     
     [Header("Action")]
@@ -112,15 +114,15 @@ public class LevelUITrigger
     public bool additiveSceneLoad = false;
     
     [Header("Tutorial Panel Settings (for ShowTutorialPanel action)")]
-    [Tooltip("(Legacy - no longer used) Title text for the tutorial panel")]
+    [Tooltip("Title text for the tutorial panel")]
     public string tutorialTitle = "Tutorial";
     
-    [Tooltip("(Legacy - no longer used) Instructions text for the tutorial panel")]
+    [Tooltip("Instructions text for the tutorial panel")]
     [TextArea(3, 8)]
     public string tutorialInstructions = "";
     
     [Header("Level Announcement Settings (for ShowLevelAnnouncement action)")]
-    [Tooltip("The level number to announce (if 0, will auto-calculate from rank)")]
+    [Tooltip("The level number to announce (if 0, will auto-calculate from timer)")]
     public int announcementLevel = 0;
     
     [Header("Optional Delay")]
@@ -140,7 +142,7 @@ public class LevelUITrigger
     }
     
     /// <summary>
-    /// Checks if this trigger should fire for the given rank/wave
+    /// Checks if this trigger should fire for the given level/wave
     /// </summary>
     public bool ShouldTrigger(LevelTriggerType type, int value)
     {
@@ -151,12 +153,11 @@ public class LevelUITrigger
 }
 
 /// <summary>
-/// Manages UI triggers based on player rank and wave progression.
-/// Listens to XPManager and WaveManager events and executes configured triggers.
+/// Manages UI triggers based on timer level and wave progression.
+/// Listens to WaveManager events and executes configured triggers.
 /// 
 /// TERMINOLOGY:
-/// - Rank: The XP level from XPManager (what was previously called "level")
-/// - Level: A milestone reached every N ranks (configurable via ranksPerLevel)
+/// - Level: A milestone based on game time (every N minutes, configurable via minutesPerLevel)
 ///
 /// SETUP INSTRUCTIONS:
 /// 1. Create an empty GameObject in your scene and name it "LevelUIManager"
@@ -166,7 +167,7 @@ public class LevelUITrigger
 /// 5. For level announcements, assign a TextMeshProUGUI and its RectTransform
 ///
 /// TRIGGER TYPES:
-/// - XP Level (Rank): Triggers when player reaches a specific rank (from XPManager)
+/// - Timer Level: Triggers when player reaches a specific timer-based level
 /// - Wave Number: Triggers when a specific wave starts (from WaveManager)
 ///
 /// ACTION TYPES:
@@ -189,13 +190,13 @@ public class LevelUIManager : MonoBehaviour
     public static LevelUIManager Instance { get; private set; }
     
     [Header("Triggers")]
-    [Tooltip("List of UI triggers that fire at specific ranks or waves")]
+    [Tooltip("List of UI triggers that fire at specific levels or waves")]
     [SerializeField] private List<LevelUITrigger> triggers = new List<LevelUITrigger>();
     
     [Header("References (Auto-found if not assigned)")]
-    [SerializeField] private XPManager xpManager;
     [SerializeField] private WaveManager waveManager;
     [SerializeField] private AttackSelectionUI attackSelectionUI;
+    [SerializeField] private AbilityCollector abilityCollector;
     
     [Header("Level Announcement UI")]
     [Tooltip("The TextMeshProUGUI component for displaying level announcements")]
@@ -204,20 +205,51 @@ public class LevelUIManager : MonoBehaviour
     [Tooltip("The RectTransform of the level announcement (for animation)")]
     [SerializeField] private RectTransform levelAnnouncementRect;
     
-    [Tooltip("How many ranks equal one level (default: 10)")]
-    [SerializeField] private int ranksPerLevel = 10;
+    [Tooltip("The TextMeshProUGUI component for displaying the timer")]
+    [SerializeField] private TextMeshProUGUI timerText;
+    
+    [Tooltip("The TextMeshProUGUI component for displaying the next level text (e.g., 'until level 2')")]
+    [SerializeField] private TextMeshProUGUI nextLevelText;
+    
+    [Tooltip("The TextMeshProUGUI component for displaying the 10-second countdown")]
+    [SerializeField] private TextMeshProUGUI countdownText;
+    
+    [Tooltip("The RectTransform of the countdown text (for scaling animation)")]
+    [SerializeField] private RectTransform countdownRect;
+    
+    [Header("Environment")]
+    [Tooltip("The Directional Light (Sun) to change color per level")]
+    [SerializeField] private Light sunLight;
+    
+    [Tooltip("Array of skybox materials for each level")]
+    [SerializeField] private Material[] levelSkyboxes;
+    
+    [Tooltip("Array of sun colors for each level")]
+    [SerializeField] private Color[] levelSunColors;
+    
+    [Tooltip("Water material for each level")]
+    [SerializeField] private Material[] levelWaterMaterials;
+    
+    [Tooltip("Global Volume to change profile on")]
+    [SerializeField] private Volume globalVolume;
+    
+    [Tooltip("Array of Volume Profiles for each level")]
+    [SerializeField] private VolumeProfile[] levelVolumeProfiles;
+    
+    [Tooltip("How many minutes equal one level (default: 3)")]
+    [SerializeField] private float minutesPerLevel = 3f;
     
     [Tooltip("If true, automatically show level announcement when reaching level milestones")]
     [SerializeField] private bool autoShowLevelAnnouncements = true;
     
     [Header("Win Condition")]
-    [Tooltip("The rank at which the player wins the game (0 = disabled)")]
-    [SerializeField] private int winRank = 50;
+    [Tooltip("The level at which the player wins the game (0 = disabled)")]
+    [SerializeField] private int winLevel = 50;
     
     [Tooltip("The text to display when the player wins")]
     [SerializeField] private string winText = "You Won!";
     
-    [Tooltip("If true, automatically show win announcement when reaching win rank")]
+    [Tooltip("If true, automatically show win announcement when reaching win level")]
     [SerializeField] private bool autoShowWinAnnouncement = true;
     
     [Header("Level Announcement Animation Settings")]
@@ -243,12 +275,19 @@ public class LevelUIManager : MonoBehaviour
     [SerializeField] private AnimationCurve slideEaseCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
     
     [Header("Debug")]
-    [SerializeField] private bool debugMode = false;
+    [SerializeField] private bool debugMode = true;
     
     // Track the last announced level to avoid duplicates
     private int lastAnnouncedLevel = 0;
     private Coroutine levelAnnouncementCoroutine;
     private bool hasWon = false;
+    private float gameStartTime;
+    private float pausedTime = 0f;
+    private bool isPaused = false;
+    private int lastCalculatedLevel = 0;
+    private bool hasShownOneMinuteWarning = false;
+    private int lastCountdownNumber = -1;
+    private Coroutine countdownCoroutine;
     
     private void Awake()
     {
@@ -256,6 +295,8 @@ public class LevelUIManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            gameStartTime = Time.time;
+            pausedTime = 0f;
         }
         else if (Instance != this)
         {
@@ -276,26 +317,24 @@ public class LevelUIManager : MonoBehaviour
             trigger.Reset();
         }
         
+        hasShownOneMinuteWarning = false;
+        lastCountdownNumber = -1;
+        
         if (debugMode)
         {
             Debug.Log($"[LevelUIManager] Initialized with {triggers.Count} triggers");
         }
         
-        // Check current rank on start and trigger any matching triggers
+        // Check current state on start and trigger any matching triggers
         StartCoroutine(CheckInitialState());
+        
+        // Start timer-based level tracking
+        StartCoroutine(TrackTimerBasedLevel());
     }
     
     private IEnumerator CheckInitialState()
     {
         yield return null;
-        
-        if (xpManager != null)
-        {
-            int currentRank = xpManager.GetCurrentLevel();
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Checking initial rank: {currentRank}");
-            ProcessTriggers(LevelTriggerType.XPLevel, currentRank);
-        }
         
         if (waveManager != null)
         {
@@ -304,8 +343,125 @@ public class LevelUIManager : MonoBehaviour
                 Debug.Log($"[LevelUIManager] Checking initial wave: {currentWave}");
             ProcessTriggers(LevelTriggerType.WaveNumber, currentWave);
         }
+        
+        // Initialize timer-based level on start (start at level 1)
+        if (minutesPerLevel > 0)
+        {
+            int initialLevel = 1;
+            lastCalculatedLevel = initialLevel;
+            lastAnnouncedLevel = initialLevel;
+            
+            // Trigger level 1 immediately
+            ShowLevelAnnouncement(initialLevel);
+            ProcessTriggers(LevelTriggerType.TimerLevel, initialLevel);
+            
+            if (debugMode)
+                Debug.Log($"[LevelUIManager] Initial timer-based level: {initialLevel}");
+        }
     }
     
+    private IEnumerator TrackTimerBasedLevel()
+    {
+        Debug.Log("[LevelUIManager] TrackTimerBasedLevel started");
+        
+        // Track when we last checked UI state
+        bool wasPaused = false;
+        
+        while (minutesPerLevel > 0)
+        {
+            yield return new WaitForSeconds(0.1f);
+            
+            // Check if UI is open
+            bool uiOpen = (attackSelectionUI != null && attackSelectionUI.IsUIOpen()) || 
+                        (abilityCollector != null && abilityCollector.IsUIOpen());
+            
+            // If UI just opened, record the timestamp
+            if (uiOpen && !wasPaused)
+            {
+                wasPaused = true;
+            }
+            // If UI just closed, add the paused duration
+            else if (!uiOpen && wasPaused)
+            {
+                // When resuming, add a full 0.1s to compensate for pause
+                pausedTime += 0.1f;
+                wasPaused = false;
+            }
+            
+            // Skip time calculation when paused
+            if (uiOpen) continue;
+            
+            float effectiveTime = Time.time - gameStartTime - pausedTime;
+            int currentLevel = Mathf.FloorToInt(effectiveTime / (minutesPerLevel * 60f)) + 1;
+            // Ensure we always have at least level 1
+            if (currentLevel < 1) currentLevel = 1;
+            
+            // Update timer text display
+            UpdateTimerText();
+            
+            float timeInLevel = effectiveTime % (minutesPerLevel * 60f);
+            float timeToNextLevel = (minutesPerLevel * 60f) - timeInLevel;
+            
+            if (debugMode && Time.frameCount % 120 == 0)
+                Debug.Log($"[LevelUIManager] Level {currentLevel}, timeToNext: {timeToNextLevel:F1}");
+            
+            // Check for win condition (outside level change so it can trigger immediately)
+            if (winLevel > 0 && currentLevel >= winLevel && !hasWon)
+            {
+                hasWon = true;
+                Debug.Log($"[LevelUIManager] WIN! Level {currentLevel} >= winLevel {winLevel}");
+                ShowWinAnnouncement();
+            }
+            
+            // Check for 1 minute remaining warning
+            if (timeToNextLevel <= 60f && timeToNextLevel > 0.5f && !hasShownOneMinuteWarning)
+            {
+                hasShownOneMinuteWarning = true;
+                ShowAnnouncement("1 Minute Left");
+            }
+            
+            // Handle 10-second countdown - show 10 down to 1
+            int countdownNumber = Mathf.Clamp((int)timeToNextLevel, 1, 10);
+            
+            bool shouldShowCountdown = (timeToNextLevel <= 10f && timeToNextLevel > 0f);
+            
+            if (debugMode && shouldShowCountdown)
+                Debug.Log($"[LevelUIManager] CD: {countdownNumber} vs last: {lastCountdownNumber}");
+            
+            if (shouldShowCountdown && countdownNumber != lastCountdownNumber)
+            {
+                lastCountdownNumber = countdownNumber;
+                if (countdownCoroutine != null) StopCoroutine(countdownCoroutine);
+                countdownCoroutine = StartCoroutine(ShowCountdownNumber(countdownNumber));
+            }
+            
+            if (currentLevel > lastCalculatedLevel)
+            {
+                hasShownOneMinuteWarning = false;
+                lastCountdownNumber = -1;
+                lastCalculatedLevel = currentLevel;
+                lastAnnouncedLevel = currentLevel;
+                
+                if (debugMode)
+                    Debug.Log($"[LevelUIManager] Timer-based level up! Current level: {currentLevel}");
+                
+                // Do level transition with fade
+                StartCoroutine(LevelTransition(currentLevel));
+                
+                // Also trigger any timer-level based triggers with the new level
+                if (debugMode)
+                    Debug.Log($"[LevelUIManager] Calling ProcessTriggers with level: {currentLevel}");
+                ProcessTriggers(LevelTriggerType.TimerLevel, currentLevel);
+                
+                // Save checkpoint at each level milestone
+                if (CheckpointManager.Instance != null)
+                {
+                    CheckpointManager.Instance.SaveCheckpoint(currentLevel);
+                }
+            }
+        }
+    }
+     
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
@@ -313,17 +469,14 @@ public class LevelUIManager : MonoBehaviour
     
     private void FindReferences()
     {
-        if (xpManager == null)
-            xpManager = FindFirstObjectByType<XPManager>();
-            
         if (waveManager == null)
             waveManager = FindFirstObjectByType<WaveManager>();
             
         if (attackSelectionUI == null)
             attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
             
-        if (xpManager == null)
-            Debug.LogWarning("[LevelUIManager] XPManager not found. XP Rank triggers will not work.");
+        if (abilityCollector == null)
+            abilityCollector = FindFirstObjectByType<AbilityCollector>();
             
         if (waveManager == null)
             Debug.LogWarning("[LevelUIManager] WaveManager not found. Wave triggers will not work.");
@@ -331,8 +484,6 @@ public class LevelUIManager : MonoBehaviour
     
     private void SubscribeToEvents()
     {
-        XPManager.OnLeveledUp += OnRankUp;
-        
         if (waveManager != null)
         {
             waveManager.OnWaveStarted.AddListener(OnWaveStarted);
@@ -341,53 +492,10 @@ public class LevelUIManager : MonoBehaviour
     
     private void UnsubscribeFromEvents()
     {
-        XPManager.OnLeveledUp -= OnRankUp;
-        
         if (waveManager != null)
         {
             waveManager.OnWaveStarted.RemoveListener(OnWaveStarted);
         }
-    }
-    
-    private void OnRankUp(int newRank)
-    {
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Player reached rank {newRank}");
-            
-        ProcessTriggers(LevelTriggerType.XPLevel, newRank);
-        
-        // Check for win condition first
-        if (autoShowWinAnnouncement && winRank > 0 && newRank >= winRank && !hasWon)
-        {
-            hasWon = true;
-            // Wait for attack selection UI to close before showing win announcement
-            StartCoroutine(ShowWinAnnouncementAfterAttackUI());
-            return; // Don't show level announcement if we just won
-        }
-        
-        if (autoShowLevelAnnouncements && ranksPerLevel > 0)
-        {
-            int currentLevel = GetLevelFromRank(newRank);
-            if (currentLevel > lastAnnouncedLevel && currentLevel > 0)
-            {
-                lastAnnouncedLevel = currentLevel;
-                ShowLevelAnnouncement(currentLevel);
-            }
-        }
-    }
-    
-    public int GetLevelFromRank(int rank)
-    {
-        return rank / ranksPerLevel;
-    }
-    
-    public int GetCurrentLevel()
-    {
-        if (xpManager != null)
-        {
-            return GetLevelFromRank(xpManager.GetCurrentLevel());
-        }
-        return 0;
     }
     
     private void OnWaveStarted(int waveIndex)
@@ -402,10 +510,12 @@ public class LevelUIManager : MonoBehaviour
     
     private void ProcessTriggers(LevelTriggerType type, int value)
     {
+        Debug.Log($"[LevelUIManager] ProcessTriggers called with type: {type}, value: {value}, triggers count: {triggers.Count}");
         foreach (var trigger in triggers)
         {
             if (trigger.ShouldTrigger(type, value))
             {
+                Debug.Log($"[LevelUIManager] Trigger matched! type: {trigger.triggerType}, value: {trigger.triggerValue}, action: {trigger.actionType}");
                 ExecuteTrigger(trigger);
             }
         }
@@ -521,8 +631,7 @@ public class LevelUIManager : MonoBehaviour
                 if (TutorialPanelManager.Instance != null) TutorialPanelManager.Instance.ShowTutorial();
                 break;
             case LevelUIActionType.ShowLevelAnnouncement:
-                int level = trigger.announcementLevel > 0 ? trigger.announcementLevel : GetLevelFromRank(xpManager?.GetCurrentLevel() ?? 0);
-                if (level > 0) ShowLevelAnnouncement(level);
+                // Skip - announcement is handled by ShowLevelAnnouncement() in level change code
                 break;
         }
     }
@@ -543,6 +652,8 @@ public class LevelUIManager : MonoBehaviour
     
     public void ShowLevelAnnouncement(int level)
     {
+        Debug.Log($"[LevelUIManager] ShowLevelAnnouncement called with level: {level}");
+        
         // Save checkpoint when a new level is announced
         if (CheckpointManager.Instance != null)
         {
@@ -561,6 +672,165 @@ public class LevelUIManager : MonoBehaviour
     {
         ShowAnnouncement(winText);
     }
+    
+    private void UpdateTimerText()
+    {
+        if (timerText == null) return;
+        
+        float elapsed = Time.time - gameStartTime - pausedTime;
+        float timePerLevel = minutesPerLevel * 60f;
+        int currentLevel = Mathf.FloorToInt(elapsed / timePerLevel);
+        float timeInLevel = elapsed % timePerLevel;
+        float timeToNextLevel = timePerLevel - timeInLevel;
+        
+        int minutes = Mathf.FloorToInt(timeToNextLevel / 60f);
+        int seconds = Mathf.FloorToInt(timeToNextLevel % 60f);
+        
+        timerText.text = $"{minutes}:{seconds:D2}";
+        
+        if (nextLevelText != null)
+        {
+            int nextLevel = currentLevel + 2;
+            if (winLevel > 0 && nextLevel >= winLevel)
+                nextLevelText.text = "end";
+            else
+                nextLevelText.text = $"until level {nextLevel}";
+        }
+    }
+    
+    private IEnumerator ShowCountdownNumber(int number)
+    {
+        if (countdownText == null || countdownRect == null) yield break;
+        
+        countdownText.text = number.ToString();
+        countdownText.fontSize = 10;
+        countdownText.gameObject.SetActive(true);
+        
+        float duration = 0.8f;
+        float elapsed = 0f;
+        float baseFontSize = 10f;
+        float maxFontSize = 200f;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float scale = Mathf.Lerp(baseFontSize, maxFontSize, t);
+            
+            countdownText.fontSize = scale;
+            
+            yield return null;
+        }
+        
+        countdownText.gameObject.SetActive(false);
+    }
+    
+    private IEnumerator LevelTransition(int level)
+    {
+        // Show level announcement
+        if (level == 3)
+            ShowAnnouncement("Final Level");
+        else if (level == 4)
+            ShowAnnouncement("You Win!");
+        else
+            ShowLevelAnnouncement(level);
+        
+        // Skip fade for win levels if no skyboxes configured
+        if ((level == 3 || level == 4) && (levelSkyboxes == null || levelSkyboxes.Length < level))
+        {
+            yield break;
+        }
+        
+        // Do environment transition
+        yield return new WaitForSeconds(0.5f);
+        
+        // Fade to white
+        if (ScreenFadeManager.Instance != null)
+        {
+            ScreenFadeManager.Instance.FadeToWhite(0.5f);
+            yield return new WaitForSeconds(0.5f);
+            
+            // Change environment during white flash
+            ChangeEnvironment(level);
+            
+            // Fade back
+            ScreenFadeManager.Instance.FadeFromWhite(0.5f);
+        }
+        else
+        {
+            ChangeEnvironment(level);
+        }
+    }
+    
+    public void ChangeEnvironment(int level)
+    {
+        int index = level - 1; // 0-based indexing
+        if (index < 0) index = 0;
+        
+        // Change skybox if available
+        if (levelSkyboxes != null && levelSkyboxes.Length > index && levelSkyboxes[index] != null)
+        {
+            RenderSettings.skybox = levelSkyboxes[index];
+        }
+        
+        // Change sun color if available
+        if (sunLight != null && levelSunColors != null && levelSunColors.Length > index)
+        {
+            sunLight.color = levelSunColors[index];
+        }
+        
+        // Change water material if available
+        if (levelWaterMaterials != null && levelWaterMaterials.Length > index && levelWaterMaterials[index] != null)
+        {
+            FindAndSetWater(levelWaterMaterials[index]);
+        }
+        
+        // Change Volume Profile if available
+        if (globalVolume != null && levelVolumeProfiles != null && levelVolumeProfiles.Length > index && levelVolumeProfiles[index] != null)
+        {
+            globalVolume.profile = levelVolumeProfiles[index];
+        }
+        
+        if (debugMode)
+            Debug.Log($"[LevelUIManager] Environment changed for level {level}");
+    }
+    
+    private void FindAndSetWater(Material waterMat)
+    {
+        if (waterMat == null) return;
+        
+        // Find all objects with Water in name and set their material
+        var renderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+        foreach (var rend in renderers)
+        {
+            if (rend != null && rend.gameObject.name.Contains("Water"))
+            {
+                rend.material = waterMat;
+            }
+        }
+    }
+    
+    public int GetTimerBasedLevel()
+    {
+        if (minutesPerLevel > 0)
+        {
+            float elapsed = Time.time - gameStartTime - pausedTime;
+            return Mathf.FloorToInt(elapsed / (minutesPerLevel * 60f));
+        }
+        return 0;
+    }
+    
+    public void SetGameStartTime(float startTime)
+    {
+        gameStartTime = startTime;
+        if (minutesPerLevel > 0)
+        {
+            lastCalculatedLevel = Mathf.FloorToInt((Time.time - gameStartTime) / (minutesPerLevel * 60f));
+            lastAnnouncedLevel = lastCalculatedLevel;
+        }
+    }
+    
+    public float GetGameStartTime() => gameStartTime;
     
     /// <summary>
     /// Waits for the attack selection UI to close before showing the win announcement
@@ -662,15 +932,39 @@ public class LevelUIManager : MonoBehaviour
         foreach (var trigger in triggers) trigger.Reset();
         lastAnnouncedLevel = 0;
         hasWon = false;
+        gameStartTime = Time.time;
+        lastCalculatedLevel = 0;
     }
     
-    public int GetWinRank() => winRank;
-    public void SetWinRank(int value) { winRank = Mathf.Max(0, value); }
+    /// <summary>
+    /// Reset timer to full time for current level (call when player dies)
+    /// </summary>
+    public void ResetTimerForCurrentLevel()
+    {
+        int currentLevel = GetTimerBasedLevel() + 1;
+        if (currentLevel < 1) currentLevel = 1;
+        
+        // Reset to full time for this level
+        float levelDuration = minutesPerLevel * 60f;
+        float targetTime = (currentLevel - 1) * levelDuration;
+        gameStartTime = Time.time - targetTime;
+        pausedTime = 0f;
+        lastAnnouncedLevel = currentLevel;
+        lastCalculatedLevel = currentLevel;
+        hasShownOneMinuteWarning = false;
+        lastCountdownNumber = -1;
+        
+        if (debugMode)
+            Debug.Log($"[LevelUIManager] Timer reset to level {currentLevel}");
+    }
+    
+    public int GetWinLevel() => winLevel;
+    public void SetWinLevel(int value) { winLevel = Mathf.Max(0, value); }
     public bool HasWon() => hasWon;
     
     public void AddRuntimeTrigger(LevelUITrigger trigger) { if (trigger != null) triggers.Add(trigger); }
     public void RemoveRuntimeTrigger(LevelUITrigger trigger) { if (trigger != null) triggers.Remove(trigger); }
     public List<LevelUITrigger> GetTriggers() => triggers;
-    public int GetRanksPerLevel() => ranksPerLevel;
-    public void SetRanksPerLevel(int value) { ranksPerLevel = Mathf.Max(1, value); }
+    public float GetMinutesPerLevel() => minutesPerLevel;
+    public void SetMinutesPerLevel(float value) { minutesPerLevel = Mathf.Max(0.1f, value); }
 }
