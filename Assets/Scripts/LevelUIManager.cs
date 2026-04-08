@@ -14,7 +14,8 @@ using TMPro;
 public enum LevelTriggerType
 {
     TimerLevel,    // Triggers based on timer level (every N minutes)
-    WaveNumber      // Triggers when a specific wave starts
+    WaveNumber,    // Triggers when a specific wave starts
+    AttackRank     // Triggers when player reaches a specific attack rank (after attack UI closes)
 }
 
 /// <summary>
@@ -34,7 +35,8 @@ public enum LevelUIActionType
     LoadScene,              // Load a new scene (with optional fade)
     FadeAndLoadScene,       // Fade to white, then load a new scene
     ShowTutorialPanel,      // Show a tutorial panel that pauses the game
-    ShowLevelAnnouncement   // Show a level announcement with slide animation
+    ShowLevelAnnouncement,  // Show a level announcement with slide animation
+    ShowTutorialPrompt      // Show a tutorial prompt that stays until input (WASD or click)
 }
 
 /// <summary>
@@ -125,6 +127,14 @@ public class LevelUITrigger
     [Tooltip("The level number to announce (if 0, will auto-calculate from timer)")]
     public int announcementLevel = 0;
     
+    [Header("Tutorial Prompt Settings (for ShowTutorialPrompt action)")]
+    [Tooltip("The type of tutorial prompt (WASD for movement, Attack for mouse click)")]
+    public TutorialPromptType promptType = TutorialPromptType.WASD;
+    
+    [Tooltip("Custom text for the tutorial prompt (optional - uses default if empty)")]
+    [TextArea(1, 2)]
+    public string customPromptText = "";
+    
     [Header("Optional Delay")]
     [Tooltip("Delay in seconds before executing the action")]
     public float delay = 0f;
@@ -150,6 +160,15 @@ public class LevelUITrigger
         if (triggerOnce && hasTriggered) return false;
         return value == triggerValue;
     }
+}
+
+/// <summary>
+/// Defines the type of tutorial prompt
+/// </summary>
+public enum TutorialPromptType
+{
+    WASD,   // Prompt for WASD movement - hides when W/A/S/D pressed
+    Attack  // Prompt for attack - hides when mouse clicked
 }
 
 /// <summary>
@@ -274,6 +293,25 @@ public class LevelUIManager : MonoBehaviour
     [Tooltip("Easing curve for slide animations")]
     [SerializeField] private AnimationCurve slideEaseCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
     
+    [Header("Tutorial Prompts")]
+    [Tooltip("Text to show for attack prompt after rank 1")]
+    [SerializeField] private string attackPromptText = "Click to use attack";
+    
+    [Tooltip("The TextMeshProUGUI component for the tutorial prompt")]
+    [SerializeField] private TextMeshProUGUI tutorialPromptText;
+    
+    [Tooltip("The RectTransform of the tutorial prompt for animation")]
+    [SerializeField] private RectTransform tutorialPromptRect;
+    
+    [Tooltip("Font size for the tutorial prompt")]
+    [SerializeField] private float tutorialPromptFontSize = 36f;
+    
+    [Tooltip("If true, shows attack prompt after player reaches rank 1 (first attack upgrade)")]
+    [SerializeField] private bool showAttackPromptOnRank1 = true;
+    
+    [Tooltip("Animation curve for prompt fade")]
+    [SerializeField] private AnimationCurve promptFadeCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+    
     [Header("Debug")]
     [SerializeField] private bool debugMode = true;
     
@@ -282,6 +320,13 @@ public class LevelUIManager : MonoBehaviour
     private Coroutine levelAnnouncementCoroutine;
     private bool hasWon = false;
     private float gameTime;
+    
+    // Tutorial prompt state - tracks active prompts
+    private bool wasdPromptActive = false;
+    private bool attackPromptActive = false;
+    private bool wasdInputDismissed = false;
+    private bool mouseInputDismissed = false;
+    private Coroutine tutorialPromptCoroutine;
     
     private bool isPaused = false;
     private int lastCalculatedLevel = 0;
@@ -329,6 +374,173 @@ public class LevelUIManager : MonoBehaviour
         
         // Start timer-based level tracking
         StartCoroutine(TrackTimerBasedLevel());
+        
+        // Initialize tutorial prompts
+        InitializeTutorialPrompts();
+    }
+    
+    private void Update()
+    {
+        CheckTutorialInputForDismiss();
+    }
+    
+    private void InitializeTutorialPrompts()
+    {
+        if (tutorialPromptText != null)
+        {
+            tutorialPromptText.fontSize = tutorialPromptFontSize;
+            tutorialPromptText.gameObject.SetActive(false);
+        }
+        
+        wasdPromptActive = false;
+        attackPromptActive = false;
+        wasdInputDismissed = false;
+        mouseInputDismissed = false;
+        hasAttackUIClosedOnce = false;
+        
+        // Subscribe to attack changes to detect when player upgrades attack
+        AttackManager.OnAttacksChanged += OnAttacksChangedForPrompt;
+        AttackManager.OnFuelUIVisible += OnFuelUIVisible;
+        
+        // Start checking after a short delay to let the attack UI initialize
+        StartCoroutine(CheckForAttackPromptAfterUI());
+    }
+    
+    private bool hasAttackUIClosedOnce = false;
+    
+    private IEnumerator CheckForAttackPromptAfterUI()
+    {
+        Debug.Log("[LevelUIManager] CheckForAttackPromptAfterUI started");
+        
+        // Wait longer for the initial attack selection UI to close
+        yield return new WaitForSeconds(2f);
+        
+        // Wait for attack UI to be closed if it's open
+        AttackSelectionUI attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
+        if (attackSelectionUI != null)
+        {
+            Debug.Log("[LevelUIManager] Found AttackSelectionUI, waiting for it to close...");
+            int waitCount = 0;
+            while (attackSelectionUI.IsUIOpen() && waitCount < 300) // max 5 seconds
+            {
+                yield return null;
+                waitCount++;
+            }
+            Debug.Log("[LevelUIManager] AttackSelectionUI closed");
+        }
+        else
+        {
+            Debug.Log("[LevelUIManager] No AttackSelectionUI found in scene");
+        }
+        
+        // Mark as closed
+        hasAttackUIClosedOnce = true;
+        
+        // Wait a bit more after UI closes
+        yield return new WaitForSeconds(1f);
+        
+        // Now check for attack at rank 2
+        CheckForExistingAttack();
+    }
+    
+    private void OnAttacksChangedForPrompt()
+    {
+        Debug.Log($"[LevelUIManager] OnAttacksChangedForPrompt called. hasAttackUIClosedOnce={hasAttackUIClosedOnce}, showAttackPromptOnRank1={showAttackPromptOnRank1}");
+        
+        // Don't show if attack UI hasn't closed at least once
+        if (!hasAttackUIClosedOnce)
+        {
+            Debug.Log("[LevelUIManager] Attack prompt skipped - attack UI not closed yet");
+            return;
+        }
+        
+        AttackManager attackManager = FindFirstObjectByType<AttackManager>();
+        if (attackManager != null && attackManager.GetCurrentAttack() != null)
+        {
+            int attackLevel = attackManager.GetCurrentAttack().GetCurrentLevel();
+            Debug.Log($"[LevelUIManager] Current attack level: {attackLevel}");
+            
+            // Process AttackRank triggers
+            ProcessTriggers(LevelTriggerType.AttackRank, attackLevel);
+            
+            // Also show the auto prompt if enabled
+            if (showAttackPromptOnRank1 && !attackPromptActive && !mouseInputDismissed && attackLevel >= 2)
+            {
+                Debug.Log("[LevelUIManager] Showing attack prompt!");
+                attackPromptActive = true;
+                if (tutorialPromptText != null)
+                {
+                    string promptText = string.IsNullOrEmpty(attackPromptText) ? "Click to use attack" : attackPromptText;
+                    tutorialPromptText.text = promptText;
+                    tutorialPromptText.fontSize = tutorialPromptFontSize;
+                    tutorialPromptText.gameObject.SetActive(true);
+                    
+                    var canvasGroup = tutorialPromptText.GetComponent<CanvasGroup>();
+                    if (canvasGroup == null) canvasGroup = tutorialPromptText.gameObject.AddComponent<CanvasGroup>();
+                    canvasGroup.alpha = 1f;
+                }
+            }
+        }
+    }
+    
+    private void CheckForExistingAttack()
+    {
+        OnAttacksChangedForPrompt();
+    }
+    
+    private void OnFuelUIVisible()
+    {
+        if (!showAttackPromptOnRank1 || attackPromptActive || mouseInputDismissed) return;
+        
+        StartCoroutine(ShowAttackPromptDelayed());
+    }
+    
+    private IEnumerator ShowAttackPromptDelayed()
+    {
+        yield return new WaitForSeconds(1f);
+        
+        if (!showAttackPromptOnRank1 || attackPromptActive || mouseInputDismissed) yield break;
+        
+        attackPromptActive = true;
+        if (tutorialPromptText != null)
+        {
+            string promptText = string.IsNullOrEmpty(attackPromptText) ? "Click to use attack" : attackPromptText;
+            tutorialPromptText.text = promptText;
+            tutorialPromptText.fontSize = tutorialPromptFontSize;
+            tutorialPromptText.gameObject.SetActive(true);
+            
+            var canvasGroup = tutorialPromptText.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = tutorialPromptText.gameObject.AddComponent<CanvasGroup>();
+            canvasGroup.alpha = 1f;
+        }
+    }
+    
+    private void CheckTutorialInputForDismiss()
+    {
+        // Check for WASD input - dismiss WASD prompt when pressed
+        if (wasdPromptActive && !wasdInputDismissed && (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.D)))
+        {
+            wasdInputDismissed = true;
+            wasdPromptActive = false;
+            UpdateTutorialPromptVisibility();
+        }
+        
+        // Check for mouse click (left click = 0) - dismiss attack prompt when clicked
+        if (attackPromptActive && !mouseInputDismissed && Input.GetMouseButtonDown(0))
+        {
+            mouseInputDismissed = true;
+            attackPromptActive = false;
+            UpdateTutorialPromptVisibility();
+        }
+    }
+    
+    private void UpdateTutorialPromptVisibility()
+    {
+        // Hide the prompt if both are dismissed
+        if (!wasdPromptActive && !attackPromptActive && tutorialPromptText != null)
+        {
+            tutorialPromptText.gameObject.SetActive(false);
+        }
     }
     
     private IEnumerator CheckInitialState()
@@ -456,6 +668,8 @@ public class LevelUIManager : MonoBehaviour
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
+        AttackManager.OnAttacksChanged -= OnAttacksChangedForPrompt;
+        AttackManager.OnFuelUIVisible -= OnFuelUIVisible;
     }
     
     private void FindReferences()
@@ -624,6 +838,40 @@ public class LevelUIManager : MonoBehaviour
             case LevelUIActionType.ShowLevelAnnouncement:
                 // Skip - announcement is handled by ShowLevelAnnouncement() in level change code
                 break;
+            case LevelUIActionType.ShowTutorialPrompt:
+                ShowTutorialPromptByTrigger(trigger.promptType, trigger.customPromptText);
+                break;
+        }
+    }
+    
+    private void ShowTutorialPromptByTrigger(TutorialPromptType promptType, string customText)
+    {
+        // Don't show attack prompt if attack UI hasn't closed at least once
+        if (promptType == TutorialPromptType.Attack && !hasAttackUIClosedOnce) return;
+        
+        string promptText = "";
+        
+        switch (promptType)
+        {
+            case TutorialPromptType.WASD:
+                promptText = string.IsNullOrEmpty(customText) ? "WASD to move" : customText;
+                wasdPromptActive = true;
+                break;
+            case TutorialPromptType.Attack:
+                promptText = string.IsNullOrEmpty(customText) ? "Click to use attack" : customText;
+                attackPromptActive = true;
+                break;
+        }
+        
+        if (tutorialPromptText != null && !string.IsNullOrEmpty(promptText))
+        {
+            tutorialPromptText.text = promptText;
+            tutorialPromptText.fontSize = tutorialPromptFontSize;
+            tutorialPromptText.gameObject.SetActive(true);
+            
+            var canvasGroup = tutorialPromptText.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = tutorialPromptText.gameObject.AddComponent<CanvasGroup>();
+            canvasGroup.alpha = 1f;
         }
     }
     

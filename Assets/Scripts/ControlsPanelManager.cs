@@ -63,12 +63,31 @@ public class ControlsPanelManager : MonoBehaviour
     [Tooltip("Duration of the fade animation")]
     [SerializeField] private float fadeDuration = 0.25f;
     
+    [Tooltip("If true, panel will bounce to attract attention")]
+    [SerializeField] private bool useBounceAnimation = true;
+    
+    [Tooltip("Bounce amplitude in pixels")]
+    [SerializeField] private float bounceAmplitude = 10f;
+    
+    [Tooltip("Bounce speed")]
+    [SerializeField] private float bounceSpeed = 5f;
+    
+    [Tooltip("How long to wiggle each time")]
+    [SerializeField] private float wiggleDuration = 2f;
+    
+    [Tooltip("How long to pause between wiggles")]
+    [SerializeField] private float pauseDuration = 2f;
+    
     [Header("Debug")]
     [SerializeField] private bool debugMode = false;
     
     private bool isPanelVisible = true;
     private CanvasGroup panelCanvasGroup;
     private Coroutine fadeCoroutine;
+    private RectTransform panelRect;
+    private Vector2 originalAnchoredPosition;
+    private Coroutine bounceCoroutine;
+    private bool hasBeenHidden = false;
     
     /// <summary>
     /// Returns whether the controls panel is currently visible
@@ -142,6 +161,68 @@ public class ControlsPanelManager : MonoBehaviour
                 panelCanvasGroup = controlsPanel.AddComponent<CanvasGroup>();
             }
         }
+        
+        if (useBounceAnimation && controlsPanel != null)
+        {
+            panelRect = controlsPanel.GetComponent<RectTransform>();
+            if (panelRect != null)
+            {
+                originalAnchoredPosition = panelRect.anchoredPosition;
+                if (startVisible)
+                    StartBounce();
+            }
+        }
+    }
+    
+    private void StartBounce()
+    {
+        if (bounceCoroutine != null) StopCoroutine(bounceCoroutine);
+        bounceCoroutine = StartCoroutine(BounceAnimation());
+    }
+    
+    private System.Collections.IEnumerator BounceAnimation()
+    {
+        if (panelRect == null) yield break;
+        
+        float elapsed = 0f;
+        Vector2 startPos = originalAnchoredPosition;
+        bool isWiggling = true;
+        
+        while (isPanelVisible)
+        {
+            if (isWiggling)
+            {
+                float offset = Mathf.Sin(elapsed * bounceSpeed) * bounceAmplitude;
+                panelRect.anchoredPosition = startPos + new Vector2(0, offset);
+                panelRect.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(elapsed * bounceSpeed * 2f) * 3f);
+            }
+            else
+            {
+                panelRect.anchoredPosition = startPos;
+                panelRect.localRotation = Quaternion.identity;
+            }
+            
+            elapsed += Time.deltaTime;
+            
+            if (isWiggling && elapsed >= wiggleDuration)
+            {
+                isWiggling = false;
+                elapsed = 0f;
+            }
+            else if (!isWiggling && elapsed >= pauseDuration)
+            {
+                isWiggling = true;
+                elapsed = 0f;
+            }
+            
+            yield return null;
+        }
+        
+        if (panelRect != null)
+        {
+            panelRect.anchoredPosition = originalAnchoredPosition;
+            panelRect.localRotation = Quaternion.identity;
+        }
     }
     
     /// <summary>
@@ -165,6 +246,16 @@ public class ControlsPanelManager : MonoBehaviour
         if (!isPanelVisible)
         {
             isPanelVisible = true;
+            
+            if (hasBeenHidden)
+            {
+                useBounceAnimation = false;
+            }
+            else if (useBounceAnimation && panelRect != null && bounceCoroutine == null)
+            {
+                StartBounce();
+            }
+            
             UpdatePanelVisibility(useFadeAnimation);
             UpdateHintText();
             
@@ -181,6 +272,21 @@ public class ControlsPanelManager : MonoBehaviour
         if (isPanelVisible)
         {
             isPanelVisible = false;
+            hasBeenHidden = true;
+            useBounceAnimation = false;
+            
+            if (bounceCoroutine != null)
+            {
+                StopCoroutine(bounceCoroutine);
+                bounceCoroutine = null;
+            }
+            
+            if (panelRect != null)
+            {
+                panelRect.anchoredPosition = originalAnchoredPosition;
+                panelRect.localRotation = Quaternion.identity;
+            }
+            
             UpdatePanelVisibility(useFadeAnimation);
             UpdateHintText();
             

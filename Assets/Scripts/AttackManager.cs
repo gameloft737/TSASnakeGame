@@ -6,6 +6,7 @@ using System;
 public class AttackManager : MonoBehaviour
 {
     public static event Action OnAttacksChanged;
+    public static event Action OnFuelUIVisible;
     
     [Header("Attack Settings")]
     [Tooltip("The player's single attack. Player can only have one attack that they upgrade.")]
@@ -100,6 +101,7 @@ public class AttackManager : MonoBehaviour
         if (newAttack == null) return false;
         
         fuelObj.SetActive(true);
+        OnFuelUIVisible?.Invoke();
         // Player can only have one attack
         if (attacks.Count > 0)
         {
