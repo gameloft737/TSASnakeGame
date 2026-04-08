@@ -15,7 +15,7 @@ MonoBehaviour:
   waveNamePrefix: Wave
   baseDifficulty: 4
   difficultyGrowthRate: 0.5
-  maxDifficultyMultiplier: 15
+  maxDifficultyMultiplier: 7
   baseHealthMultiplier: 1
   healthScalingStartWave: 50
   globalHealthScalePerWave: 0

@@ -250,9 +250,6 @@ public class SnakeHealth : MonoBehaviour
         // Immediately stop player movement and pause attacks
         StopPlayerAndAttacks();
         
-        // Reset snake skin if it was changed due to evolution
-        ResetSnakeSkin();
-        
         onDeath?.Invoke();
         
         // Show death screen with restart/quit options
@@ -358,14 +355,6 @@ public class SnakeHealth : MonoBehaviour
         if (enemySpawner != null)
         {
             enemySpawner.ClearAllEnemies();
-        }
-    }
-    
-    private void ResetSnakeSkin()
-    {
-        if (snakeBody != null)
-        {
-            snakeBody.ClearEvolutionMaterials();
         }
     }
 }

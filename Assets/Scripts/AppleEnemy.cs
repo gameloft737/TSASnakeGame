@@ -14,6 +14,7 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
     
     // Static list of all active AppleEnemies for efficient ally/enemy targeting
     private static List<AppleEnemy> s_allAppleEnemies = new List<AppleEnemy>(64);
+    private static bool s_anyAppleMoving = false;
     
     [Header("References")]
     [SerializeField] private Transform agentObj;
@@ -399,6 +400,16 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
     public static int GetActiveEnemyCount()
     {
         return s_allAppleEnemies.Count;
+    }
+    
+    public static bool AreAnyApplesMoving()
+    {
+        return s_anyAppleMoving;
+    }
+    
+    public static void ResetAppleMovingState()
+    {
+        s_anyAppleMoving = false;
     }
 
     public void Initialize(SnakeBody body, SnakeHealth health)
@@ -838,6 +849,12 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
                     agent.SetDestination(nearestBodyPart.position);
                     needsDestinationUpdate = false;
                 }
+            }
+            
+            // Check if this enemy is moving
+            if (agent.velocity.sqrMagnitude > 0.01f)
+            {
+                s_anyAppleMoving = true;
             }
         }
     }

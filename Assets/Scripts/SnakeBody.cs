@@ -41,6 +41,10 @@ public class SnakeBody : MonoBehaviour
     private Material originalBodyMaterial;
     private bool materialsCaptured = false;
     
+    // Store default materials from renderers (fallback when original material wasn't captured)
+    private Material defaultHeadMaterial;
+    private Material defaultBodyMaterial;
+    
     public List<BodyPart> bodyParts = new List<BodyPart>();
     
     public static event Action OnBodyPartsInitialized;
@@ -84,12 +88,14 @@ public class SnakeBody : MonoBehaviour
         if (!materialsCaptured && headRenderer != null)
         {
             originalHeadMaterial = headRenderer.material;
+            defaultHeadMaterial = headRenderer.sharedMaterial;
             if (bodyParts.Count > 0 && bodyParts[0] != null)
             {
                 Renderer firstBodyRenderer = bodyParts[0].GetComponent<Renderer>();
                 if (firstBodyRenderer != null)
                 {
                     originalBodyMaterial = firstBodyRenderer.material;
+                    defaultBodyMaterial = firstBodyRenderer.sharedMaterial;
                 }
             }
             materialsCaptured = true;
@@ -476,24 +482,29 @@ public class SnakeBody : MonoBehaviour
     /// </summary>
     public void ClearEvolutionMaterials()
     {
-        if (originalHeadMaterial != null && headRenderer != null)
+        // Use original or fallback default for head
+        Material headMat = originalHeadMaterial != null ? originalHeadMaterial : defaultHeadMaterial;
+        if (headRenderer != null && headMat != null)
         {
-            headRenderer.material = originalHeadMaterial;
+            headRenderer.material = headMat;
             Debug.Log("[SnakeBody] Reset head material to original");
         }
         
-        if (originalBodyMaterial != null)
+        // Use original or fallback default for body
+        Material bodyMat = originalBodyMaterial != null ? originalBodyMaterial : defaultBodyMaterial;
+        currentBodyMaterial = bodyMat;
+        
+        if (bodyParts != null)
         {
-            currentBodyMaterial = originalBodyMaterial;
             foreach (BodyPart part in bodyParts)
             {
                 if (part != null)
                 {
-                    part.SetMaterial(originalBodyMaterial);
+                    part.SetMaterial(bodyMat);
                 }
             }
-            Debug.Log("[SnakeBody] Reset body material to original");
         }
+        Debug.Log("[SnakeBody] Reset body material to original");
         
         if (currentAttachment != null)
         {

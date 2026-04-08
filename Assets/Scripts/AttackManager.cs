@@ -210,7 +210,7 @@ public class AttackManager : MonoBehaviour
         }
         else
         {
-            // For non-evolution attacks, only apply attachment (no material changes)
+            // Apply attachment if there is one
             if (variation != null)
             {
                 snakeBody.ApplyAttackVariation(null, null, variation.attachmentObject);

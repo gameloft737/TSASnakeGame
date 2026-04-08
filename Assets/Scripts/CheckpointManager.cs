@@ -266,9 +266,9 @@ public class CheckpointManager : MonoBehaviour
             xpUI.UpdateLevel(currentCheckpoint.xpLevel);
         }
         
-        if (levelUIManager != null && currentCheckpoint.gameStartTime > 0)
+        if (levelUIManager != null)
         {
-            levelUIManager.SetGameStartTime(currentCheckpoint.gameStartTime);
+            levelUIManager.ResetTimerForCurrentLevel();
         }
         
         if (cameraManager != null) cameraManager.SwitchToNormalCamera();
@@ -417,6 +417,9 @@ public class CheckpointManager : MonoBehaviour
                 orientation.rotation = currentCheckpoint.orientationRotation;
             }
             
+            // Force orientation to face away from body to prevent instant death on respawn
+            FixRespawnOrientation();
+            
             // Reset velocity
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
@@ -440,7 +443,68 @@ public class CheckpointManager : MonoBehaviour
                 orientation.rotation = currentCheckpoint.orientationRotation;
             }
             
+            // Force orientation to face away from body to prevent instant death on respawn
+            FixRespawnOrientation();
+            
             Debug.Log($"[CheckpointManager] TELEPORTED player (no RB) from {currentPos} to {playerMovement.transform.position}");
+        }
+    }
+    
+    private void FixRespawnOrientation()
+    {
+        if (snakeBody == null || playerMovement == null) return;
+        
+        Transform orientation = GetOrientationTransform(playerMovement);
+        if (orientation == null) return;
+        
+        Vector3 playerPos = playerMovement.transform.position;
+        Vector3 directionToBody = Vector3.zero;
+        int bodyCount = snakeBody.bodyParts.Count;
+        
+        if (bodyCount > 0)
+        {
+            // Get average position of body segments near the head (first 3 segments)
+            int segmentsToCheck = Mathf.Min(3, bodyCount);
+            for (int i = 0; i < segmentsToCheck; i++)
+            {
+                if (snakeBody.bodyParts[i] != null)
+                {
+                    directionToBody += snakeBody.bodyParts[i].transform.position - playerPos;
+                }
+            }
+            if (segmentsToCheck > 0)
+            {
+                directionToBody /= segmentsToCheck;
+            }
+        }
+        
+        if (directionToBody != Vector3.zero)
+        {
+            // Face away from body (180 degrees from direction to body)
+            Vector3 awayFromBody = -directionToBody.normalized;
+            
+            // Snap to nearest cardinal direction for better gameplay feel
+            awayFromBody = SnapToCardinal(awayFromBody);
+            
+            orientation.rotation = Quaternion.LookRotation(awayFromBody, Vector3.up);
+            Debug.Log($"[CheckpointManager] Fixed respawn orientation to face away from body: {awayFromBody}");
+        }
+    }
+    
+    private Vector3 SnapToCardinal(Vector3 direction)
+    {
+        if (direction.magnitude < 0.01f) return Vector3.forward;
+        
+        float absX = Mathf.Abs(direction.x);
+        float absZ = Mathf.Abs(direction.z);
+        
+        if (absX > absZ)
+        {
+            return direction.x > 0 ? Vector3.right : Vector3.left;
+        }
+        else
+        {
+            return direction.z > 0 ? Vector3.forward : Vector3.back;
         }
     }
     

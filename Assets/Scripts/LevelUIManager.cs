@@ -281,8 +281,8 @@ public class LevelUIManager : MonoBehaviour
     private int lastAnnouncedLevel = 0;
     private Coroutine levelAnnouncementCoroutine;
     private bool hasWon = false;
-    private float gameStartTime;
-    private float pausedTime = 0f;
+    private float gameTime;
+    
     private bool isPaused = false;
     private int lastCalculatedLevel = 0;
     private bool hasShownOneMinuteWarning = false;
@@ -295,8 +295,7 @@ public class LevelUIManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            gameStartTime = Time.time;
-            pausedTime = 0f;
+            gameTime = 0f;
         }
         else if (Instance != this)
         {
@@ -366,67 +365,58 @@ public class LevelUIManager : MonoBehaviour
         
         // Track when we last checked UI state
         bool wasPaused = false;
+        bool wasApplePaused = false;
+        float uiPauseStartTime = 0f;
+        float applePauseStartTime = 0f;
         
         while (minutesPerLevel > 0)
         {
             yield return new WaitForSeconds(0.1f);
             
-            // Check if UI is open
             bool uiOpen = (attackSelectionUI != null && attackSelectionUI.IsUIOpen()) || 
                         (abilityCollector != null && abilityCollector.IsUIOpen());
             
-            // If UI just opened, record the timestamp
-            if (uiOpen && !wasPaused)
-            {
-                wasPaused = true;
-            }
-            // If UI just closed, add the paused duration
-            else if (!uiOpen && wasPaused)
-            {
-                // When resuming, add a full 0.1s to compensate for pause
-                pausedTime += 0.1f;
-                wasPaused = false;
-            }
+            // Also pause when death screen is open
+            var deathScreen = FindFirstObjectByType<DeathScreenManager>();
+            if (deathScreen != null && deathScreen.IsDeathScreenActive())
+                continue;
             
-            // Skip time calculation when paused
             if (uiOpen) continue;
             
-            float effectiveTime = Time.time - gameStartTime - pausedTime;
-            int currentLevel = Mathf.FloorToInt(effectiveTime / (minutesPerLevel * 60f)) + 1;
-            // Ensure we always have at least level 1
+            gameTime += 0.1f;
+            
+            int currentLevel = Mathf.FloorToInt(gameTime / (minutesPerLevel * 60f)) + 1;
             if (currentLevel < 1) currentLevel = 1;
             
-            // Update timer text display
-            UpdateTimerText();
+            float timeInLevel = gameTime % (minutesPerLevel * 60f);
+            float timeLeft = (minutesPerLevel * 60f) - timeInLevel;
+            if (timeLeft < 0) timeLeft = 0;
             
-            float timeInLevel = effectiveTime % (minutesPerLevel * 60f);
-            float timeToNextLevel = (minutesPerLevel * 60f) - timeInLevel;
+            int minutes = Mathf.FloorToInt(timeLeft / 60f);
+            int seconds = Mathf.FloorToInt(timeLeft % 60f);
             
-            if (debugMode && Time.frameCount % 120 == 0)
-                Debug.Log($"[LevelUIManager] Level {currentLevel}, timeToNext: {timeToNextLevel:F1}");
+            if (timerText != null)
+                timerText.text = $"{minutes}:{seconds:D2}";
             
-            // Check for win condition (outside level change so it can trigger immediately)
-            if (winLevel > 0 && currentLevel >= winLevel && !hasWon)
+            if (nextLevelText != null)
             {
-                hasWon = true;
-                Debug.Log($"[LevelUIManager] WIN! Level {currentLevel} >= winLevel {winLevel}");
-                ShowWinAnnouncement();
+                int nextLevel = currentLevel + 1;
+                if (winLevel > 0 && nextLevel >= winLevel)
+                    nextLevelText.text = "end";
+                else
+                    nextLevelText.text = $"until level {nextLevel}";
             }
             
-            // Check for 1 minute remaining warning
-            if (timeToNextLevel <= 60f && timeToNextLevel > 0.5f && !hasShownOneMinuteWarning)
+            // 1 minute warning
+            if (timeLeft <= 60f && timeLeft > 0.5f && !hasShownOneMinuteWarning)
             {
                 hasShownOneMinuteWarning = true;
                 ShowAnnouncement("1 Minute Left");
             }
             
-            // Handle 10-second countdown - show 10 down to 1
-            int countdownNumber = Mathf.Clamp((int)timeToNextLevel, 1, 10);
-            
-            bool shouldShowCountdown = (timeToNextLevel <= 10f && timeToNextLevel > 0f);
-            
-            if (debugMode && shouldShowCountdown)
-                Debug.Log($"[LevelUIManager] CD: {countdownNumber} vs last: {lastCountdownNumber}");
+            // 10 second countdown
+            int countdownNumber = Mathf.Clamp((int)timeLeft, 1, 10);
+            bool shouldShowCountdown = (timeLeft <= 10f && timeLeft > 0f);
             
             if (shouldShowCountdown && countdownNumber != lastCountdownNumber)
             {
@@ -435,33 +425,34 @@ public class LevelUIManager : MonoBehaviour
                 countdownCoroutine = StartCoroutine(ShowCountdownNumber(countdownNumber));
             }
             
+            // Level up
             if (currentLevel > lastCalculatedLevel)
             {
                 hasShownOneMinuteWarning = false;
                 lastCountdownNumber = -1;
                 lastCalculatedLevel = currentLevel;
-                lastAnnouncedLevel = currentLevel;
                 
-                if (debugMode)
-                    Debug.Log($"[LevelUIManager] Timer-based level up! Current level: {currentLevel}");
-                
-                // Do level transition with fade
                 StartCoroutine(LevelTransition(currentLevel));
-                
-                // Also trigger any timer-level based triggers with the new level
-                if (debugMode)
-                    Debug.Log($"[LevelUIManager] Calling ProcessTriggers with level: {currentLevel}");
                 ProcessTriggers(LevelTriggerType.TimerLevel, currentLevel);
                 
-                // Save checkpoint at each level milestone
                 if (CheckpointManager.Instance != null)
-                {
                     CheckpointManager.Instance.SaveCheckpoint(currentLevel);
-                }
+            }
+            
+            // Win condition
+            if (winLevel > 0 && currentLevel >= winLevel && !hasWon)
+            {
+                hasWon = true;
+                ShowWinAnnouncement();
+                
+                if (timerText != null)
+                    timerText.gameObject.SetActive(false);
+                if (nextLevelText != null)
+                    nextLevelText.gameObject.SetActive(false);
             }
         }
     }
-     
+      
     private void OnDestroy()
     {
         UnsubscribeFromEvents();
@@ -673,31 +664,6 @@ public class LevelUIManager : MonoBehaviour
         ShowAnnouncement(winText);
     }
     
-    private void UpdateTimerText()
-    {
-        if (timerText == null) return;
-        
-        float elapsed = Time.time - gameStartTime - pausedTime;
-        float timePerLevel = minutesPerLevel * 60f;
-        int currentLevel = Mathf.FloorToInt(elapsed / timePerLevel);
-        float timeInLevel = elapsed % timePerLevel;
-        float timeToNextLevel = timePerLevel - timeInLevel;
-        
-        int minutes = Mathf.FloorToInt(timeToNextLevel / 60f);
-        int seconds = Mathf.FloorToInt(timeToNextLevel % 60f);
-        
-        timerText.text = $"{minutes}:{seconds:D2}";
-        
-        if (nextLevelText != null)
-        {
-            int nextLevel = currentLevel + 2;
-            if (winLevel > 0 && nextLevel >= winLevel)
-                nextLevelText.text = "end";
-            else
-                nextLevelText.text = $"until level {nextLevel}";
-        }
-    }
-    
     private IEnumerator ShowCountdownNumber(int number)
     {
         if (countdownText == null || countdownRect == null) yield break;
@@ -814,23 +780,17 @@ public class LevelUIManager : MonoBehaviour
     {
         if (minutesPerLevel > 0)
         {
-            float elapsed = Time.time - gameStartTime - pausedTime;
-            return Mathf.FloorToInt(elapsed / (minutesPerLevel * 60f));
+            return Mathf.FloorToInt(gameTime / (minutesPerLevel * 60f));
         }
         return 0;
     }
     
     public void SetGameStartTime(float startTime)
     {
-        gameStartTime = startTime;
-        if (minutesPerLevel > 0)
-        {
-            lastCalculatedLevel = Mathf.FloorToInt((Time.time - gameStartTime) / (minutesPerLevel * 60f));
-            lastAnnouncedLevel = lastCalculatedLevel;
-        }
+        gameTime = 0f;
     }
     
-    public float GetGameStartTime() => gameStartTime;
+    public float GetGameStartTime() => 0f;
     
     /// <summary>
     /// Waits for the attack selection UI to close before showing the win announcement
@@ -932,30 +892,22 @@ public class LevelUIManager : MonoBehaviour
         foreach (var trigger in triggers) trigger.Reset();
         lastAnnouncedLevel = 0;
         hasWon = false;
-        gameStartTime = Time.time;
-        lastCalculatedLevel = 0;
+        gameTime = 0f;
     }
     
-    /// <summary>
-    /// Reset timer to full time for current level (call when player dies)
-    /// </summary>
     public void ResetTimerForCurrentLevel()
     {
-        int currentLevel = GetTimerBasedLevel() + 1;
-        if (currentLevel < 1) currentLevel = 1;
-        
-        // Reset to full time for this level
-        float levelDuration = minutesPerLevel * 60f;
-        float targetTime = (currentLevel - 1) * levelDuration;
-        gameStartTime = Time.time - targetTime;
-        pausedTime = 0f;
-        lastAnnouncedLevel = currentLevel;
-        lastCalculatedLevel = currentLevel;
+        gameTime = 0f;
+        hasWon = false;
+        lastCalculatedLevel = 1;
         hasShownOneMinuteWarning = false;
         lastCountdownNumber = -1;
         
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Timer reset to level {currentLevel}");
+        if (timerText != null)
+            timerText.text = "3:00";
+        
+        if (nextLevelText != null)
+            nextLevelText.text = "until level 2";
     }
     
     public int GetWinLevel() => winLevel;

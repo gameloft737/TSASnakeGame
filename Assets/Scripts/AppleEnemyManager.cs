@@ -115,6 +115,9 @@ public class AppleEnemyManager : MonoBehaviour
         // Reset per-frame counters
         navMeshUpdatesThisFrame = 0;
         
+        // Reset apple moving state at start of frame
+        AppleEnemy.ResetAppleMovingState();
+        
         // Update spatial cache periodically
         if (Time.time - lastSpatialCacheTime >= spatialCacheInterval)
         {

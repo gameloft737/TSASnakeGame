@@ -19,7 +19,7 @@ MonoBehaviour:
     requiredPassiveLevel: 1
     unlockedLevel: 7
     evolutionName: plasma beam
-    evolutionDescription: double laser yay (edit in laser evo)
+    evolutionDescription: Shoots 4 additional lasers all around you
     evolutionHeadMaterial: {fileID: 2100000, guid: bf07d6242fb47b24cabd38a70ed33258, type: 2}
     evolutionBodyMaterial: {fileID: 2100000, guid: f2bcfbbaacbc301488cbe0e9091c842a, type: 2}
     evolutionAttachment: {fileID: 0}
