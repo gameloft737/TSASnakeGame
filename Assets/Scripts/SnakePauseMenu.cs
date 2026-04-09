@@ -1,10 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Manages the pause menu for the Snake game.
-/// Press P to pause/unpause the game.
-/// </summary>
 public class SnakePauseMenu : MonoBehaviour
 {
     public static SnakePauseMenu Instance { get; private set; }
@@ -53,7 +49,6 @@ public class SnakePauseMenu : MonoBehaviour
     
     private void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
@@ -67,7 +62,6 @@ public class SnakePauseMenu : MonoBehaviour
     
     private void Start()
     {
-        // Find references if not assigned
         if (playerMovement == null)
             playerMovement = FindFirstObjectByType<PlayerMovement>();
         if (mouseLookAt == null)
@@ -79,7 +73,6 @@ public class SnakePauseMenu : MonoBehaviour
         if (abilityManager == null)
             abilityManager = FindFirstObjectByType<AbilityManager>();
         
-        // Ensure menu starts closed
         if (pauseMenuPanel != null)
         {
             pauseMenuPanel.SetActive(false);
@@ -90,23 +83,19 @@ public class SnakePauseMenu : MonoBehaviour
     
     private void Update()
     {
-        // Check for P or Escape key
         if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.Escape))
         {
-            // Don't allow pause if tutorial panel is active
             if (TutorialPanelManager.Instance != null && TutorialPanelManager.Instance.IsTutorialActive)
             {
                 return;
             }
             
-            // Don't allow pause if death screen is active
             DeathScreenManager deathScreen = FindFirstObjectByType<DeathScreenManager>();
             if (deathScreen != null && deathScreen.IsDeathScreenActive())
             {
                 return;
             }
             
-            // Don't allow pause if another UI is open (attack selection, ability collection, etc.)
             AttackSelectionUI attackUI = FindFirstObjectByType<AttackSelectionUI>();
             if (attackUI != null && attackUI.IsUIOpen())
             {
@@ -121,14 +110,12 @@ public class SnakePauseMenu : MonoBehaviour
             
             if (isPaused)
             {
-                // If settings panel is open, close it and go back to main pause menu
                 if (IsSettingsOpen())
                 {
                     CloseSettings();
                 }
                 else
                 {
-                    // Otherwise, resume the game
                     ResumeGame();
                 }
             }
@@ -139,30 +126,22 @@ public class SnakePauseMenu : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Returns whether the settings panel is currently open
-    /// </summary>
     public bool IsSettingsOpen()
     {
         return settingsPanel != null && settingsPanel.activeSelf;
     }
     
-    /// <summary>
-    /// Pauses the game and shows the pause menu
-    /// </summary>
     public void PauseGame()
     {
         if (isPaused) return;
         
         isPaused = true;
         
-        // Lower game music volume while paused
         if (waveManager != null)
         {
             SoundManager.SetVolume("GameMusic", waveManager.gameObject, 0.3f);
         }
         
-        // Show pause menu
         if (pauseMenuPanel != null)
         {
             pauseMenuPanel.SetActive(true);
@@ -172,7 +151,6 @@ public class SnakePauseMenu : MonoBehaviour
             Debug.LogWarning("[SnakePauseMenu] pauseMenuPanel is not assigned! The game will pause but no menu will be shown.");
         }
         
-        // Show main pause panel, hide settings
         if (mainPausePanel != null)
         {
             mainPausePanel.SetActive(true);
@@ -182,21 +160,18 @@ public class SnakePauseMenu : MonoBehaviour
             settingsPanel.SetActive(false);
         }
         
-        // Pause time
         if (pauseGameWhenOpen)
         {
             wasTimeScaleZero = Time.timeScale == 0f;
             Time.timeScale = 0f;
         }
         
-        // Show cursor
         if (showCursorWhenOpen)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
         
-        // Freeze player and game systems
         if (playerMovement != null)
             playerMovement.SetFrozen(true);
         if (mouseLookAt != null)
@@ -206,7 +181,6 @@ public class SnakePauseMenu : MonoBehaviour
         if (waveManager != null)
             waveManager.PauseWave();
         
-        // Freeze all abilities
         if (abilityManager != null)
         {
             foreach (BaseAbility ability in abilityManager.GetActiveAbilities())
@@ -216,7 +190,6 @@ public class SnakePauseMenu : MonoBehaviour
             }
         }
         
-        // Freeze all enemies
         var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
@@ -227,41 +200,33 @@ public class SnakePauseMenu : MonoBehaviour
         Debug.Log("[SnakePauseMenu] Game paused");
     }
     
-    /// <summary>
-    /// Resumes the game and hides the pause menu
-    /// </summary>
     public void ResumeGame()
     {
         if (!isPaused) return;
         
         isPaused = false;
         
-        // Restore game music volume
         if (waveManager != null)
         {
             SoundManager.SetVolume("GameMusic", waveManager.gameObject, 1f);
         }
         
-        // Hide pause menu
         if (pauseMenuPanel != null)
         {
             pauseMenuPanel.SetActive(false);
         }
         
-        // Resume time
         if (pauseGameWhenOpen && !wasTimeScaleZero)
         {
             Time.timeScale = 1f;
         }
         
-        // Hide cursor
         if (showCursorWhenOpen)
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
         
-        // Unfreeze player and game systems
         if (playerMovement != null)
             playerMovement.SetFrozen(false);
         if (mouseLookAt != null)
@@ -271,7 +236,6 @@ public class SnakePauseMenu : MonoBehaviour
         if (waveManager != null)
             waveManager.ResumeWave();
         
-        // Unfreeze all abilities
         if (abilityManager != null)
         {
             foreach (BaseAbility ability in abilityManager.GetActiveAbilities())
@@ -281,7 +245,6 @@ public class SnakePauseMenu : MonoBehaviour
             }
         }
         
-        // Unfreeze all enemies
         var enemies = AppleEnemy.GetAllActiveEnemies();
         foreach (AppleEnemy enemy in enemies)
         {
@@ -292,9 +255,6 @@ public class SnakePauseMenu : MonoBehaviour
         Debug.Log("[SnakePauseMenu] Game resumed");
     }
     
-    /// <summary>
-    /// Opens the settings panel within the pause menu
-    /// </summary>
     public void OpenSettings()
     {
         if (mainPausePanel != null)
@@ -307,9 +267,6 @@ public class SnakePauseMenu : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Closes settings and returns to main pause menu
-    /// </summary>
     public void CloseSettings()
     {
         if (settingsPanel != null)
@@ -322,24 +279,16 @@ public class SnakePauseMenu : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Restarts the current scene
-    /// </summary>
     public void RestartGame()
     {
-        // Resume time before reloading
         Time.timeScale = 1f;
         isPaused = false;
         
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
     
-    /// <summary>
-    /// Quits to main menu
-    /// </summary>
     public void QuitToMainMenu()
     {
-        // Resume time before loading new scene
         Time.timeScale = 1f;
         isPaused = false;
         
@@ -349,9 +298,6 @@ public class SnakePauseMenu : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Quits the application
-    /// </summary>
     public void QuitGame()
     {
         #if UNITY_EDITOR
@@ -363,7 +309,6 @@ public class SnakePauseMenu : MonoBehaviour
     
     private void OnDestroy()
     {
-        // Ensure time is resumed if this object is destroyed
         if (isPaused && pauseGameWhenOpen)
         {
             Time.timeScale = 1f;

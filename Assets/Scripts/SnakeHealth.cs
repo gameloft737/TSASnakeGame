@@ -10,10 +10,8 @@ public class SnakeHealth : MonoBehaviour
     [SerializeField] private float baseMaxHealth = 100f;
     [SerializeField] private float currentHealth;
     
-    // Cached max health (base + bonuses)
     private float maxHealth;
     
-    // Invincibility flag - when true, player takes no damage
     private bool isInvincible = false;
     
     [Header("Auto Heal Settings")]
@@ -35,7 +33,7 @@ public class SnakeHealth : MonoBehaviour
     [SerializeField] private CameraManager cameraManager;
     
     [Header("Events")]
-    public UnityEvent<float, float> onHealthChanged; // currentHealth, maxHealth
+    public UnityEvent<float, float> onHealthChanged;
     public UnityEvent onDeath;
     
     private bool isDead = false;
@@ -43,7 +41,6 @@ public class SnakeHealth : MonoBehaviour
     
     private void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
@@ -53,14 +50,12 @@ public class SnakeHealth : MonoBehaviour
             Debug.LogWarning("[SnakeHealth] Multiple instances detected. Using first instance.");
         }
         
-        // Initialize health early so it's ready when listeners subscribe
         UpdateMaxHealth();
         currentHealth = maxHealth;
     }
     
     private void Start()
     {
-        // Subscribe to stat changes
         if (PlayerStats.Instance != null)
         {
             PlayerStats.Instance.onStatsChanged.AddListener(OnStatsChanged);
@@ -101,13 +96,11 @@ public class SnakeHealth : MonoBehaviour
             snakeBody = FindFirstObjectByType<SnakeBody>();
         }
         
-        // Invoke initial health state after all listeners have had a chance to subscribe
         StartCoroutine(InvokeInitialHealthNextFrame());
     }
     
     private IEnumerator InvokeInitialHealthNextFrame()
     {
-        // Wait one frame to ensure all Start() methods have run and listeners are subscribed
         yield return null;
         onHealthChanged?.Invoke(currentHealth, maxHealth);
     }
@@ -116,13 +109,10 @@ public class SnakeHealth : MonoBehaviour
     {
         if (isDead) return;
         
-        // Don't take damage if invincible
         if (isInvincible) return;
         
-        // Don't take damage if we're in choice phase
         if (waveManager != null && waveManager.IsInChoicePhase()) return;
         
-        // Don't take damage if wave is not active (during transitions)
         if (waveManager != null && !waveManager.IsWaveActive()) return;
         
         currentHealth -= damage;
@@ -130,10 +120,8 @@ public class SnakeHealth : MonoBehaviour
         
         Debug.Log($"Snake took {damage:F1} damage! Health: {currentHealth:F1}/{maxHealth}");
         
-        // Record damage time for auto-heal
         lastDamageTime = Time.time;
         
-        // Start auto-heal if not already running
         if (autoHealCoroutine == null && autoHealDelay > 0 && autoHealRate > 0)
         {
             autoHealCoroutine = StartCoroutine(AutoHealRoutine());
@@ -151,7 +139,6 @@ public class SnakeHealth : MonoBehaviour
     {
         if (isDead) return;
         
-        // Update max health in case bonuses changed
         UpdateMaxHealth();
         
         currentHealth += amount;
@@ -159,7 +146,6 @@ public class SnakeHealth : MonoBehaviour
         
         Debug.Log($"Snake healed {amount:F1}! Health: {currentHealth:F1}/{maxHealth}");
         
-        // Reset damage timer so auto-heal waits 5 seconds after healing
         lastDamageTime = Time.time;
         
         onHealthChanged?.Invoke(currentHealth, maxHealth);
@@ -170,7 +156,6 @@ public class SnakeHealth : MonoBehaviour
         float flatBonus = PlayerStats.Instance != null ? PlayerStats.Instance.GetMaxHealthBonus() : 0f;
         float percentBonus = PlayerStats.Instance != null ? PlayerStats.Instance.GetMaxHealthPercentBonus() : 0f;
         
-        // Apply flat bonus first, then percentage bonus
         maxHealth = (baseMaxHealth + flatBonus) * (1f + percentBonus);
     }
     
@@ -179,7 +164,6 @@ public class SnakeHealth : MonoBehaviour
         float oldMaxHealth = maxHealth;
         UpdateMaxHealth();
         
-        // If max health increased, heal by the difference
         if (maxHealth > oldMaxHealth)
         {
             currentHealth += (maxHealth - oldMaxHealth);

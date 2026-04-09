@@ -8,40 +8,31 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 
-/// <summary>
-/// Defines what type of trigger condition to use
-/// </summary>
 public enum LevelTriggerType
 {
-    TimerLevel,    // Triggers based on timer level (every N minutes)
-    WaveNumber,    // Triggers when a specific wave starts
-    AttackRank     // Triggers when player reaches a specific attack rank (after attack UI closes)
+    TimerLevel,
+    WaveNumber,
+    AttackRank
 }
 
-/// <summary>
-/// Defines what action to take when the trigger fires
-/// </summary>
 public enum LevelUIActionType
 {
-    ShowSubtitle,           // Show a subtitle message
-    ShowGameObject,         // Enable a GameObject
-    HideGameObject,         // Disable a GameObject
-    ToggleGameObject,       // Toggle a GameObject's active state
-    PlayAnimation,          // Play an animation on an Animator
-    InvokeUnityEvent,       // Invoke a custom UnityEvent
-    FadeToBlack,            // Fade the screen to black
-    FadeFromBlack,          // Fade the screen from black to clear
-    FadeToBlackAndBack,     // Fade to black, hold, then fade back
-    LoadScene,              // Load a new scene (with optional fade)
-    FadeAndLoadScene,       // Fade to white, then load a new scene
-    ShowTutorialPanel,      // Show a tutorial panel that pauses the game
-    ShowLevelAnnouncement,  // Show a level announcement with slide animation
-    ShowTutorialPrompt      // Show a tutorial prompt that stays until input (WASD or click)
+    ShowSubtitle,
+    ShowGameObject,
+    HideGameObject,
+    ToggleGameObject,
+    PlayAnimation,
+    InvokeUnityEvent,
+    FadeToBlack,
+    FadeFromBlack,
+    FadeToBlackAndBack,
+    LoadScene,
+    FadeAndLoadScene,
+    ShowTutorialPanel,
+    ShowLevelAnnouncement,
+    ShowTutorialPrompt
 }
 
-/// <summary>
-/// A single UI trigger configuration
-/// </summary>
 [System.Serializable]
 public class LevelUITrigger
 {
@@ -139,21 +130,14 @@ public class LevelUITrigger
     [Tooltip("Delay in seconds before executing the action")]
     public float delay = 0f;
     
-    // Runtime state
     [HideInInspector]
     public bool hasTriggered = false;
     
-    /// <summary>
-    /// Resets the trigger state (call when restarting the game)
-    /// </summary>
     public void Reset()
     {
         hasTriggered = false;
     }
     
-    /// <summary>
-    /// Checks if this trigger should fire for the given level/wave
-    /// </summary>
     public bool ShouldTrigger(LevelTriggerType type, int value)
     {
         if (triggerType != type) return false;
@@ -162,48 +146,12 @@ public class LevelUITrigger
     }
 }
 
-/// <summary>
-/// Defines the type of tutorial prompt
-/// </summary>
 public enum TutorialPromptType
 {
-    WASD,   // Prompt for WASD movement - hides when W/A/S/D pressed
-    Attack  // Prompt for attack - hides when mouse clicked
+    WASD,
+    Attack
 }
 
-/// <summary>
-/// Manages UI triggers based on timer level and wave progression.
-/// Listens to WaveManager events and executes configured triggers.
-/// 
-/// TERMINOLOGY:
-/// - Level: A milestone based on game time (every N minutes, configurable via minutesPerLevel)
-///
-/// SETUP INSTRUCTIONS:
-/// 1. Create an empty GameObject in your scene and name it "LevelUIManager"
-/// 2. Add this script to that GameObject
-/// 3. Configure your triggers directly in the "Triggers" list
-/// 4. Make sure you have SubtitleUI in your scene if using subtitle triggers
-/// 5. For level announcements, assign a TextMeshProUGUI and its RectTransform
-///
-/// TRIGGER TYPES:
-/// - Timer Level: Triggers when player reaches a specific timer-based level
-/// - Wave Number: Triggers when a specific wave starts (from WaveManager)
-///
-/// ACTION TYPES:
-/// - ShowSubtitle: Display a subtitle message using SubtitleUI
-/// - ShowGameObject: Enable a specific GameObject
-/// - HideGameObject: Disable a specific GameObject
-/// - ToggleGameObject: Toggle a GameObject's active state
-/// - PlayAnimation: Play an animation on an Animator
-/// - InvokeUnityEvent: Call a custom UnityEvent
-/// - FadeToBlack: Fade the screen to black using ScreenFadeManager
-/// - FadeFromBlack: Fade the screen from black to clear
-/// - FadeToBlackAndBack: Fade to black, hold, then fade back (with optional subtitle after)
-/// - LoadScene: Load a new scene immediately
-/// - FadeAndLoadScene: Fade to white, then load a new scene
-/// - ShowTutorialPanel: Show a tutorial panel that pauses the game
-/// - ShowLevelAnnouncement: Show a level announcement with slide-in, hover, slide-out animation
-/// </summary>
 public class LevelUIManager : MonoBehaviour
 {
     public static LevelUIManager Instance { get; private set; }
@@ -315,13 +263,11 @@ public class LevelUIManager : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool debugMode = true;
     
-    // Track the last announced level to avoid duplicates
     private int lastAnnouncedLevel = 0;
     private Coroutine levelAnnouncementCoroutine;
     private bool hasWon = false;
     private float gameTime;
     
-    // Tutorial prompt state - tracks active prompts
     private bool wasdPromptActive = false;
     private bool attackPromptActive = false;
     private bool wasdInputDismissed = false;
@@ -336,7 +282,6 @@ public class LevelUIManager : MonoBehaviour
     
     private void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
@@ -355,7 +300,6 @@ public class LevelUIManager : MonoBehaviour
         FindReferences();
         SubscribeToEvents();
         
-        // Reset triggers on start
         foreach (var trigger in triggers)
         {
             trigger.Reset();
@@ -369,13 +313,10 @@ public class LevelUIManager : MonoBehaviour
             Debug.Log($"[LevelUIManager] Initialized with {triggers.Count} triggers");
         }
         
-        // Check current state on start and trigger any matching triggers
         StartCoroutine(CheckInitialState());
         
-        // Start timer-based level tracking
         StartCoroutine(TrackTimerBasedLevel());
         
-        // Initialize tutorial prompts
         InitializeTutorialPrompts();
     }
     
@@ -398,11 +339,9 @@ public class LevelUIManager : MonoBehaviour
         mouseInputDismissed = false;
         hasAttackUIClosedOnce = false;
         
-        // Subscribe to attack changes to detect when player upgrades attack
         AttackManager.OnAttacksChanged += OnAttacksChangedForPrompt;
         AttackManager.OnFuelUIVisible += OnFuelUIVisible;
         
-        // Start checking after a short delay to let the attack UI initialize
         StartCoroutine(CheckForAttackPromptAfterUI());
     }
     
@@ -412,16 +351,14 @@ public class LevelUIManager : MonoBehaviour
     {
         Debug.Log("[LevelUIManager] CheckForAttackPromptAfterUI started");
         
-        // Wait longer for the initial attack selection UI to close
         yield return new WaitForSeconds(2f);
         
-        // Wait for attack UI to be closed if it's open
         AttackSelectionUI attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
         if (attackSelectionUI != null)
         {
             Debug.Log("[LevelUIManager] Found AttackSelectionUI, waiting for it to close...");
             int waitCount = 0;
-            while (attackSelectionUI.IsUIOpen() && waitCount < 300) // max 5 seconds
+            while (attackSelectionUI.IsUIOpen() && waitCount < 300)
             {
                 yield return null;
                 waitCount++;
@@ -433,13 +370,10 @@ public class LevelUIManager : MonoBehaviour
             Debug.Log("[LevelUIManager] No AttackSelectionUI found in scene");
         }
         
-        // Mark as closed
         hasAttackUIClosedOnce = true;
         
-        // Wait a bit more after UI closes
         yield return new WaitForSeconds(1f);
         
-        // Now check for attack at rank 2
         CheckForExistingAttack();
     }
     
@@ -447,7 +381,6 @@ public class LevelUIManager : MonoBehaviour
     {
         Debug.Log($"[LevelUIManager] OnAttacksChangedForPrompt called. hasAttackUIClosedOnce={hasAttackUIClosedOnce}, showAttackPromptOnRank1={showAttackPromptOnRank1}");
         
-        // Don't show if attack UI hasn't closed at least once
         if (!hasAttackUIClosedOnce)
         {
             Debug.Log("[LevelUIManager] Attack prompt skipped - attack UI not closed yet");
@@ -460,10 +393,8 @@ public class LevelUIManager : MonoBehaviour
             int attackLevel = attackManager.GetCurrentAttack().GetCurrentLevel();
             Debug.Log($"[LevelUIManager] Current attack level: {attackLevel}");
             
-            // Process AttackRank triggers
             ProcessTriggers(LevelTriggerType.AttackRank, attackLevel);
             
-            // Also show the auto prompt if enabled
             if (showAttackPromptOnRank1 && !attackPromptActive && !mouseInputDismissed && attackLevel >= 2)
             {
                 Debug.Log("[LevelUIManager] Showing attack prompt!");
@@ -517,7 +448,6 @@ public class LevelUIManager : MonoBehaviour
     
     private void CheckTutorialInputForDismiss()
     {
-        // Check for WASD input - dismiss WASD prompt when pressed
         if (wasdPromptActive && !wasdInputDismissed && (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.D)))
         {
             wasdInputDismissed = true;
@@ -525,7 +455,6 @@ public class LevelUIManager : MonoBehaviour
             UpdateTutorialPromptVisibility();
         }
         
-        // Check for mouse click (left click = 0) - dismiss attack prompt when clicked
         if (attackPromptActive && !mouseInputDismissed && Input.GetMouseButtonDown(0))
         {
             mouseInputDismissed = true;
@@ -536,7 +465,6 @@ public class LevelUIManager : MonoBehaviour
     
     private void UpdateTutorialPromptVisibility()
     {
-        // Hide the prompt if both are dismissed
         if (!wasdPromptActive && !attackPromptActive && tutorialPromptText != null)
         {
             tutorialPromptText.gameObject.SetActive(false);
@@ -555,14 +483,12 @@ public class LevelUIManager : MonoBehaviour
             ProcessTriggers(LevelTriggerType.WaveNumber, currentWave);
         }
         
-        // Initialize timer-based level on start (start at level 1)
         if (minutesPerLevel > 0)
         {
             int initialLevel = 1;
             lastCalculatedLevel = initialLevel;
             lastAnnouncedLevel = initialLevel;
             
-            // Trigger level 1 immediately
             ShowLevelAnnouncement(initialLevel);
             ProcessTriggers(LevelTriggerType.TimerLevel, initialLevel);
             
@@ -575,7 +501,6 @@ public class LevelUIManager : MonoBehaviour
     {
         Debug.Log("[LevelUIManager] TrackTimerBasedLevel started");
         
-        // Track when we last checked UI state
         bool wasPaused = false;
         bool wasApplePaused = false;
         float uiPauseStartTime = 0f;
@@ -588,7 +513,6 @@ public class LevelUIManager : MonoBehaviour
             bool uiOpen = (attackSelectionUI != null && attackSelectionUI.IsUIOpen()) || 
                         (abilityCollector != null && abilityCollector.IsUIOpen());
             
-            // Also pause when death screen is open
             var deathScreen = FindFirstObjectByType<DeathScreenManager>();
             if (deathScreen != null && deathScreen.IsDeathScreenActive())
                 continue;
@@ -619,14 +543,12 @@ public class LevelUIManager : MonoBehaviour
                     nextLevelText.text = $"until level {nextLevel}";
             }
             
-            // 1 minute warning
             if (timeLeft <= 60f && timeLeft > 0.5f && !hasShownOneMinuteWarning)
             {
                 hasShownOneMinuteWarning = true;
                 ShowAnnouncement("1 Minute Left");
             }
             
-            // 10 second countdown
             int countdownNumber = Mathf.Clamp((int)timeLeft, 1, 10);
             bool shouldShowCountdown = (timeLeft <= 10f && timeLeft > 0f);
             
@@ -637,7 +559,6 @@ public class LevelUIManager : MonoBehaviour
                 countdownCoroutine = StartCoroutine(ShowCountdownNumber(countdownNumber));
             }
             
-            // Level up
             if (currentLevel > lastCalculatedLevel)
             {
                 hasShownOneMinuteWarning = false;
@@ -651,7 +572,6 @@ public class LevelUIManager : MonoBehaviour
                     CheckpointManager.Instance.SaveCheckpoint(currentLevel);
             }
             
-            // Win condition
             if (winLevel > 0 && currentLevel >= winLevel && !hasWon)
             {
                 hasWon = true;
@@ -772,7 +692,6 @@ public class LevelUIManager : MonoBehaviour
     
     private void ExecuteTriggerAction(LevelUITrigger trigger)
     {
-        // Check if this trigger should disable player damage
         if (trigger.disablePlayerDamage)
         {
             if (SnakeHealth.Instance != null)
@@ -836,7 +755,6 @@ public class LevelUIManager : MonoBehaviour
                 if (TutorialPanelManager.Instance != null) TutorialPanelManager.Instance.ShowTutorial();
                 break;
             case LevelUIActionType.ShowLevelAnnouncement:
-                // Skip - announcement is handled by ShowLevelAnnouncement() in level change code
                 break;
             case LevelUIActionType.ShowTutorialPrompt:
                 ShowTutorialPromptByTrigger(trigger.promptType, trigger.customPromptText);
@@ -846,7 +764,6 @@ public class LevelUIManager : MonoBehaviour
     
     private void ShowTutorialPromptByTrigger(TutorialPromptType promptType, string customText)
     {
-        // Don't show attack prompt if attack UI hasn't closed at least once
         if (promptType == TutorialPromptType.Attack && !hasAttackUIClosedOnce) return;
         
         string promptText = "";
@@ -893,7 +810,6 @@ public class LevelUIManager : MonoBehaviour
     {
         Debug.Log($"[LevelUIManager] ShowLevelAnnouncement called with level: {level}");
         
-        // Save checkpoint when a new level is announced
         if (CheckpointManager.Instance != null)
         {
             CheckpointManager.Instance.SaveCheckpoint(level);
@@ -904,9 +820,6 @@ public class LevelUIManager : MonoBehaviour
         ShowAnnouncement($"Level {level}");
     }
     
-    /// <summary>
-    /// Show the win announcement with the same animation style
-    /// </summary>
     public void ShowWinAnnouncement()
     {
         ShowAnnouncement(winText);
@@ -941,7 +854,6 @@ public class LevelUIManager : MonoBehaviour
     
     private IEnumerator LevelTransition(int level)
     {
-        // Show level announcement
         if (level == 3)
             ShowAnnouncement("Final Level");
         else if (level == 4)
@@ -949,25 +861,20 @@ public class LevelUIManager : MonoBehaviour
         else
             ShowLevelAnnouncement(level);
         
-        // Skip fade for win levels if no skyboxes configured
         if ((level == 3 || level == 4) && (levelSkyboxes == null || levelSkyboxes.Length < level))
         {
             yield break;
         }
         
-        // Do environment transition
         yield return new WaitForSeconds(0.5f);
         
-        // Fade to white
         if (ScreenFadeManager.Instance != null)
         {
             ScreenFadeManager.Instance.FadeToWhite(0.5f);
             yield return new WaitForSeconds(0.5f);
             
-            // Change environment during white flash
             ChangeEnvironment(level);
             
-            // Fade back
             ScreenFadeManager.Instance.FadeFromWhite(0.5f);
         }
         else
@@ -978,28 +885,24 @@ public class LevelUIManager : MonoBehaviour
     
     public void ChangeEnvironment(int level)
     {
-        int index = level - 1; // 0-based indexing
+        int index = level - 1;
         if (index < 0) index = 0;
         
-        // Change skybox if available
         if (levelSkyboxes != null && levelSkyboxes.Length > index && levelSkyboxes[index] != null)
         {
             RenderSettings.skybox = levelSkyboxes[index];
         }
         
-        // Change sun color if available
         if (sunLight != null && levelSunColors != null && levelSunColors.Length > index)
         {
             sunLight.color = levelSunColors[index];
         }
         
-        // Change water material if available
         if (levelWaterMaterials != null && levelWaterMaterials.Length > index && levelWaterMaterials[index] != null)
         {
             FindAndSetWater(levelWaterMaterials[index]);
         }
         
-        // Change Volume Profile if available
         if (globalVolume != null && levelVolumeProfiles != null && levelVolumeProfiles.Length > index && levelVolumeProfiles[index] != null)
         {
             globalVolume.profile = levelVolumeProfiles[index];
@@ -1013,7 +916,6 @@ public class LevelUIManager : MonoBehaviour
     {
         if (waterMat == null) return;
         
-        // Find all objects with Water in name and set their material
         var renderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
         foreach (var rend in renderers)
         {
@@ -1040,12 +942,8 @@ public class LevelUIManager : MonoBehaviour
     
     public float GetGameStartTime() => 0f;
     
-    /// <summary>
-    /// Waits for the attack selection UI to close before showing the win announcement
-    /// </summary>
-    private IEnumerator ShowWinAnnouncementAfterAttackUI()
+    private IEnumerator ShowWinAnnAnnouncementAfterAttackUI()
     {
-        // First, wait a short time for the attack UI to potentially open
         float elapsed = 0f;
         while (elapsed < 0.5f)
         {
@@ -1054,7 +952,6 @@ public class LevelUIManager : MonoBehaviour
             yield return null;
         }
         
-        // Now wait for the attack UI to close
         if (attackSelectionUI != null)
         {
             while (attackSelectionUI.IsUIOpen())
@@ -1063,16 +960,11 @@ public class LevelUIManager : MonoBehaviour
             }
         }
         
-        // Add a small delay after the UI closes for a smoother experience
         yield return new WaitForSeconds(0.5f);
         
-        // Show the win announcement
         ShowAnnouncement(winText);
     }
     
-    /// <summary>
-    /// Show a custom announcement with the slide-in, wobble, slide-out animation
-    /// </summary>
     public void ShowAnnouncement(string text)
     {
         if (levelAnnouncementText == null || levelAnnouncementRect == null) return;
