@@ -46,6 +46,8 @@ public class OrbitingAbility : BaseAbility
     private float currentAngle = 0f;
     private Dictionary<AppleEnemy, float> enemyHitCooldowns = new Dictionary<AppleEnemy, float>();
     private List<AppleEnemy> cooldownsToRemove = new List<AppleEnemy>();
+    // Reusable scratch list so UpdateCooldowns doesn't allocate a new List every frame.
+    private readonly List<AppleEnemy> _cooldownKeyScratch = new List<AppleEnemy>(32);
     
     protected override void Awake()
     {
@@ -80,8 +82,6 @@ public class OrbitingAbility : BaseAbility
         
         // Play orbiting weapon sound (looping)
         SoundManager.Play("OrbitingWeapon", gameObject);
-        
-        Debug.Log($"OrbitingAbility: Activated at level {currentLevel} with {GetOrbitCount()} orbiting objects");
     }
     
     protected override void Update()
@@ -276,10 +276,11 @@ public class OrbitingAbility : BaseAbility
     private void UpdateCooldowns()
     {
         cooldownsToRemove.Clear();
-        
-        List<AppleEnemy> keys = new List<AppleEnemy>(enemyHitCooldowns.Keys);
-        foreach (AppleEnemy enemy in keys)
+        _cooldownKeyScratch.Clear();
+        foreach (var k in enemyHitCooldowns.Keys) _cooldownKeyScratch.Add(k);
+        for (int i = 0; i < _cooldownKeyScratch.Count; i++)
         {
+            AppleEnemy enemy = _cooldownKeyScratch[i];
             if (enemy == null)
             {
                 cooldownsToRemove.Add(enemy);
@@ -400,8 +401,6 @@ public class OrbitingAbility : BaseAbility
         
         // Recreate orbiting objects with new count
         CreateOrbitingObjects();
-        
-        Debug.Log($"OrbitingAbility: Level {currentLevel} - Objects: {GetOrbitCount()}, Radius: {GetOrbitRadius():F1}, Speed: {GetRotationSpeed():F0}, Damage: {GetOrbitDamage():F0}");
     }
     
     protected override void DeactivateAbility()

@@ -375,8 +375,6 @@ public class EditorScreenShotsEditor : Editor
         string fullPath = path + textureName + counter + ".png";
         ScreenCapture.CaptureScreenshot(fullPath, superSize);
         counter++;
-        
-        Debug.Log($"Screenshot captured: {fullPath}");
     }
     
     void ScanAndCompile()
@@ -412,7 +410,6 @@ public class EditorScreenShotsEditor : Editor
         script.endPosition = endObj.transform;
         
         Selection.activeGameObject = startObj;
-        Debug.Log("Position markers created! Move them to define your scan area.");
     }
     
     IEnumerator ScanCoroutine()
@@ -505,12 +502,6 @@ public class EditorScreenShotsEditor : Editor
         float tileWorldWidth_calc = totalWorldWidth / gridWidth;
         float tileWorldHeight_calc = totalWorldHeight / gridHeight;
         
-        Debug.Log($"Starting scan: {gridWidth}x{gridHeight} grid, final size: {finalWidth}x{finalHeight}");
-        Debug.Log($"Camera type: {(cam.orthographic ? "Orthographic" : "Perspective")}");
-        Debug.Log($"View mode: {(useTopDownView ? "Top-Down" : "Custom")}");
-        Debug.Log($"Total world area: {totalWorldWidth:F2}x{totalWorldHeight:F2}");
-        Debug.Log($"Tile world size: {tileWorldWidth_calc:F2}x{tileWorldHeight_calc:F2}");
-        
         // Capture each tile
         for (int y = 0; y < gridHeight; y++)
         {
@@ -553,8 +544,6 @@ public class EditorScreenShotsEditor : Editor
                 
                 // Clean up temp file
                 File.Delete(tempPath);
-                
-                Debug.Log($"Captured tile {x},{y} ({((y * gridWidth + x + 1) * 100) / (gridWidth * gridHeight)}%)");
             }
         }
         
@@ -577,7 +566,6 @@ public class EditorScreenShotsEditor : Editor
         
         script.isScanning = false;
         
-        Debug.Log($"Scan complete! Saved to: {finalPath}");
         AssetDatabase.Refresh();
         
         // Clean up

@@ -220,8 +220,6 @@ public class TutorialPanelManager : MonoBehaviour
     {
         if (isTutorialActive)
         {
-            if (debugMode)
-                Debug.Log("[TutorialPanelManager] Tutorial already active, ignoring show request");
             return;
         }
         
@@ -234,9 +232,6 @@ public class TutorialPanelManager : MonoBehaviour
         isTutorialActive = true;
         onTutorialClosed = onClosed;
         currentPageIndex = 0;
-        
-        if (debugMode)
-            Debug.Log("[TutorialPanelManager] Showing tutorial with " + tutorialPanels.Count + " panels");
         
         // Hide all panels first
         HideAllPanels();
@@ -292,9 +287,6 @@ public class TutorialPanelManager : MonoBehaviour
         {
             currentPage.panelObject.SetActive(true);
         }
-        
-        if (debugMode)
-            Debug.Log("[TutorialPanelManager] Displaying panel " + (currentPageIndex + 1) + "/" + tutorialPanels.Count);
     }
     
     /// <summary>
@@ -306,9 +298,6 @@ public class TutorialPanelManager : MonoBehaviour
         {
             currentPageIndex++;
             DisplayCurrentPanel();
-            
-            if (debugMode)
-                Debug.Log("[TutorialPanelManager] Advanced to panel " + (currentPageIndex + 1));
         }
     }
     
@@ -329,9 +318,6 @@ public class TutorialPanelManager : MonoBehaviour
         {
             return;
         }
-        
-        if (debugMode)
-            Debug.Log("[TutorialPanelManager] Hiding tutorial");
         
         CompleteTutorialHide();
     }
@@ -375,8 +361,6 @@ public class TutorialPanelManager : MonoBehaviour
         if (SnakeScenePauseManager.Instance != null)
         {
             SnakeScenePauseManager.Instance.DisablePausing();
-            if (debugMode)
-                Debug.Log("[TutorialPanelManager] Disabled SnakeScenePauseManager");
         }
     }
     
@@ -385,8 +369,6 @@ public class TutorialPanelManager : MonoBehaviour
         if (SnakeScenePauseManager.Instance != null)
         {
             SnakeScenePauseManager.Instance.EnablePausing();
-            if (debugMode)
-                Debug.Log("[TutorialPanelManager] Enabled SnakeScenePauseManager");
         }
     }
     
@@ -419,9 +401,6 @@ public class TutorialPanelManager : MonoBehaviour
             if (enemy != null)
                 enemy.SetFrozen(true);
         }
-        
-        if (debugMode)
-            Debug.Log("[TutorialPanelManager] Game paused for tutorial");
     }
     
     private void ResumeGame()
@@ -455,9 +434,6 @@ public class TutorialPanelManager : MonoBehaviour
             if (enemy != null)
                 enemy.SetFrozen(false);
         }
-        
-        if (debugMode)
-            Debug.Log("[TutorialPanelManager] Game resumed after tutorial");
     }
     
     private void OnDestroy()

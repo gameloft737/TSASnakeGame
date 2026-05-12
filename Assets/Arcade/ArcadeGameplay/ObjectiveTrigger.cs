@@ -24,6 +24,11 @@ public class ObjectiveTrigger : MonoBehaviour
     [TextArea(1, 3)]
     public string completionSubtitle;
     public float subtitleDuration = 3f;
+    [Tooltip("Optional voiceline AudioClip to play alongside the completion subtitle.")]
+    public AudioClip completionSubtitleVoiceline;
+    [Tooltip("Volume for the completion subtitle voiceline (0-1).")]
+    [Range(0f, 1f)]
+    public float completionSubtitleVoicelineVolume = 1f;
 
     [Header("Objective Settings")]
     public int myObjectiveIndex;           // Index in ObjectiveManager
@@ -418,7 +423,12 @@ public class ObjectiveTrigger : MonoBehaviour
         // Show subtitle on completion
         if (!string.IsNullOrEmpty(completionSubtitle))
         {
-            SubtitleUI.Instance?.ShowSubtitle(completionSubtitle, subtitleDuration);
+            SubtitleUI.Instance?.ShowSubtitle(completionSubtitle, subtitleDuration, completionSubtitleVoiceline, completionSubtitleVoicelineVolume);
+        }
+        else if (completionSubtitleVoiceline != null)
+        {
+            // Allow voiceline-only playback (no visible subtitle text)
+            SubtitleUI.Instance?.PlayVoiceline(completionSubtitleVoiceline, completionSubtitleVoicelineVolume);
         }
 
         completed = true;

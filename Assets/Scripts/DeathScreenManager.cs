@@ -131,8 +131,6 @@ public class DeathScreenManager : MonoBehaviour
         tmpText.alignment = TextAlignmentOptions.Center;
         tmpText.color = Color.white;
         
-        Debug.Log($"[DeathScreenManager] Auto-created button: {name}");
-        
         return button;
     }
     
@@ -165,7 +163,6 @@ public class DeathScreenManager : MonoBehaviour
                 deathScreenPanel = field.GetValue(attackSelectionUI) as GameObject;
                 if (deathScreenPanel != null)
                 {
-                    Debug.Log("[DeathScreenManager] Using death screen panel from AttackSelectionUI");
                 }
             }
         }
@@ -217,7 +214,6 @@ public class DeathScreenManager : MonoBehaviour
         if (pauseMenu != null)
         {
             pauseMenu.enabled = false;
-            Debug.Log("[DeathScreenManager] Pause menu disabled");
         }
         
         // Show cursor for button interaction - ensure it's fully unlocked and visible
@@ -229,8 +225,6 @@ public class DeathScreenManager : MonoBehaviour
         
         // Ensure EventSystem exists for UI interaction
         EnsureEventSystem();
-        
-        Debug.Log("[DeathScreenManager] Death screen shown with cursor unlocked and player input disabled");
     }
     
     private void Update()
@@ -261,7 +255,6 @@ public class DeathScreenManager : MonoBehaviour
             eventSystem = eventSystemObj.AddComponent<EventSystem>();
             // Use InputSystemUIInputModule for the new Input System
             eventSystemObj.AddComponent<InputSystemUIInputModule>();
-            Debug.Log("[DeathScreenManager] Created EventSystem with InputSystemUIInputModule for UI interaction");
         }
         else
         {
@@ -270,7 +263,6 @@ public class DeathScreenManager : MonoBehaviour
                 eventSystem.GetComponent<StandaloneInputModule>() == null)
             {
                 eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
-                Debug.Log("[DeathScreenManager] Added InputSystemUIInputModule to existing EventSystem");
             }
         }
     }
@@ -289,13 +281,11 @@ public class DeathScreenManager : MonoBehaviour
         if (playerInput != null)
         {
             playerInput.DeactivateInput();
-            Debug.Log("[DeathScreenManager] Player input deactivated");
         }
         else
         {
             // If no PlayerInput component, try to disable the Snake action map directly
             // by finding any active PlayerControls instances
-            Debug.Log("[DeathScreenManager] No PlayerInput found, attempting to disable input via other means");
         }
         
         // Also freeze the attack manager to prevent any attack processing
@@ -313,7 +303,6 @@ public class DeathScreenManager : MonoBehaviour
         if (playerInput != null)
         {
             playerInput.ActivateInput();
-            Debug.Log("[DeathScreenManager] Player input reactivated");
         }
         
         // Unfreeze attack manager
@@ -328,8 +317,6 @@ public class DeathScreenManager : MonoBehaviour
     /// </summary>
     private void CreateDeathScreenUI()
     {
-        Debug.Log("[DeathScreenManager] Creating death screen UI from scratch");
-        
         // Always create a new canvas for the death screen to ensure proper layering and raycasting
         GameObject canvasObj = new GameObject("DeathScreenCanvas");
         deathCanvas = canvasObj.AddComponent<Canvas>();
@@ -376,8 +363,6 @@ public class DeathScreenManager : MonoBehaviour
         // Create buttons
         restartButton = CreateButton(deathScreenPanel.transform, "RestartButton", "RESTART", new Vector2(0, -20), OnRestartClicked);
         quitButton = CreateButton(deathScreenPanel.transform, "QuitButton", "QUIT", new Vector2(0, -90), OnQuitClicked);
-        
-        Debug.Log("[DeathScreenManager] Death screen UI created successfully");
     }
     
     /// <summary>
@@ -409,8 +394,6 @@ public class DeathScreenManager : MonoBehaviour
         // Hide cursor for gameplay
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
-        
-        Debug.Log("[DeathScreenManager] Death screen hidden");
     }
     
     /// <summary>
@@ -419,8 +402,6 @@ public class DeathScreenManager : MonoBehaviour
     /// </summary>
     public void OnRestartClicked()
     {
-        Debug.Log("[DeathScreenManager] Restart clicked");
-        
         // Re-enable pause menu
         if (pauseMenu != null)
         {
@@ -440,14 +421,12 @@ public class DeathScreenManager : MonoBehaviour
             
             if (checkpointManager != null && checkpointManager.HasCheckpoint())
             {
-                Debug.Log($"[DeathScreenManager] Restoring checkpoint at level {checkpointManager.GetCheckpointLevel()}");
                 HideDeathScreen();
                 checkpointManager.RestoreCheckpoint();
                 return;
             }
             else
             {
-                Debug.Log("[DeathScreenManager] No checkpoint available, falling back to scene reload");
             }
         }
         
@@ -469,8 +448,6 @@ public class DeathScreenManager : MonoBehaviour
     /// </summary>
     public void OnQuitClicked()
     {
-        Debug.Log("[DeathScreenManager] Quit clicked");
-        
         // Re-enable pause menu before scene change
         if (pauseMenu != null)
         {
@@ -590,8 +567,6 @@ public class DeathScreenManager : MonoBehaviour
         {
             waveManager.StartWave();
         }
-        
-        Debug.Log("[DeathScreenManager] Game state reset complete");
     }
     
     /// <summary>

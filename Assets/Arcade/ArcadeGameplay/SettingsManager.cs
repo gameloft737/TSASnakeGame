@@ -244,7 +244,6 @@ public class SettingsManager : MonoBehaviour
     
     public void SetQuality(int qualityIndex)
     {
-        Debug.Log($"[SettingsManager] Setting quality to level {qualityIndex} ({(qualityIndex < QualitySettings.names.Length ? QualitySettings.names[qualityIndex] : "Unknown")})");
         QualitySettings.SetQualityLevel(qualityIndex, true);
         PlayerPrefs.SetInt(QUALITY_KEY, qualityIndex);
         PlayerPrefs.Save();
@@ -254,7 +253,6 @@ public class SettingsManager : MonoBehaviour
     {
         if (filteredResolutions == null || resolutionIndex >= filteredResolutions.Count) return;
         Resolution res = filteredResolutions[resolutionIndex];
-        Debug.Log($"[SettingsManager] Setting resolution to {res.width}x{res.height} (fullscreen: {Screen.fullScreen})");
         Screen.SetResolution(res.width, res.height, Screen.fullScreen);
         PlayerPrefs.SetInt(RESOLUTION_KEY, resolutionIndex);
         PlayerPrefs.Save();

@@ -18,6 +18,14 @@ public class FuelUI : MonoBehaviour
     [Header("References")]
     [SerializeField] private AttackManager attackManager;
 
+    // Cached last-rendered values so we can avoid rebuilding strings / touching the canvas every frame.
+    // On WebGL this dramatically reduces GC pressure and canvas rebuilds.
+    private int _lastFuelInt = int.MinValue;
+    private int _lastPercentInt = int.MinValue;
+    private bool _lastAdditionalActive;
+    private bool _additionalActiveInitialized;
+    private bool _lastAttackWasNull = true;
+
     private void Start()
     {
         // Setup slider
@@ -55,46 +63,70 @@ public class FuelUI : MonoBehaviour
     private void UpdateFuelDisplay()
     {
         Attack currentAttack = attackManager?.GetCurrentAttack();
-        
-        // Show/hide additional text based on whether there's an active attack
+        bool attackIsNull = currentAttack == null;
+
+        // Show/hide additional text based on whether there's an active attack — only toggle when state changes
         if (additionalText != null)
         {
-            additionalText.gameObject.SetActive(currentAttack != null);
+            bool shouldBeActive = !attackIsNull;
+            if (!_additionalActiveInitialized || shouldBeActive != _lastAdditionalActive)
+            {
+                additionalText.gameObject.SetActive(shouldBeActive);
+                _lastAdditionalActive = shouldBeActive;
+                _additionalActiveInitialized = true;
+            }
         }
         
-        if (currentAttack == null) return;
+        if (attackIsNull)
+        {
+            _lastAttackWasNull = true;
+            return;
+        }
+
+        // If we just transitioned from null → valid, force a refresh
+        if (_lastAttackWasNull)
+        {
+            _lastFuelInt = int.MinValue;
+            _lastPercentInt = int.MinValue;
+            _lastAttackWasNull = false;
+        }
 
         float currentFuel = currentAttack.GetCurrentFuel();
         float fuelPercentage = currentAttack.GetFuelPercentage();
+        int fuelInt = Mathf.RoundToInt(currentFuel);
+        int percentInt = Mathf.RoundToInt(fuelPercentage * 100f);
 
-        // Update slider
-        if (fuelSlider != null)
+        // Only update slider if value actually changed (avoids canvas rebuild)
+        if (fuelSlider != null && fuelInt != _lastFuelInt)
         {
             fuelSlider.value = currentFuel;
         }
 
-        // Update fill color based on fuel level
-        if (fillImage != null && fuelGradient != null)
+        // Only update fill color when percent bucket changes
+        if (fillImage != null && fuelGradient != null && percentInt != _lastPercentInt)
         {
             fillImage.color = fuelGradient.Evaluate(fuelPercentage);
         }
 
-        // Update text display
-        if (fuelText != null)
+        // Update text display — only re-string when display values change
+        if (fuelText != null && (fuelInt != _lastFuelInt || percentInt != _lastPercentInt))
         {
             if (showPercentage && showNumericValue)
             {
-                fuelText.text = $"{currentFuel:F0} ({fuelPercentage * 100f:F0}%)";
+                fuelText.text = $"{fuelInt} ({percentInt}%)";
             }
             else if (showPercentage)
             {
-                fuelText.text = $"{fuelPercentage * 100f:F0}%";
+                fuelText.text = $"{percentInt}%";
             }
             else if (showNumericValue)
             {
-                fuelText.text = $"{currentFuel:F0}";
+                fuelText.text = fuelInt.ToString();
             }
         }
+
+        _lastFuelInt = fuelInt;
+        _lastPercentInt = percentInt;
     }
 
     private void SetupDefaultGradient()
@@ -118,7 +150,6 @@ public class FuelUI : MonoBehaviour
     public void OnFuelDepleted()
     {
         // You can add animation/effects here
-        Debug.Log("Fuel depleted!");
     }
     
     /// <summary>

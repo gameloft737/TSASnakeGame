@@ -178,7 +178,6 @@ public class ClassicModeManager : MonoBehaviour
         if (isClassicMode || isTransitioning) return;
         
         isTransitioning = true;
-        Debug.Log("[ClassicModeManager] Entering Classic Mode");
         
         SaveCurrentState();
         EnableClassicModeOnComponents();
@@ -200,7 +199,6 @@ public class ClassicModeManager : MonoBehaviour
         if (!isClassicMode || isTransitioning) return;
         
         isTransitioning = true;
-        Debug.Log("[ClassicModeManager] Exiting Classic Mode");
         
         DisableClassicModeOnComponents();
         SwitchToNormalCamera();
@@ -243,8 +241,6 @@ public class ClassicModeManager : MonoBehaviour
                 cachedEnemies.Add(enemy);
             }
         }
-        
-        Debug.Log($"[ClassicModeManager] Enabled classic mode on {cachedEnemies.Count} enemies");
         
         // Freeze camera manager input
         if (cameraManager != null)
@@ -371,8 +367,6 @@ public class ClassicModeManager : MonoBehaviour
         {
             topDownCamera.Priority = 0;
         }
-        
-        Debug.Log("[ClassicModeManager] Menu opened - lowered top-down camera priority");
     }
     
     /// <summary>
@@ -388,14 +382,12 @@ public class ClassicModeManager : MonoBehaviour
         {
             // Use cut transition to avoid spinning when returning to top-down camera
             SwitchToTopDownCameraWithCut();
-            Debug.Log("[ClassicModeManager] Menu closed - restoring top-down camera with cut");
         }
         else
         {
             // Switch back to normal camera when not in classic mode
             // CameraManager handles the cut transition internally
             SwitchToNormalCamera();
-            Debug.Log("[ClassicModeManager] Menu closed - restoring normal camera");
         }
     }
     
@@ -413,6 +405,10 @@ public class ClassicModeManager : MonoBehaviour
         
         // Create a pool of line renderers for the grid
         int totalLines = (gridVisibleRadius * 2 + 1) * 2; // Horizontal + Vertical lines
+        // Share a single material across every grid line instead of allocating a
+        // new Material + Shader.Find per line. This saves ~(totalLines-1) materials
+        // and shader lookups at grid-visualizer creation time.
+        Material sharedGridMat = new Material(Shader.Find("Sprites/Default"));
         
         for (int i = 0; i < totalLines; i++)
         {
@@ -423,7 +419,7 @@ public class ClassicModeManager : MonoBehaviour
             lr.positionCount = 2;
             lr.startWidth = gridLineWidth;
             lr.endWidth = gridLineWidth;
-            lr.material = new Material(Shader.Find("Sprites/Default"));
+            lr.sharedMaterial = sharedGridMat;
             lr.startColor = gridLineColor;
             lr.endColor = gridLineColor;
             lr.useWorldSpace = true;

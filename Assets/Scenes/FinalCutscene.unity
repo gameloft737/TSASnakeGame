@@ -522,12 +522,16 @@ MonoBehaviour:
   subtitles:
   - text: What just happened...
     startTime: 0
-    duration: 2
-    gapAfter: 2
+    duration: 1.5
+    gapAfter: 0
+    voiceline: {fileID: 8300000, guid: 0084158a9c576314fb39aa972dd1f89b, type: 3}
+    voicelineVolume: 1
   - text: I gotta get this machine fixed...
     startTime: 0
     duration: 3
     gapAfter: 0
+    voiceline: {fileID: 0}
+    voicelineVolume: 1
   fadePanel: {fileID: 936531648}
   fadeToBlackDuration: 1
   nextSceneName: Arcade
@@ -535,6 +539,7 @@ MonoBehaviour:
   delayAfterFade: 2
   audioSource: {fileID: 0}
   cutsceneMusic: {fileID: 0}
+  voicelineAudioSource: {fileID: 0}
   debugMode: 0
 --- !u!4 &438936404
 Transform:
@@ -1533,6 +1538,10 @@ MonoBehaviour:
   subtitleText: {fileID: 675463691}
   backgroundPanel: {fileID: 818336992}
   defaultDuration: 3
+  voicelineAudioSource: {fileID: 0}
+  defaultVoicelineVolume: 1
+  stopPreviousVoiceline: 0
+  stopVoicelineOnClear: 0
 --- !u!114 &818336992
 MonoBehaviour:
   m_ObjectHideFlags: 0

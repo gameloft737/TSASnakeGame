@@ -13,6 +13,10 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float mouseSmoothing = 0.15f; // Lower = smoother, higher = more responsive
     [SerializeField] private float surfaceAlignSpeed = 10f;
     [SerializeField] private float gravityForce = 20f;
+
+    [Header("Classic Mode")]
+    [Tooltip("Degrees per second the snake rotates toward the queued cardinal direction in classic mode.")]
+    [SerializeField] private float classicTurnSpeed = 720f;
     
     [Header("Ground Friction")]
     [SerializeField] private float groundDrag = 10f;
@@ -48,6 +52,7 @@ public class PlayerMovement : MonoBehaviour
     private Vector2Int classicDirection = Vector2Int.up; // Current movement direction
     private Vector2Int nextClassicDirection = Vector2Int.up; // Queued direction
     private Vector2Int lastInputDirection = Vector2Int.zero;
+    private Vector3 classicTargetForward = Vector3.forward; // Smoothly-rotated-toward direction
 
     void Start()
     {
@@ -108,13 +113,11 @@ public class PlayerMovement : MonoBehaviour
             // Snap orientation to nearest cardinal direction
             SnapOrientationToCardinal();
             #if UNITY_EDITOR
-            Debug.Log("[PlayerMovement] Classic mode enabled - movement restricted to 4 directions");
             #endif
         }
         else
         {
             #if UNITY_EDITOR
-            Debug.Log("[PlayerMovement] Classic mode disabled");
             #endif
         }
     }
@@ -150,6 +153,7 @@ public class PlayerMovement : MonoBehaviour
         
         // Snap to that direction
         orientation.rotation = Quaternion.LookRotation(nearest, Vector3.up);
+        classicTargetForward = nearest;
     }
     
     /// <summary>
@@ -198,14 +202,24 @@ public class PlayerMovement : MonoBehaviour
             Vector3 currentDir = orientation.forward;
             currentDir.y = 0;
             currentDir.Normalize();
-            
+
             // Don't allow reversing direction (can't go back on yourself)
             float dot = Vector3.Dot(currentDir, newDirection);
             if (dot > -0.9f) // Allow if not directly opposite
             {
-                // Set the new direction
-                orientation.rotation = Quaternion.LookRotation(newDirection, Vector3.up);
+                // Queue the new target direction - actual rotation happens smoothly below
+                classicTargetForward = newDirection;
             }
+        }
+
+        // Smoothly rotate orientation toward the queued cardinal direction
+        if (classicTargetForward.sqrMagnitude > 0.0001f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(classicTargetForward, Vector3.up);
+            orientation.rotation = Quaternion.RotateTowards(
+                orientation.rotation,
+                targetRotation,
+                classicTurnSpeed * Time.deltaTime);
         }
     }
     

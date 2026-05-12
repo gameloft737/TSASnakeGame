@@ -69,7 +69,6 @@ public class ScreenFadeManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            Debug.Log("[ScreenFadeManager] Instance created");
         }
         else if (Instance != this)
         {
@@ -99,14 +98,11 @@ public class ScreenFadeManager : MonoBehaviour
         if (fadePanelImage != null)
         {
             fadePanelImage.color = fadeColor;
-            Debug.Log($"[ScreenFadeManager] Set fade panel image color to: {fadeColor}");
         }
         else
         {
             Debug.LogWarning("[ScreenFadeManager] No Image component found on fade panel. Make sure the panel has an Image with the correct color.");
         }
-        
-        Debug.Log($"[ScreenFadeManager] Fade Panel found: {fadePanel.gameObject.name}, fadeInOnStart: {fadeInOnStart}");
         
         // If fading in on start, make sure the panel starts fully opaque
         if (fadeInOnStart)
@@ -116,13 +112,11 @@ public class ScreenFadeManager : MonoBehaviour
             // Ensure the panel blocks raycasts during fade
             fadePanel.blocksRaycasts = true;
             fadePanel.interactable = false;
-            Debug.Log("[ScreenFadeManager] Panel set to opaque (alpha=1), active=true");
         }
         else
         {
             SetFadeAlpha(0f);
             fadePanel.gameObject.SetActive(false);
-            Debug.Log("[ScreenFadeManager] Panel set to clear (alpha=0), active=false");
         }
         
         hasInitialized = true;
@@ -130,14 +124,12 @@ public class ScreenFadeManager : MonoBehaviour
     
     private void Start()
     {
-        Debug.Log($"[ScreenFadeManager] Start called. fadeInOnStart: {fadeInOnStart}, fadePanel null: {fadePanel == null}");
         if (fadeInOnStart && fadePanel != null)
         {
             // Re-ensure the panel is set up correctly at Start (in case something changed it)
             SetFadeAlpha(1f);
             fadePanel.gameObject.SetActive(true);
             
-            Debug.Log("[ScreenFadeManager] Starting initial fade sequence");
             StartCoroutine(InitialFadeSequence());
         }
     }
@@ -169,8 +161,6 @@ public class ScreenFadeManager : MonoBehaviour
         SetFadeAlpha(1f);
         fadePanel.gameObject.SetActive(true);
         
-        Debug.Log($"[ScreenFadeManager] InitialFadeSequence started, current alpha: {GetCurrentAlpha()}, waiting {initialFadeDelay}s");
-        
         // Wait for the initial delay (use realtime so it works even if game starts paused)
         // During this time, keep ensuring the panel stays opaque
         float delayElapsed = 0f;
@@ -185,12 +175,9 @@ public class ScreenFadeManager : MonoBehaviour
             yield return null;
         }
         
-        Debug.Log($"[ScreenFadeManager] Starting initial fade from black, alpha before fade: {GetCurrentAlpha()}");
-        
         // Fade from black
         yield return FadeFromBlackCoroutine(defaultFadeDuration, () =>
         {
-            Debug.Log("[ScreenFadeManager] Initial fade complete");
         });
     }
     
@@ -364,8 +351,6 @@ public class ScreenFadeManager : MonoBehaviour
     {
         isFading = true;
         
-        Debug.Log($"[ScreenFadeManager] Fading to black over {duration}s, current alpha: {GetCurrentAlpha()}");
-        
         float startAlpha = GetCurrentAlpha();
         float elapsed = 0f;
         
@@ -386,8 +371,6 @@ public class ScreenFadeManager : MonoBehaviour
         isFading = false;
         activeFadeCoroutine = null;
         
-        Debug.Log("[ScreenFadeManager] Fade to black complete");
-        
         OnFadeToBlackComplete?.Invoke();
         onComplete?.Invoke();
     }
@@ -404,8 +387,6 @@ public class ScreenFadeManager : MonoBehaviour
             startAlpha = 1f;
             SetFadeAlpha(1f);
         }
-        
-        Debug.Log($"[ScreenFadeManager] Fading from black over {duration}s, current alpha: {startAlpha}");
         
         float elapsed = 0f;
         
@@ -427,7 +408,6 @@ public class ScreenFadeManager : MonoBehaviour
             
             if (debugMode && Time.frameCount % 10 == 0)
             {
-                Debug.Log($"[ScreenFadeManager] Fade progress: t={t:F2}, alpha={alpha:F2}");
             }
             
             yield return null;
@@ -441,8 +421,6 @@ public class ScreenFadeManager : MonoBehaviour
         
         isFading = false;
         activeFadeCoroutine = null;
-        
-        Debug.Log("[ScreenFadeManager] Fade from black complete");
         
         OnFadeFromBlackComplete?.Invoke();
         onComplete?.Invoke();

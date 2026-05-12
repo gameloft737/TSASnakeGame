@@ -366,8 +366,6 @@ public class ObjectPool : MonoBehaviour
                 despawnedCount++;
             }
         }
-        
-        Debug.Log($"[ObjectPool] Despawned {despawnedCount} active pooled objects");
     }
     
     /// <summary>
@@ -389,8 +387,6 @@ public class ObjectPool : MonoBehaviour
                 despawnedCount++;
             }
         }
-        
-        Debug.Log($"[ObjectPool] Despawned {despawnedCount} active objects from pool '{tag}'");
     }
     
     /// <summary>
@@ -407,8 +403,6 @@ public class ObjectPool : MonoBehaviour
         {
             ClearPool(kvp.Key);
         }
-        
-        Debug.Log("[ObjectPool] Cleared all pools");
     }
     
     /// <summary>
@@ -476,11 +470,9 @@ public class ObjectPool : MonoBehaviour
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
     public void LogAllPoolStats()
     {
-        Debug.Log("=== Object Pool Statistics ===");
         foreach (var kvp in poolDictionary)
         {
             PoolStats stats = GetPoolStats(kvp.Key);
-            Debug.Log($"Pool '{stats.tag}': Active={stats.activeCount}, Available={stats.availableCount}, Peak={stats.peakActiveCount}, Total={stats.totalCreated}, Max={stats.maxSize}");
         }
     }
 }

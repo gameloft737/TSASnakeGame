@@ -47,8 +47,9 @@ public class WaveManager : MonoBehaviour
     {
         FindReferences();
         
-        // Start playing game music (looping background music)
-        SoundManager.Play("GameMusic", gameObject);
+        // Background music is now driven by LevelUIManager on a per-level basis
+        // (see LevelUIManager.PlayLevelMusic). The old single "GameMusic" start
+        // used to live here but was removed to avoid overlapping with level tracks.
         
         StartWave();
     }
@@ -107,8 +108,6 @@ public class WaveManager : MonoBehaviour
         {
             dropManager.ClearAllDrops();
         }
-        
-        Debug.Log("[WaveManager] Cleared all map objects (pooled objects, enemies, XP, and ability drops)");
     }
     
     public void StartCurrentWave()
@@ -125,12 +124,8 @@ public class WaveManager : MonoBehaviour
             return;
         }
         
-        Debug.Log($"[WaveManager] StartInfiniteWave called for wave {currentWaveIndex}");
-        
         // Generate wave configuration dynamically
         currentInfiniteWaveConfigs = infiniteWaveConfig.GenerateWaveConfig(currentWaveIndex);
-        
-        Debug.Log($"[WaveManager] Generated {currentInfiniteWaveConfigs.Count} enemy configs for wave {currentWaveIndex}");
         
         // Reset all configs
         foreach (var config in currentInfiniteWaveConfigs)
@@ -138,7 +133,6 @@ public class WaveManager : MonoBehaviour
             config.Reset();
             if (config.enemyPrefab != null)
             {
-                Debug.Log($"[WaveManager] Config: {config.enemyPrefab.name}, maxOnScreen={config.maxOnScreen}, cooldown={config.spawnCooldown}");
             }
         }
         
@@ -158,8 +152,6 @@ public class WaveManager : MonoBehaviour
         }
         
         OnWaveStarted?.Invoke(currentWaveIndex);
-        
-        Debug.Log($"Started {infiniteWaveConfig.GetWaveName(currentWaveIndex)} - Difficulty: {infiniteWaveConfig.GetDifficultyMultiplier(currentWaveIndex):F2}x");
     }
     
     private void StartLegacyWave()
@@ -278,8 +270,6 @@ public class WaveManager : MonoBehaviour
     /// </summary>
     public void PauseWave()
     {
-        Debug.Log("[WaveManager] PauseWave called");
-        
         if (enemySpawner) enemySpawner.StopSpawning();
         SetPlayerMovement(false);
         SetAttacksPaused(true);
@@ -291,12 +281,9 @@ public class WaveManager : MonoBehaviour
     /// </summary>
     public void ResumeWave()
     {
-        Debug.Log($"[WaveManager] ResumeWave called. waveActive={waveActive}, inChoicePhase={inChoicePhase}");
-        
         // Don't resume if we're in the choice phase (attack selection)
         if (inChoicePhase)
         {
-            Debug.Log("[WaveManager] In choice phase, not resuming");
             return;
         }
         
@@ -310,12 +297,9 @@ public class WaveManager : MonoBehaviour
             {
                 enemySpawner.ResumeSpawning();
             }
-            
-            Debug.Log("[WaveManager] Wave resumed");
         }
         else
         {
-            Debug.Log("[WaveManager] Wave was not active, not resuming spawning");
         }
     }
     

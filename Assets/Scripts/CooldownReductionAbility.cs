@@ -55,8 +55,6 @@ public class CooldownReductionAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddCooldownReduction(currentBonus);
-        
-        Debug.Log($"CooldownReductionAbility: Applied +{currentBonus * 100:F0}% cooldown reduction (Level {currentLevel})");
     }
     
     private void RemoveBonus()

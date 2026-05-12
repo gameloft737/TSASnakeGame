@@ -102,14 +102,12 @@ public class EnemySpawner : MonoBehaviour
         spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
         
         #if UNITY_EDITOR
-        Debug.Log($"[EnemySpawner] Started infinite wave spawning with {configs.Count} enemy types, isInfiniteMode={isInfiniteMode}");
         #endif
     }
     
     public void StopSpawning()
     {
         #if UNITY_EDITOR
-        Debug.Log("[EnemySpawner] StopSpawning called");
         #endif
         isSpawningActive = false;
         if (spawnLoopCoroutine != null)
@@ -126,14 +124,12 @@ public class EnemySpawner : MonoBehaviour
     public void ResumeSpawning()
     {
         #if UNITY_EDITOR
-        Debug.Log($"[EnemySpawner] ResumeSpawning called. isInfiniteMode={isInfiniteMode}, hasConfigs={(isInfiniteMode ? currentInfiniteConfigs != null : currentWaveData != null)}");
         #endif
         
         // Don't resume if already spawning
         if (isSpawningActive && spawnLoopCoroutine != null)
         {
             #if UNITY_EDITOR
-            Debug.Log("[EnemySpawner] Already spawning, no need to resume");
             #endif
             return;
         }
@@ -145,7 +141,6 @@ public class EnemySpawner : MonoBehaviour
             if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
             spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
             #if UNITY_EDITOR
-            Debug.Log("[EnemySpawner] Resumed infinite wave spawning");
             #endif
         }
         else if (!isInfiniteMode && currentWaveData != null)
@@ -154,7 +149,6 @@ public class EnemySpawner : MonoBehaviour
             if (spawnLoopCoroutine != null) StopCoroutine(spawnLoopCoroutine);
             spawnLoopCoroutine = StartCoroutine(SpawnLoopCoroutine());
             #if UNITY_EDITOR
-            Debug.Log("[EnemySpawner] Resumed legacy wave spawning");
             #endif
         }
         else
@@ -176,7 +170,6 @@ public class EnemySpawner : MonoBehaviour
     private IEnumerator SpawnLoopCoroutine()
     {
         #if UNITY_EDITOR
-        Debug.Log($"[EnemySpawner] SpawnLoopCoroutine started. isInfiniteMode={isInfiniteMode}, isSpawningActive={isSpawningActive}");
         #endif
         
         float lastSyncTime = Time.time;
@@ -222,7 +215,6 @@ public class EnemySpawner : MonoBehaviour
         }
         
         #if UNITY_EDITOR
-        Debug.Log($"[EnemySpawner] SpawnLoopCoroutine ended. isSpawningActive={isSpawningActive}");
         #endif
     }
     

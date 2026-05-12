@@ -32,6 +32,9 @@ public class TurretAbility : BaseAbility
     private float shootTimer = 0f;
     private Transform playerTransform;
     private AppleEnemy cachedNearestApple;
+    // Cache NavMeshAgent height so GetAppleCenterPosition doesn't GetComponent every frame.
+    private AppleEnemy _cachedAgentOwner;
+    private float _cachedAgentHeight = 1f;
     private float targetSearchTimer = 0f;
     
     // Dynamic values that scale with level
@@ -56,8 +59,6 @@ public class TurretAbility : BaseAbility
         {
             projectilePrefab = CreateDefaultProjectile();
         }
-        
-        Debug.Log($"TurretAbility: Started at level {currentLevel} - Damage: {currentProjectileDamage}, Fire Rate: {currentShootInterval:F2}s");
     }
 
     protected override void Update()
@@ -104,8 +105,6 @@ public class TurretAbility : BaseAbility
         {
             turretBody.SetActive(true);
         }
-        
-        Debug.Log($"TurretAbility: Activated at level {currentLevel}");
     }
     
     protected override void DeactivateAbility()
@@ -117,7 +116,6 @@ public class TurretAbility : BaseAbility
             turretBody.SetActive(false);
         }
         
-        Debug.Log("TurretAbility: Deactivated");
         // No longer destroy - abilities are permanent
     }
     
@@ -126,8 +124,6 @@ public class TurretAbility : BaseAbility
         base.OnLevelUp();
         
         UpdateStatsForLevel();
-        
-        Debug.Log($"TurretAbility: Level {currentLevel} - Damage: {currentProjectileDamage}, Fire Rate: {currentShootInterval:F2}s, Projectiles: {currentProjectileCount}");
     }
     
     /// <summary>
@@ -197,11 +193,14 @@ public class TurretAbility : BaseAbility
     
     private Vector3 GetAppleCenterPosition(AppleEnemy apple)
     {
-        // Get NavMeshAgent height for accurate center position
-        UnityEngine.AI.NavMeshAgent agent = apple.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        float height = agent != null ? agent.height * 0.5f : 0.5f;
-        
-        return apple.transform.position + Vector3.up * height;
+        // Cache height lookup: GetComponent per frame on the same apple was a hot spot.
+        if (apple != _cachedAgentOwner)
+        {
+            _cachedAgentOwner = apple;
+            var agent = apple.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            _cachedAgentHeight = agent != null ? agent.height * 0.5f : 0.5f;
+        }
+        return apple.transform.position + Vector3.up * _cachedAgentHeight;
     }
 
     private AppleEnemy FindNearestApple()

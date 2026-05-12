@@ -100,8 +100,6 @@ public class TileScanner : MonoBehaviour
         cam.targetTexture = null;
         RenderTexture.active = null;
         rt.Release();
-
-        Debug.Log("Tile scan saved to " + savePath);
 #endif
     }
 }

@@ -212,7 +212,6 @@ public abstract class BaseAbility : MonoBehaviour
     /// </summary>
     protected virtual void OnLevelUp()
     {
-        Debug.Log($"{GetType().Name} leveled up to {currentLevel}!");
     }
 
     /// <summary>
@@ -316,7 +315,6 @@ public abstract class BaseAbility : MonoBehaviour
     /// </summary>
     protected virtual void OnEvolutionUnlocked()
     {
-        Debug.Log($"{GetType().Name} evolved to level {currentLevel}!");
     }
 
     // Getters

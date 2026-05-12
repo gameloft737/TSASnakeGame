@@ -149,7 +149,6 @@ public class MainMenuManager : MonoBehaviour
             menuMusicSource.volume = menuMusicVolume;
             menuMusicSource.loop = loopMenuMusic;
             menuMusicSource.Play();
-            Debug.Log("MainMenuManager: Started playing menu music");
         }
     }
     
@@ -193,7 +192,6 @@ public class MainMenuManager : MonoBehaviour
         
         menuMusicSource.Stop();
         menuMusicSource.volume = startVolume; // Reset volume for potential replay
-        Debug.Log("MainMenuManager: Menu music faded out");
     }
     
     /// <summary>

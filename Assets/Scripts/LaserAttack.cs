@@ -55,6 +55,11 @@ public class LaserAttack : Attack
     
     private Vector3 convergencePoint;
     private float targetXRotation; // Current X rotation from mouse input
+    // Damage tick gate — without this the laser applied damage every frame per raycast,
+    // which at 60fps could do 60x the intended DPS and was a big CPU/audio/GC cost.
+    [SerializeField] private float damageTickInterval = 0.1f;
+    private float _damageTickTimer = 0f;
+    private bool _canDealDamageThisTick = false;
 
     private void Awake()
     {
@@ -104,7 +109,6 @@ public class LaserAttack : Attack
     protected override void OnUpgrade()
     {
         // Visual feedback for upgrade could go here
-        Debug.Log($"Laser upgraded! Distance: {laserDistance}, Width: {laserWidth}, Side Lasers: {sideLasersEnabled}");
     }
     
     private void UpdateLineRendererWidth()
@@ -188,6 +192,15 @@ public class LaserAttack : Attack
 
     protected override void OnHoldUpdate()
     {
+        // Tick-gate damage so lasers don't apply GetDamage() every single frame.
+        _damageTickTimer += Time.deltaTime;
+        _canDealDamageThisTick = false;
+        if (_damageTickTimer >= damageTickInterval)
+        {
+            _canDealDamageThisTick = true;
+            _damageTickTimer = 0f;
+        }
+
         // Return to neutral (aim camera removed)
         targetXRotation = Mathf.Lerp(targetXRotation, 0f, 5f * Time.deltaTime);
         
@@ -321,7 +334,7 @@ public class LaserAttack : Attack
                     StartDamaging(ref isDamaging);
                 }
 
-                if (isDamaging && currentTarget != null)
+                if (isDamaging && currentTarget != null && _canDealDamageThisTick)
                 {
                     currentTarget.TakeDamage(GetDamage());
                 }
@@ -377,7 +390,7 @@ public class LaserAttack : Attack
                     StartDamaging(ref isDamaging);
                 }
 
-                if (isDamaging && currentTarget != null)
+                if (isDamaging && currentTarget != null && _canDealDamageThisTick)
                 {
                     currentTarget.TakeDamage(GetDamage());
                 }

@@ -223,7 +223,8 @@ public class LightningStrikeAbility : BaseAbility
             CreateSimpleLightningEffect(enemy.transform.position);
         }
         
-        Debug.Log($"Lightning struck {enemy.name} for {damage} damage!");
+        #if UNITY_EDITOR
+        #endif
     }
     
     /// <summary>
@@ -293,13 +294,11 @@ public class LightningStrikeAbility : BaseAbility
     protected override void OnLevelUp()
     {
         base.OnLevelUp();
-        Debug.Log($"Lightning Strike upgraded! Strikes: {GetStrikeCount()}, Interval: {GetStrikeInterval():F1}s, Damage: {GetStrikeDamage():F0}");
     }
     
     protected override void OnEvolutionUnlocked()
     {
         base.OnEvolutionUnlocked();
-        Debug.Log($"Lightning Strike evolved to level {currentLevel}!");
     }
     
     /// <summary>

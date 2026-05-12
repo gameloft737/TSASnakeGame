@@ -165,7 +165,6 @@ public class CheckpointManager : MonoBehaviour
             }
             
             // Always log checkpoint position for debugging
-            Debug.Log($"[CheckpointManager] SAVED checkpoint position: {currentCheckpoint.playerPosition} at level {levelMilestone}");
         }
         
         // Save body segment count and growth tracking
@@ -181,9 +180,6 @@ public class CheckpointManager : MonoBehaviour
             currentCheckpoint.currentApplesThreshold = GetField<int>(type, snakeBody, "currentApplesThreshold", flags);
             currentCheckpoint.segmentsAddedFromApples = GetField<int>(type, snakeBody, "segmentsAddedFromApples", flags);
         }
-        
-        if (debugMode)
-            Debug.Log($"[CheckpointManager] Saved checkpoint at level {levelMilestone}. Wave: {currentCheckpoint.waveIndex}, XP Level: {currentCheckpoint.xpLevel}, Attack: {currentCheckpoint.attackPrefabName} (Lv{currentCheckpoint.attackLevel}), Abilities: {currentCheckpoint.abilities.Count}, Body Segments: {currentCheckpoint.bodySegmentCount}, Position: {currentCheckpoint.playerPosition}");
         
         // Save game start time for timer-based levels
         if (levelUIManager != null)
@@ -228,7 +224,6 @@ public class CheckpointManager : MonoBehaviour
         if (currentCheckpoint == null) { Debug.LogWarning("[CheckpointManager] No checkpoint!"); return false; }
         
         FindReferences();
-        if (debugMode) Debug.Log($"[CheckpointManager] Restoring checkpoint at level {currentCheckpoint.levelMilestone}");
         
         // Clear all enemies, XP drops, and ability drops from the map
         if (enemySpawner != null) enemySpawner.ClearAllEnemies();
@@ -282,7 +277,6 @@ public class CheckpointManager : MonoBehaviour
         if (attackManager != null) attackManager.SetFrozen(false);
         if (waveManager != null) waveManager.StartCurrentWave();
         
-        if (debugMode) Debug.Log("[CheckpointManager] Checkpoint restored!");
         return true;
     }
     
@@ -331,11 +325,9 @@ public class CheckpointManager : MonoBehaviour
             if (checkpointMap.TryGetValue(name, out AbilityCheckpointData data))
             {
                 ability.SetLevel(data.level);
-                if (debugMode) Debug.Log($"[CheckpointManager] Restored ability {name} to level {data.level}");
             }
             else
             {
-                if (debugMode) Debug.Log($"[CheckpointManager] Removing ability {name} (not in checkpoint)");
                 abilityManager.RemoveAbility(ability);
             }
         }
@@ -352,8 +344,6 @@ public class CheckpointManager : MonoBehaviour
         {
             // Remove extra segments from the end
             int segmentsToRemove = currentCount - targetCount;
-            if (debugMode) Debug.Log($"[CheckpointManager] Removing {segmentsToRemove} body segments");
-            
             for (int i = 0; i < segmentsToRemove; i++)
             {
                 if (snakeBody.bodyParts.Count > 0)
@@ -395,8 +385,6 @@ public class CheckpointManager : MonoBehaviour
         Vector3 currentPos = playerMovement.transform.position;
         Vector3 targetPos = currentCheckpoint.playerPosition;
         
-        Debug.Log($"[CheckpointManager] TELEPORTING: Current pos = {currentPos}, Target pos = {targetPos}");
-        
         Rigidbody rb = playerMovement.GetComponent<Rigidbody>();
         
         if (rb != null)
@@ -429,8 +417,6 @@ public class CheckpointManager : MonoBehaviour
             
             // Restore kinematic state (should be false for gameplay)
             rb.isKinematic = false;
-            
-            Debug.Log($"[CheckpointManager] TELEPORTED player from {currentPos} to {playerMovement.transform.position}");
         }
         else
         {
@@ -445,8 +431,6 @@ public class CheckpointManager : MonoBehaviour
             
             // Force orientation to face away from body to prevent instant death on respawn
             FixRespawnOrientation();
-            
-            Debug.Log($"[CheckpointManager] TELEPORTED player (no RB) from {currentPos} to {playerMovement.transform.position}");
         }
     }
     
@@ -487,7 +471,6 @@ public class CheckpointManager : MonoBehaviour
             awayFromBody = SnapToCardinal(awayFromBody);
             
             orientation.rotation = Quaternion.LookRotation(awayFromBody, Vector3.up);
-            Debug.Log($"[CheckpointManager] Fixed respawn orientation to face away from body: {awayFromBody}");
         }
     }
     

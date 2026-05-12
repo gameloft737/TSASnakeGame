@@ -233,7 +233,6 @@ public class XPDrop : MonoBehaviour, IPooledObject
         }
         
         #if UNITY_EDITOR
-        Debug.Log($"[XPDrop] Cleared {allDrops.Length} XP drops");
         #endif
     }
     

@@ -16,6 +16,7 @@ public class SpeedVignette : MonoBehaviour
     private Vignette vignette;
     private float targetIntensity;
     private float currentIntensity;
+    private Rigidbody playerRb; // cached to avoid GetComponent every frame
 
     void Start()
     {
@@ -28,14 +29,24 @@ public class SpeedVignette : MonoBehaviour
         {
             Debug.LogError("Vignette not found in Volume profile!");
         }
+
+        if (playerMovement != null)
+        {
+            playerRb = playerMovement.GetComponent<Rigidbody>();
+        }
     }
 
     void Update()
     {
         if (vignette == null || playerMovement == null) return;
+        if (playerRb == null)
+        {
+            playerRb = playerMovement.GetComponent<Rigidbody>();
+            if (playerRb == null) return;
+        }
 
         // Get player's actual speed
-        float currentSpeed = playerMovement.GetComponent<Rigidbody>().linearVelocity.magnitude;
+        float currentSpeed = playerRb.linearVelocity.magnitude;
         
         // Map current speed between default and max speed
         float speedRatio = Mathf.InverseLerp(playerMovement.defaultSpeed, playerMovement.maxSpeed, currentSpeed);

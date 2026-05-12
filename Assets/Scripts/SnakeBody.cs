@@ -148,7 +148,6 @@ public class SnakeBody : MonoBehaviour
             segmentsAddedFromApples++;
             
             #if UNITY_EDITOR
-            Debug.Log($"[SnakeBody] Added segment from eating apples! Total segments from apples: {segmentsAddedFromApples}, Total apples eaten: {totalApplesEaten}");
             #endif
             
             // Reset counter for next segment
@@ -159,7 +158,6 @@ public class SnakeBody : MonoBehaviour
             currentApplesThreshold = Mathf.Min(newThreshold, maxApplesPerSegment);
             
             #if UNITY_EDITOR
-            Debug.Log($"[SnakeBody] Next segment requires {currentApplesThreshold} apples");
             #endif
         }
     }
@@ -202,7 +200,6 @@ public class SnakeBody : MonoBehaviour
         {
             IncreaseSize(1);
             #if UNITY_EDITOR
-            Debug.Log($"Added segment! Total body length: {bodyLength}");
             #endif
         }
     }
@@ -359,7 +356,6 @@ public class SnakeBody : MonoBehaviour
     public void ApplyAttackVariation(Material headMaterial, Material bodyMaterial, GameObject attachmentObject)
     {
         #if UNITY_EDITOR
-        Debug.Log($"SnakeBody.ApplyAttackVariation called - HeadMaterial: {(headMaterial != null ? headMaterial.name : "null")}, BodyMaterial: {(bodyMaterial != null ? bodyMaterial.name : "null")}, Attachment: {(attachmentObject != null ? attachmentObject.name : "null")}");
         #endif
         
         // Only apply head material if provided (evolution attacks)
@@ -369,7 +365,6 @@ public class SnakeBody : MonoBehaviour
             {
                 headRenderer.material = headMaterial;
                 #if UNITY_EDITOR
-                Debug.Log($"Applied head material: {headMaterial.name} to {headRenderer.gameObject.name}");
                 #endif
             }
             else
@@ -387,7 +382,6 @@ public class SnakeBody : MonoBehaviour
                     {
                         headRenderer.material = headMaterial;
                         #if UNITY_EDITOR
-                        Debug.Log($"Found and applied head material: {headMaterial.name} to {headRenderer.gameObject.name}");
                         #endif
                     }
                     else
@@ -424,7 +418,6 @@ public class SnakeBody : MonoBehaviour
                 }
             }
             #if UNITY_EDITOR
-            Debug.Log($"Applied body material: {bodyMaterial.name} to {appliedCount} body parts");
             #endif
         }
         
@@ -440,7 +433,6 @@ public class SnakeBody : MonoBehaviour
             currentAttachment = attachmentObject;
             currentAttachment.SetActive(true);
             #if UNITY_EDITOR
-            Debug.Log($"Enabled attachment: {attachmentObject.name}");
             #endif
         }
     }
@@ -487,7 +479,6 @@ public class SnakeBody : MonoBehaviour
         if (headRenderer != null && headMat != null)
         {
             headRenderer.material = headMat;
-            Debug.Log("[SnakeBody] Reset head material to original");
         }
         
         // Use original or fallback default for body
@@ -504,13 +495,11 @@ public class SnakeBody : MonoBehaviour
                 }
             }
         }
-        Debug.Log("[SnakeBody] Reset body material to original");
         
         if (currentAttachment != null)
         {
             currentAttachment.SetActive(false);
             currentAttachment = null;
-            Debug.Log("[SnakeBody] Cleared attachment");
         }
     }
     

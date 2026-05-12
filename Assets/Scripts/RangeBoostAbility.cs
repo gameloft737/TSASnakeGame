@@ -55,8 +55,6 @@ public class RangeBoostAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddRangeMultiplier(currentBonus);
-        
-        Debug.Log($"RangeBoostAbility: Applied +{currentBonus * 100:F0}% range boost (Level {currentLevel})");
     }
     
     private void RemoveBonus()

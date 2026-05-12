@@ -79,7 +79,6 @@ public class CursorLock : MonoBehaviour
     {
         isAbilitySelection = true; // Set the flag to true
         UnlockCursor(); // Immediately unlock the cursor for ability selection
-        Debug.Log("locked");
     }
 
     // Call this method to stop ability selection and lock cursor again

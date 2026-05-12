@@ -46,7 +46,6 @@ public class FireAttack : Attack
         if (fireParticles != null)
         {
             mainFireParticlesBackup = fireParticles;
-            Debug.Log($"FireAttack Awake: Stored backup reference to main fire particles: {fireParticles.name}");
         }
         else
         {
@@ -116,8 +115,6 @@ public class FireAttack : Attack
             // Apply range multiplier to particle system range
             ApplyRangeMultiplierToParticles();
             fireParticles.Play();
-            
-            Debug.Log($"FireAttack: OnActivate - Fire particles playing: {fireParticles.isPlaying}, GameObject: {fireParticles.gameObject.name}");
         }
         else
         {
@@ -227,8 +224,6 @@ public class FireAttack : Attack
         
         // Update particle damage with new stats
         UpdateParticleDamage();
-        
-        Debug.Log($"FireAttack: Applied stats - LifeSteal: {lifeStealPercent:P0}, Crit: {critChance:P0}x{critMultiplier}, Burn: {burnDamagePercent:P0} for {burnDuration}s");
     }
     
     /// <summary>
@@ -243,8 +238,6 @@ public class FireAttack : Attack
         {
             ApplyRangeMultiplierToParticles();
         }
-        
-        Debug.Log($"FireAttack upgraded to level {GetCurrentLevel()}!");
     }
     
     /// <summary>
@@ -257,8 +250,6 @@ public class FireAttack : Attack
         EvolutionRequirement evolution = GetCurrentEvolution();
         if (evolution != null)
         {
-            Debug.Log($"FireAttack evolved to {evolution.evolutionName}!");
-            
             // Store the current state of the main fire particles
             bool wasPlaying = fireParticles != null && fireParticles.isPlaying;
             
@@ -269,7 +260,6 @@ public class FireAttack : Attack
             // This protects against any accidental interference from the body fire prefab
             if (fireParticles != null)
             {
-                Debug.Log($"FireAttack: Main fire particles status after evolution - GameObject active: {fireParticles.gameObject.activeSelf}, isPlaying: {fireParticles.isPlaying}");
                 
                 // If the main fire was playing before, make sure it's still playing
                 if (wasPlaying && !fireParticles.isPlaying)
@@ -334,7 +324,6 @@ public class FireAttack : Attack
         // Need at least 7 parts (3 near head + 3 tapered tail + 1 for fire) to place any fire emitters
         if (totalParts < 7)
         {
-            Debug.Log("FireAttack: Not enough body parts to place fire emitters!");
             return;
         }
         
@@ -350,7 +339,6 @@ public class FireAttack : Attack
         
         if (segmentCount <= 0)
         {
-            Debug.Log("FireAttack: Not enough slots for fire emitters!");
             return;
         }
         
@@ -386,7 +374,6 @@ public class FireAttack : Attack
         }
         
         hasPlacedBodyFires = true;
-        Debug.Log($"FireAttack: Placed {bodyFireEmitters.Count} body fire emitters on {segmentCount} segments!");
         
         // CRITICAL: Restore the main fire particles reference if it was corrupted
         EnsureFireParticlesReference();

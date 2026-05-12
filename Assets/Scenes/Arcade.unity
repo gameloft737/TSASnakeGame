@@ -1696,6 +1696,9 @@ MonoBehaviour:
   subtitleText: {fileID: 877702810}
   backgroundPanel: {fileID: 163788653}
   defaultDuration: 3
+  voicelineAudioSource: {fileID: 0}
+  defaultVoicelineVolume: 1
+  stopPreviousVoiceline: 0
 --- !u!114 &163788653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9073,6 +9076,8 @@ MonoBehaviour:
   emissionOffStrength: 1
   completionSubtitle: 
   subtitleDuration: 3
+  completionSubtitleVoiceline: {fileID: 0}
+  completionSubtitleVoicelineVolume: 1
   myObjectiveIndex: 1
   objectiveName: Turn Off Power
   interactionMessage: Press 'E' to Turn Off Power
@@ -10904,6 +10909,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   startSubtitle: Finally 9:00PM... time to lock up.
   startSubtitleDuration: 3
+  startSubtitleVoiceline: {fileID: 8300000, guid: 16f30bbf925165f45b043ed29745e867, type: 3}
+  startSubtitleVoicelineVolume: 1
   objectiveTextUI: {fileID: 1037138602}
   objectiveUIContainer: {fileID: 1037138600}
   objectives:
@@ -19157,6 +19164,8 @@ MonoBehaviour:
   emissionOffStrength: 2.5
   completionSubtitle: What the... how is the machine on?
   subtitleDuration: 3
+  completionSubtitleVoiceline: {fileID: 8300000, guid: 4fe23b8a88d85914c8566c391b2936f0, type: 3}
+  completionSubtitleVoicelineVolume: 1
   myObjectiveIndex: 2
   objectiveName: Flip Sign
   interactionMessage: Press 'E' to Interact
@@ -19384,6 +19393,8 @@ MonoBehaviour:
   emissionOffStrength: 1
   completionSubtitle: 
   subtitleDuration: 3
+  completionSubtitleVoiceline: {fileID: 0}
+  completionSubtitleVoicelineVolume: 1
   myObjectiveIndex: 0
   objectiveName: Close Door
   interactionMessage: Press 'E' to Close Door
@@ -21350,7 +21361,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.000061035156, y: 0.000091552734}
+  m_AnchoredPosition: {x: 0.000061035156, y: 0.00012207031}
   m_SizeDelta: {x: -256.0205, y: -58.75}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1944292834
@@ -22763,6 +22774,8 @@ MonoBehaviour:
   emissionOffStrength: 1
   completionSubtitle: 
   subtitleDuration: 3
+  completionSubtitleVoiceline: {fileID: 0}
+  completionSubtitleVoicelineVolume: 1
   myObjectiveIndex: 3
   objectiveName: Investigate Machine
   interactionMessage: Press 'E' to Investigate

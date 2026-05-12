@@ -85,8 +85,8 @@ MonoBehaviour:
   minVelocityForRotation: 0.1
   contactTimeBeforeBiting: 0.5
   biteDamageInterval: 0.5
-  minDamage: 3
-  maxDamage: 3
+  minDamage: 1
+  maxDamage: 1
   agentReEnableDelay: 0.5
   maxHealth: 10
   isMetal: 0

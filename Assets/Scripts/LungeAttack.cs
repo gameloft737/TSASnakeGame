@@ -86,13 +86,11 @@ public class LungeAttack : Attack
             {
                 hitEnemies.Add(apple);
                 apple.TakeDamage(damage);
-                Debug.Log($"Lunge hit {apple.name} for {damage} damage!");
             }
         }
         
         if (hitEnemies.Count > 0)
         {
-            Debug.Log($"Lunge attack hit {hitEnemies.Count} enemies!");
         }
         
         // Check if explosion is enabled via custom stat
@@ -202,7 +200,8 @@ public class LungeAttack : Attack
             StartCoroutine(DamageAppleAfterDelay(apple, explosionDamage, delay));
         }
         
-        Debug.Log($"Lunge explosion! Damaging {applesInRange.Count} additional enemies in radius {explosionRadius}");
+        #if UNITY_EDITOR
+        #endif
     }
     
     private IEnumerator DamageAppleAfterDelay(AppleEnemy apple, float explosionDamage, float delay)
@@ -212,7 +211,6 @@ public class LungeAttack : Attack
         if (apple != null)
         {
             apple.TakeDamage(explosionDamage);
-            Debug.Log($"Lunge explosion hit {apple.name} for {explosionDamage} damage!");
         }
     }
 

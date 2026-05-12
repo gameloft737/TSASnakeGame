@@ -159,6 +159,10 @@ public class AbilityCollector : MonoBehaviour
         {
             SoundManager.SetVolume("GameMusic", waveManager.gameObject, 0.3f);
         }
+        if (LevelUIManager.Instance != null)
+        {
+            LevelUIManager.Instance.SetLevelMusicVolume(0.3f);
+        }
         
         // Notify ClassicModeManager that menu is opening
         if (ClassicModeManager.Instance != null)
@@ -241,7 +245,6 @@ public class AbilityCollector : MonoBehaviour
                 healAmount = snakeHealth.GetMaxHealth() * (option.healAmount / 100f);
             }
             snakeHealth.Heal(healAmount);
-            Debug.Log($"[AbilityCollector] Applied heal bonus: {healAmount:F1} HP");
         }
     }
     
@@ -277,8 +280,6 @@ public class AbilityCollector : MonoBehaviour
         playerMovement.maxSpeed *= option.speedMultiplier;
         playerMovement.defaultSpeed *= option.speedMultiplier;
         
-        Debug.Log($"[AbilityCollector] Applied speed boost: {option.speedMultiplier}x for {option.speedBoostDuration}s");
-        
         // Wait for duration (using unscaled time in case game is paused)
         float elapsed = 0f;
         while (elapsed < option.speedBoostDuration)
@@ -295,7 +296,6 @@ public class AbilityCollector : MonoBehaviour
         playerMovement.maxSpeed = originalMaxSpeed;
         playerMovement.defaultSpeed = originalDefaultSpeed;
         
-        Debug.Log("[AbilityCollector] Speed boost ended");
         activeSpeedBoostCoroutine = null;
     }
 
@@ -312,6 +312,10 @@ public class AbilityCollector : MonoBehaviour
         if (waveManager != null)
         {
             SoundManager.SetVolume("GameMusic", waveManager.gameObject, 1f);
+        }
+        if (LevelUIManager.Instance != null)
+        {
+            LevelUIManager.Instance.SetLevelMusicVolume(1f);
         }
         
         if (uiAnimator != null) uiAnimator.SetBool(animatorBoolParameter, false);
@@ -476,8 +480,6 @@ public class AbilityCollector : MonoBehaviour
                 abilityButton.InitializeBonusOption(option, this);
             }
         }
-        
-        Debug.Log($"[AbilityCollector] All abilities maxed - showing {bonusOptions.Count} bonus options");
     }
 
     private List<AbilitySO> GetRandomAbilities(int count)

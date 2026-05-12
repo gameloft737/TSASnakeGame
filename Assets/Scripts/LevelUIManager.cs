@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Audio;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -61,6 +62,17 @@ public class LevelUITrigger
     [Tooltip("How long to show the subtitle (0 = use default duration)")]
     public float subtitleDuration = 3f;
     
+    [Tooltip("Optional voiceline AudioClip to play alongside the subtitle. Leave empty for text only.")]
+    public AudioClip subtitleVoiceline;
+    
+    [Tooltip("Volume for the subtitle voiceline (0-1).")]
+    [Range(0f, 1f)]
+    public float subtitleVoicelineVolume = 1f;
+    
+    [Tooltip("Pitch multiplier for the subtitle voiceline. 1 = normal, >1 = higher pitched. Uses the Voiceline Mixer Group on LevelUIManager for pitch-without-speed if one is assigned, otherwise falls back to AudioSource.pitch (which also speeds up playback).")]
+    [Range(0.01f, 3f)]
+    public float subtitleVoicelinePitch = 1f;
+    
     [Tooltip("If true, makes the player invincible (takes no damage) when this trigger fires. Useful for end-game sequences.")]
     public bool disablePlayerDamage = false;
     
@@ -98,6 +110,17 @@ public class LevelUITrigger
     
     [Tooltip("Duration to show the subtitle after fade")]
     public float fadeSubtitleDuration = 3f;
+    
+    [Tooltip("Optional voiceline AudioClip to play alongside the post-fade subtitle.")]
+    public AudioClip fadeSubtitleVoiceline;
+    
+    [Tooltip("Volume for the post-fade subtitle voiceline (0-1).")]
+    [Range(0f, 1f)]
+    public float fadeSubtitleVoicelineVolume = 1f;
+    
+    [Tooltip("Pitch multiplier for the post-fade subtitle voiceline. 1 = normal, >1 = higher pitched. Uses the Voiceline Mixer Group on LevelUIManager for pitch-without-speed if one is assigned, otherwise falls back to AudioSource.pitch (which also speeds up playback).")]
+    [Range(0.01f, 3f)]
+    public float fadeSubtitleVoicelinePitch = 1f;
     
     [Header("Scene Loading Settings (for LoadScene/FadeAndLoadScene actions)")]
     [Tooltip("The name of the scene to load")]
@@ -165,6 +188,18 @@ public class LevelUIManager : MonoBehaviour
     [SerializeField] private AttackSelectionUI attackSelectionUI;
     [SerializeField] private AbilityCollector abilityCollector;
     
+    [Header("Voiceline Audio (for trigger voicelines)")]
+    [Tooltip("Optional AudioMixerGroup to route trigger voicelines through. Assign a group with a Pitch Shifter effect whose 'Pitch' parameter is EXPOSED under the name below to get pitch changes WITHOUT speed changes. Leave empty to fall back to AudioSource.pitch (which also changes speed).")]
+    [SerializeField] private AudioMixerGroup voicelineMixerGroup;
+    
+    [Tooltip("The exposed parameter name on the mixer that controls the Pitch Shifter's 'Pitch' (multiplier, 1 = unchanged). Only used when Voiceline Mixer Group is assigned.")]
+    [SerializeField] private string voicelinePitchParameter = "VoicelinePitch";
+    
+    // Dedicated AudioSource for trigger voicelines, created on demand.
+    // Kept separate from SubtitleUI's voiceline source so we can route this
+    // one through the pitch-shifter mixer group without affecting other callers.
+    private AudioSource triggerVoicelineSource;
+    
     [Header("Level Announcement UI")]
     [Tooltip("The TextMeshProUGUI component for displaying level announcements")]
     [SerializeField] private TextMeshProUGUI levelAnnouncementText;
@@ -203,6 +238,35 @@ public class LevelUIManager : MonoBehaviour
     [Tooltip("Array of Volume Profiles for each level")]
     [SerializeField] private VolumeProfile[] levelVolumeProfiles;
     
+    [Tooltip("Sound name (as registered in SoundManager) to play as background music for each level. Index 0 = Level 1, Index 1 = Level 2, etc. Leave an entry blank to keep the previous track playing.")]
+    [SerializeField] private string[] levelMusicNames;
+    
+    [Tooltip("How long (seconds) to fade OUT the previous level's music. Longer = smoother.")]
+    [SerializeField] private float levelMusicFadeOutDuration = 2.0f;
+    
+    [Tooltip("How long (seconds) to fade IN the new level's music. Longer = smoother.")]
+    [SerializeField] private float levelMusicFadeInDuration = 2.0f;
+    
+    [Tooltip("Optional sound name (as registered in SoundManager) to play as a one-shot transition SFX between level tracks. Leave blank to use the Transition Clip below instead.")]
+    [SerializeField] private string levelMusicTransitionSfx = "";
+    
+    [Tooltip("Drag an AudioClip here to play as the one-shot transition SFX between level tracks. This works without needing to register the sound in SoundManager. Takes priority over the name field above if set.")]
+    [SerializeField] private AudioClip levelMusicTransitionClip;
+    
+    [Tooltip("Volume for the transition SFX clip (0-1)")]
+    [Range(0f, 1f)]
+    [SerializeField] private float levelMusicTransitionVolume = 1f;
+    
+    [Tooltip("Delay (seconds) after the fade-out begins before starting the new track's fade-in. Use this to let the transition SFX breathe. 0 = fully overlap (true crossfade).")]
+    [SerializeField] private float levelMusicTransitionGap = 0.5f;
+    
+    // Tracks the currently-playing level music name so we can stop it on switch
+    private string currentLevelMusicName = null;
+    // Running crossfade coroutine - cancelled if a new switch happens mid-fade
+    private Coroutine levelMusicCrossfadeCoroutine = null;
+    // Dedicated AudioSource for the transition SFX clip (created on demand)
+    private AudioSource levelMusicTransitionSource = null;
+    
     [Tooltip("How many minutes equal one level (default: 3)")]
     [SerializeField] private float minutesPerLevel = 3f;
     
@@ -218,6 +282,36 @@ public class LevelUIManager : MonoBehaviour
     
     [Tooltip("If true, automatically show win announcement when reaching win level")]
     [SerializeField] private bool autoShowWinAnnouncement = true;
+    
+    [Tooltip("Drag an AudioClip here to play as a one-shot sound effect when the 'You Win' text appears. Works without needing to register the sound in SoundManager.")]
+    [SerializeField] private AudioClip winSound;
+    
+    [Tooltip("Volume for the win sound. Supports values above 1 to amplify the clip (may clip/distort at very high values).")]
+    [Range(0f, 5f)]
+    [SerializeField] private float winSoundVolume = 1f;
+    
+    [Tooltip("Volume (0-1) to duck the currently-playing level music to while the win sound plays. 0.1 = 10%. Set to 1 to disable ducking.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float winSoundMusicDuckVolume = 0.1f;
+    
+    [Tooltip("Drag an AudioClip here to play as a one-shot sound effect each time a countdown number (10..1) appears. The pitch rises as the number counts down: 10 plays at normal pitch, 1 plays at the highest pitch.")]
+    [SerializeField] private AudioClip countdownSound;
+    
+    [Tooltip("Volume for the countdown sound. Supports values above 1 to amplify the clip (may clip/distort at very high values).")]
+    [Range(0f, 5f)]
+    [SerializeField] private float countdownSoundVolume = 1f;
+    
+    [Tooltip("Pitch to play the countdown sound at when the number is 10 (the start of the countdown). Higher pitch = faster playback.")]
+    [Range(0.01f, 10f)]
+    [SerializeField] private float countdownSoundStartPitch = 1f;
+    
+    [Tooltip("Pitch to play the countdown sound at when the number is 1 (the end of the countdown). Higher than start pitch to make it rise. Higher pitch = faster playback.")]
+    [Range(0.01f, 10f)]
+    [SerializeField] private float countdownSoundEndPitch = 2f;
+    
+    [Tooltip("Global speed multiplier applied on top of the pitch. 1 = normal (pitch controls speed), 2 = twice as fast, 0.5 = half speed. This scales pitch so you can tune playback speed independently.")]
+    [Range(0.01f, 10f)]
+    [SerializeField] private float countdownSoundSpeed = 1f;
     
     [Header("Level Announcement Animation Settings")]
     [Tooltip("Duration of the slide-in animation")]
@@ -267,6 +361,12 @@ public class LevelUIManager : MonoBehaviour
     private Coroutine levelAnnouncementCoroutine;
     private bool hasWon = false;
     private float gameTime;
+    // Cached references to avoid FindFirstObjectByType being called every 0.1s inside the timer coroutine.
+    private DeathScreenManager _cachedDeathScreen;
+    // Cache last-rendered timer values to avoid rebuilding strings/canvas every 0.1s when unchanged.
+    private int _lastTimerMinutes = int.MinValue;
+    private int _lastTimerSeconds = int.MinValue;
+    private int _lastNextLevelShown = int.MinValue;
     
     private bool wasdPromptActive = false;
     private bool attackPromptActive = false;
@@ -310,7 +410,6 @@ public class LevelUIManager : MonoBehaviour
         
         if (debugMode)
         {
-            Debug.Log($"[LevelUIManager] Initialized with {triggers.Count} triggers");
         }
         
         StartCoroutine(CheckInitialState());
@@ -349,25 +448,20 @@ public class LevelUIManager : MonoBehaviour
     
     private IEnumerator CheckForAttackPromptAfterUI()
     {
-        Debug.Log("[LevelUIManager] CheckForAttackPromptAfterUI started");
-        
         yield return new WaitForSeconds(2f);
         
         AttackSelectionUI attackSelectionUI = FindFirstObjectByType<AttackSelectionUI>();
         if (attackSelectionUI != null)
         {
-            Debug.Log("[LevelUIManager] Found AttackSelectionUI, waiting for it to close...");
             int waitCount = 0;
             while (attackSelectionUI.IsUIOpen() && waitCount < 300)
             {
                 yield return null;
                 waitCount++;
             }
-            Debug.Log("[LevelUIManager] AttackSelectionUI closed");
         }
         else
         {
-            Debug.Log("[LevelUIManager] No AttackSelectionUI found in scene");
         }
         
         hasAttackUIClosedOnce = true;
@@ -379,11 +473,8 @@ public class LevelUIManager : MonoBehaviour
     
     private void OnAttacksChangedForPrompt()
     {
-        Debug.Log($"[LevelUIManager] OnAttacksChangedForPrompt called. hasAttackUIClosedOnce={hasAttackUIClosedOnce}, showAttackPromptOnRank1={showAttackPromptOnRank1}");
-        
         if (!hasAttackUIClosedOnce)
         {
-            Debug.Log("[LevelUIManager] Attack prompt skipped - attack UI not closed yet");
             return;
         }
         
@@ -391,13 +482,11 @@ public class LevelUIManager : MonoBehaviour
         if (attackManager != null && attackManager.GetCurrentAttack() != null)
         {
             int attackLevel = attackManager.GetCurrentAttack().GetCurrentLevel();
-            Debug.Log($"[LevelUIManager] Current attack level: {attackLevel}");
             
             ProcessTriggers(LevelTriggerType.AttackRank, attackLevel);
             
             if (showAttackPromptOnRank1 && !attackPromptActive && !mouseInputDismissed && attackLevel >= 2)
             {
-                Debug.Log("[LevelUIManager] Showing attack prompt!");
                 attackPromptActive = true;
                 if (tutorialPromptText != null)
                 {
@@ -478,8 +567,6 @@ public class LevelUIManager : MonoBehaviour
         if (waveManager != null)
         {
             int currentWave = waveManager.GetCurrentWaveIndex() + 1;
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Checking initial wave: {currentWave}");
             ProcessTriggers(LevelTriggerType.WaveNumber, currentWave);
         }
         
@@ -491,16 +578,12 @@ public class LevelUIManager : MonoBehaviour
             
             ShowLevelAnnouncement(initialLevel);
             ProcessTriggers(LevelTriggerType.TimerLevel, initialLevel);
-            
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Initial timer-based level: {initialLevel}");
+            PlayLevelMusic(initialLevel);
         }
     }
     
     private IEnumerator TrackTimerBasedLevel()
     {
-        Debug.Log("[LevelUIManager] TrackTimerBasedLevel started");
-        
         bool wasPaused = false;
         bool wasApplePaused = false;
         float uiPauseStartTime = 0f;
@@ -513,7 +596,12 @@ public class LevelUIManager : MonoBehaviour
             bool uiOpen = (attackSelectionUI != null && attackSelectionUI.IsUIOpen()) || 
                         (abilityCollector != null && abilityCollector.IsUIOpen());
             
-            var deathScreen = FindFirstObjectByType<DeathScreenManager>();
+            var deathScreen = _cachedDeathScreen;
+            if (deathScreen == null)
+            {
+                deathScreen = FindFirstObjectByType<DeathScreenManager>();
+                _cachedDeathScreen = deathScreen;
+            }
             if (deathScreen != null && deathScreen.IsDeathScreenActive())
                 continue;
             
@@ -531,16 +619,26 @@ public class LevelUIManager : MonoBehaviour
             int minutes = Mathf.FloorToInt(timeLeft / 60f);
             int seconds = Mathf.FloorToInt(timeLeft % 60f);
             
-            if (timerText != null)
+            // Only rebuild timer string when displayed seconds/minutes actually change.
+            if (timerText != null && (minutes != _lastTimerMinutes || seconds != _lastTimerSeconds))
+            {
                 timerText.text = $"{minutes}:{seconds:D2}";
+                _lastTimerMinutes = minutes;
+                _lastTimerSeconds = seconds;
+            }
             
             if (nextLevelText != null)
             {
                 int nextLevel = currentLevel + 1;
-                if (winLevel > 0 && nextLevel >= winLevel)
-                    nextLevelText.text = "end";
-                else
-                    nextLevelText.text = $"until level {nextLevel}";
+                int shownKey = (winLevel > 0 && nextLevel >= winLevel) ? -1 : nextLevel;
+                if (shownKey != _lastNextLevelShown)
+                {
+                    if (shownKey == -1)
+                        nextLevelText.text = "end";
+                    else
+                        nextLevelText.text = $"until level {nextLevel}";
+                    _lastNextLevelShown = shownKey;
+                }
             }
             
             if (timeLeft <= 60f && timeLeft > 0.5f && !hasShownOneMinuteWarning)
@@ -626,21 +724,16 @@ public class LevelUIManager : MonoBehaviour
     private void OnWaveStarted(int waveIndex)
     {
         int waveNumber = waveIndex + 1;
-        
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Wave {waveNumber} started");
             
         ProcessTriggers(LevelTriggerType.WaveNumber, waveNumber);
     }
     
     private void ProcessTriggers(LevelTriggerType type, int value)
     {
-        Debug.Log($"[LevelUIManager] ProcessTriggers called with type: {type}, value: {value}, triggers count: {triggers.Count}");
         foreach (var trigger in triggers)
         {
             if (trigger.ShouldTrigger(type, value))
             {
-                Debug.Log($"[LevelUIManager] Trigger matched! type: {trigger.triggerType}, value: {trigger.triggerValue}, action: {trigger.actionType}");
                 ExecuteTrigger(trigger);
             }
         }
@@ -651,9 +744,6 @@ public class LevelUIManager : MonoBehaviour
         if (trigger == null) return;
         
         trigger.hasTriggered = true;
-        
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Executing trigger: {trigger.actionType} at {trigger.triggerType} {trigger.triggerValue}");
         
         if (trigger.waitForAttackUI)
         {
@@ -697,15 +787,13 @@ public class LevelUIManager : MonoBehaviour
             if (SnakeHealth.Instance != null)
             {
                 SnakeHealth.Instance.SetInvincible(true);
-                if (debugMode)
-                    Debug.Log("[LevelUIManager] Player damage disabled by trigger");
             }
         }
         
         switch (trigger.actionType)
         {
             case LevelUIActionType.ShowSubtitle:
-                ShowSubtitle(trigger.subtitleText, trigger.subtitleDuration);
+                ShowSubtitle(trigger.subtitleText, trigger.subtitleDuration, trigger.subtitleVoiceline, trigger.subtitleVoicelineVolume, trigger.subtitleVoicelinePitch);
                 break;
             case LevelUIActionType.ShowGameObject:
                 if (trigger.targetGameObject != null) trigger.targetGameObject.SetActive(true);
@@ -729,19 +817,19 @@ public class LevelUIManager : MonoBehaviour
             case LevelUIActionType.FadeToBlack:
                 if (ScreenFadeManager.Instance != null)
                     ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () => {
-                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
+                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration, trigger.fadeSubtitleVoiceline, trigger.fadeSubtitleVoicelineVolume, trigger.fadeSubtitleVoicelinePitch);
                     });
                 break;
             case LevelUIActionType.FadeFromBlack:
                 if (ScreenFadeManager.Instance != null)
                     ScreenFadeManager.Instance.FadeFromBlack(trigger.fadeDuration, () => {
-                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
+                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration, trigger.fadeSubtitleVoiceline, trigger.fadeSubtitleVoicelineVolume, trigger.fadeSubtitleVoicelinePitch);
                     });
                 break;
             case LevelUIActionType.FadeToBlackAndBack:
                 if (ScreenFadeManager.Instance != null)
                     ScreenFadeManager.Instance.FadeToBlackAndBack(trigger.fadeDuration, trigger.fadeHoldDuration, trigger.fadeDuration, null, () => {
-                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration);
+                        if (trigger.showSubtitleAfterFade) ShowSubtitle(trigger.fadeSubtitleText, trigger.fadeSubtitleDuration, trigger.fadeSubtitleVoiceline, trigger.fadeSubtitleVoicelineVolume, trigger.fadeSubtitleVoicelinePitch);
                     });
                 break;
             case LevelUIActionType.LoadScene:
@@ -749,7 +837,12 @@ public class LevelUIManager : MonoBehaviour
                 break;
             case LevelUIActionType.FadeAndLoadScene:
                 if (!string.IsNullOrEmpty(trigger.sceneToLoad) && ScreenFadeManager.Instance != null)
+                {
+                    // Play the level-transition SFX at the instant the fade begins,
+                    // so scene transitions get the same audio hit as level changes.
+                    PlayLevelTransitionSfx();
                     ScreenFadeManager.Instance.FadeToBlack(trigger.fadeDuration, () => LoadSceneInternal(trigger.sceneToLoad, trigger.additiveSceneLoad));
+                }
                 break;
             case LevelUIActionType.ShowTutorialPanel:
                 if (TutorialPanelManager.Instance != null) TutorialPanelManager.Instance.ShowTutorial();
@@ -808,13 +901,9 @@ public class LevelUIManager : MonoBehaviour
     
     public void ShowLevelAnnouncement(int level)
     {
-        Debug.Log($"[LevelUIManager] ShowLevelAnnouncement called with level: {level}");
-        
         if (CheckpointManager.Instance != null)
         {
             CheckpointManager.Instance.SaveCheckpoint(level);
-            if (debugMode)
-                Debug.Log($"[LevelUIManager] Saved checkpoint at level {level}");
         }
         
         ShowAnnouncement($"Level {level}");
@@ -823,11 +912,104 @@ public class LevelUIManager : MonoBehaviour
     public void ShowWinAnnouncement()
     {
         ShowAnnouncement(winText);
+        PlayWinSound();
+    }
+    
+    /// <summary>
+    /// Plays the directly-assigned <see cref="winSound"/> as a one-shot.
+    /// Supports volumes above 1 by layering multiple AudioSources, so the
+    /// SFX plays reliably even if this GameObject is disabled during a
+    /// scene transition. Does NOT depend on SoundManager.
+    /// </summary>
+    private void PlayWinSound()
+    {
+        if (winSound == null) return;
+        
+        // Duck the currently-playing level music so the win SFX is clearly audible
+        if (!string.IsNullOrEmpty(currentLevelMusicName))
+        {
+            SoundManager.SetVolume(currentLevelMusicName, gameObject, Mathf.Clamp01(winSoundMusicDuckVolume));
+        }
+        
+        // Unity's AudioSource.volume is clamped to [0,1]. To get louder-than-1,
+        // spawn multiple stacked AudioSources (each at full volume) to sum.
+        float totalVolume = Mathf.Max(0f, winSoundVolume);
+        int fullLayers = Mathf.FloorToInt(totalVolume);
+        float remainder = totalVolume - fullLayers;
+        int layerCount = fullLayers + (remainder > 0.001f ? 1 : 0);
+        if (layerCount <= 0) return;
+        
+        Vector3 pos = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+        float lifetime = winSound.length + 0.1f;
+        
+        for (int i = 0; i < layerCount; i++)
+        {
+            GameObject go = new GameObject($"WinSFX_L{i}");
+            go.transform.position = pos;
+            
+            AudioSource src = go.AddComponent<AudioSource>();
+            src.clip = winSound;
+            bool isLast = (i == layerCount - 1);
+            src.volume = (isLast && remainder > 0.001f) ? Mathf.Clamp01(remainder) : 1f;
+            src.spatialBlend = 0f; // 2D
+            src.Play();
+            
+            Destroy(go, lifetime);
+        }
+    }
+    
+    /// <summary>
+    /// Plays the countdown SFX with a pitch that increases as the countdown
+    /// number decreases. At number == 10 the pitch equals
+    /// <see cref="countdownSoundStartPitch"/>, at number == 1 it equals
+    /// <see cref="countdownSoundEndPitch"/>. The final pitch is multiplied
+    /// by <see cref="countdownSoundSpeed"/> to tune playback speed.
+    /// Volumes above 1 are achieved by layering multiple AudioSources.
+    /// </summary>
+    private void PlayCountdownSound(int number)
+    {
+        if (countdownSound == null) return;
+        
+        // Map number 10 -> 0 (start pitch), number 1 -> 1 (end pitch).
+        float clamped = Mathf.Clamp(number, 1, 10);
+        float t = (10f - clamped) / 9f;
+        float pitch = Mathf.Lerp(countdownSoundStartPitch, countdownSoundEndPitch, t) * Mathf.Max(0.01f, countdownSoundSpeed);
+        if (Mathf.Abs(pitch) < 0.01f) pitch = 0.01f * Mathf.Sign(pitch == 0f ? 1f : pitch);
+        
+        // Unity's AudioSource.volume is clamped to [0,1]. To get louder-than-1,
+        // spawn multiple stacked AudioSources (each at full volume) to sum.
+        float totalVolume = Mathf.Max(0f, countdownSoundVolume);
+        int fullLayers = Mathf.FloorToInt(totalVolume);
+        float remainder = totalVolume - fullLayers;
+        int layerCount = fullLayers + (remainder > 0.001f ? 1 : 0);
+        if (layerCount <= 0) return;
+        
+        Vector3 pos = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+        float lifetime = countdownSound.length / Mathf.Max(0.01f, Mathf.Abs(pitch)) + 0.1f;
+        
+        for (int i = 0; i < layerCount; i++)
+        {
+            GameObject go = new GameObject($"CountdownSFX_{number}_L{i}");
+            go.transform.position = pos;
+            
+            AudioSource src = go.AddComponent<AudioSource>();
+            src.clip = countdownSound;
+            // Last layer gets the remainder volume (if any); others play at full.
+            bool isLast = (i == layerCount - 1);
+            src.volume = (isLast && remainder > 0.001f) ? Mathf.Clamp01(remainder) : 1f;
+            src.pitch = pitch;
+            src.spatialBlend = 0f; // 2D
+            src.Play();
+            
+            Destroy(go, lifetime);
+        }
     }
     
     private IEnumerator ShowCountdownNumber(int number)
     {
         if (countdownText == null || countdownRect == null) yield break;
+        
+        PlayCountdownSound(number);
         
         countdownText.text = number.ToString();
         countdownText.fontSize = 10;
@@ -857,7 +1039,10 @@ public class LevelUIManager : MonoBehaviour
         if (level == 3)
             ShowAnnouncement("Final Level");
         else if (level == 4)
+        {
             ShowAnnouncement("You Win!");
+            PlayWinSound();
+        }
         else
             ShowLevelAnnouncement(level);
         
@@ -870,6 +1055,10 @@ public class LevelUIManager : MonoBehaviour
         
         if (ScreenFadeManager.Instance != null)
         {
+            // Kick off the transition SFX at the same instant the fade-to-white starts
+            // so the "hit" of the sound lines up with the white flash.
+            PlayLevelTransitionSfx();
+            
             ScreenFadeManager.Instance.FadeToWhite(0.5f);
             yield return new WaitForSeconds(0.5f);
             
@@ -879,7 +1068,25 @@ public class LevelUIManager : MonoBehaviour
         }
         else
         {
+            PlayLevelTransitionSfx();
             ChangeEnvironment(level);
+        }
+    }
+    
+    /// <summary>
+    /// Plays the one-shot level-transition SFX. Prefers the directly-assigned
+    /// AudioClip, falls back to the named SoundManager sound. Safe to call
+    /// standalone (e.g. from LevelTransition) or indirectly via CrossfadeLevelMusic.
+    /// </summary>
+    private void PlayLevelTransitionSfx()
+    {
+        if (levelMusicTransitionClip != null)
+        {
+            PlayTransitionClip();
+        }
+        else if (!string.IsNullOrEmpty(levelMusicTransitionSfx))
+        {
+            SoundManager.Play(levelMusicTransitionSfx, gameObject);
         }
     }
     
@@ -908,20 +1115,150 @@ public class LevelUIManager : MonoBehaviour
             globalVolume.profile = levelVolumeProfiles[index];
         }
         
-        if (debugMode)
-            Debug.Log($"[LevelUIManager] Environment changed for level {level}");
+        PlayLevelMusic(level);
     }
     
+    /// <summary>
+    /// Switches background music to the track configured for this level.
+    /// Crossfades out the previous track and fades in the new one over the
+    /// configured durations. Optionally plays a one-shot transition SFX
+    /// during the switch. Safe to call rapidly - an in-progress crossfade
+    /// is cancelled and replaced.
+    /// </summary>
+    public void PlayLevelMusic(int level)
+    {
+        if (levelMusicNames == null || levelMusicNames.Length == 0) return;
+        
+        int index = level - 1;
+        if (index < 0) index = 0;
+        if (index >= levelMusicNames.Length) return;
+        
+        string newMusic = levelMusicNames[index];
+        if (string.IsNullOrEmpty(newMusic)) return;
+        
+        // Already playing this track - nothing to do
+        if (newMusic == currentLevelMusicName) return;
+        
+        // Cancel any in-flight crossfade so we don't stack coroutines
+        if (levelMusicCrossfadeCoroutine != null)
+        {
+            StopCoroutine(levelMusicCrossfadeCoroutine);
+            levelMusicCrossfadeCoroutine = null;
+        }
+        
+        string previousMusic = currentLevelMusicName;
+        currentLevelMusicName = newMusic;
+        levelMusicCrossfadeCoroutine = StartCoroutine(CrossfadeLevelMusic(previousMusic, newMusic, level));
+    }
+    
+    private IEnumerator CrossfadeLevelMusic(string previousMusic, string newMusic, int level)
+    {
+        float fadeOut = Mathf.Max(0f, levelMusicFadeOutDuration);
+        float fadeIn = Mathf.Max(0f, levelMusicFadeInDuration);
+        float gap = Mathf.Max(0f, levelMusicTransitionGap);
+        
+        // 1. Start fading out the previous track (if any) + legacy GameMusic
+        if (!string.IsNullOrEmpty(previousMusic))
+        {
+            if (fadeOut > 0f)
+                SoundManager.FadeOut(previousMusic, gameObject, fadeOut);
+            else
+                SoundManager.Stop(previousMusic, gameObject);
+        }
+        if (previousMusic != "GameMusic" && newMusic != "GameMusic")
+        {
+            // In case anything else started the legacy single track
+            if (fadeOut > 0f)
+                SoundManager.FadeOut("GameMusic", gameObject, fadeOut);
+            else
+                SoundManager.Stop("GameMusic", gameObject);
+        }
+        
+        // NOTE: The transition SFX is no longer triggered here. It's played by
+        // LevelTransition() at the instant the fade-to-white starts so the "hit"
+        // of the SFX lands on the white flash. The crossfade coroutine is still
+        // responsible for the music fade in/out.
+        
+        // 3. Wait the configured gap before bringing in the new track
+        //    (0 = true crossfade, >0 = brief silence / SFX-only window)
+        if (gap > 0f)
+            yield return new WaitForSecondsRealtime(gap);
+        
+        // 4. Fade in the new track
+        if (fadeIn > 0f)
+            SoundManager.PlayWithFadeIn(newMusic, gameObject, fadeIn);
+        else
+            SoundManager.Play(newMusic, gameObject);
+        
+        levelMusicCrossfadeCoroutine = null;
+    }
+    
+    /// <summary>
+    /// Plays the directly-assigned <see cref="levelMusicTransitionClip"/> as a
+    /// one-shot through a dedicated AudioSource on this GameObject. The source
+    /// is created on demand and reused. Does NOT depend on SoundManager.
+    /// </summary>
+    private void PlayTransitionClip()
+    {
+        if (levelMusicTransitionClip == null) return;
+        
+        if (levelMusicTransitionSource == null)
+        {
+            levelMusicTransitionSource = gameObject.AddComponent<AudioSource>();
+            levelMusicTransitionSource.playOnAwake = false;
+            levelMusicTransitionSource.loop = false;
+            levelMusicTransitionSource.spatialBlend = 0f; // 2D
+        }
+        
+        // PlayOneShot lets overlapping transitions stack without cutting each other
+        levelMusicTransitionSource.PlayOneShot(levelMusicTransitionClip, Mathf.Clamp01(levelMusicTransitionVolume));
+    }
+    
+    /// <summary>
+    /// Returns the sound name of the level music currently playing (may be null/empty
+    /// if no level track has started yet). Useful for ducking volume when menus open.
+    /// </summary>
+    public string GetCurrentLevelMusicName() => currentLevelMusicName;
+    
+    /// <summary>
+    /// Sets the volume (0-1) of whatever level music is currently playing.
+    /// Used by menus (pause, attack select, ability collector) to duck music.
+    /// </summary>
+    public void SetLevelMusicVolume(float volume)
+    {
+        if (string.IsNullOrEmpty(currentLevelMusicName)) return;
+        SoundManager.SetVolume(currentLevelMusicName, gameObject, volume);
+    }
+    
+    // Cache the water renderers so repeated level changes don't re-scan every Renderer
+    // in the scene (which was O(N) with string.Contains per renderer).
+    private Renderer[] _cachedWaterRenderers;
+
     private void FindAndSetWater(Material waterMat)
     {
         if (waterMat == null) return;
-        
-        var renderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
-        foreach (var rend in renderers)
+
+        if (_cachedWaterRenderers == null)
         {
-            if (rend != null && rend.gameObject.name.Contains("Water"))
+            var all = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+            var found = new System.Collections.Generic.List<Renderer>();
+            for (int i = 0; i < all.Length; i++)
             {
-                rend.material = waterMat;
+                var r = all[i];
+                if (r != null && r.gameObject.name.Contains("Water"))
+                {
+                    found.Add(r);
+                }
+            }
+            _cachedWaterRenderers = found.ToArray();
+        }
+
+        for (int i = 0; i < _cachedWaterRenderers.Length; i++)
+        {
+            var rend = _cachedWaterRenderers[i];
+            if (rend != null)
+            {
+                rend.sharedMaterial = waterMat;
             }
         }
     }
@@ -963,6 +1300,7 @@ public class LevelUIManager : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         
         ShowAnnouncement(winText);
+        PlayWinSound();
     }
     
     public void ShowAnnouncement(string text)
@@ -1021,8 +1359,80 @@ public class LevelUIManager : MonoBehaviour
     
     private void ShowSubtitle(string text, float duration)
     {
-        if (!string.IsNullOrEmpty(text) && SubtitleUI.Instance != null)
+        ShowSubtitle(text, duration, null, -1f, 1f);
+    }
+    
+    private void ShowSubtitle(string text, float duration, AudioClip voiceline, float voicelineVolume)
+    {
+        ShowSubtitle(text, duration, voiceline, voicelineVolume, 1f);
+    }
+    
+    private void ShowSubtitle(string text, float duration, AudioClip voiceline, float voicelineVolume, float voicelinePitch)
+    {
+        // Show the subtitle text (no voiceline passed - we play voicelines ourselves
+        // so pitch can be controlled by LevelUIManager's mixer group).
+        if (SubtitleUI.Instance != null && !string.IsNullOrEmpty(text))
+        {
             SubtitleUI.Instance.ShowSubtitle(text, duration);
+        }
+        
+        // Play the voiceline through our own pitched AudioSource (if one is configured)
+        // so higher pitch doesn't also speed up playback.
+        if (voiceline != null)
+        {
+            PlayTriggerVoiceline(voiceline, voicelineVolume, voicelinePitch);
+        }
+    }
+    
+    /// <summary>
+    /// Plays a trigger voiceline through a dedicated AudioSource owned by this
+    /// LevelUIManager. If <see cref="voicelineMixerGroup"/> is assigned (and has
+    /// a Pitch Shifter effect whose 'Pitch' parameter is exposed under
+    /// <see cref="voicelinePitchParameter"/>), the pitch is applied via that mixer
+    /// parameter so playback speed is NOT affected. If no mixer group is assigned,
+    /// the code falls back to setting <see cref="AudioSource.pitch"/>, which also
+    /// speeds up/slows down playback.
+    /// </summary>
+    private void PlayTriggerVoiceline(AudioClip clip, float volume, float pitch)
+    {
+        if (clip == null) return;
+        
+        if (triggerVoicelineSource == null)
+        {
+            triggerVoicelineSource = gameObject.AddComponent<AudioSource>();
+            triggerVoicelineSource.playOnAwake = false;
+            triggerVoicelineSource.loop = false;
+            triggerVoicelineSource.spatialBlend = 0f; // 2D
+            triggerVoicelineSource.volume = 1f;
+        }
+        
+        // Route through the pitch-shifter mixer group if one is configured.
+        if (voicelineMixerGroup != null && triggerVoicelineSource.outputAudioMixerGroup != voicelineMixerGroup)
+        {
+            triggerVoicelineSource.outputAudioMixerGroup = voicelineMixerGroup;
+        }
+        
+        float clampedPitch = Mathf.Clamp(pitch, 0.01f, 3f);
+        float finalVolume = volume < 0f ? 1f : Mathf.Clamp01(volume);
+        
+        if (voicelineMixerGroup != null && !string.IsNullOrEmpty(voicelinePitchParameter))
+        {
+            // Pitch-shift via mixer: keeps speed unchanged.
+            voicelineMixerGroup.audioMixer.SetFloat(voicelinePitchParameter, clampedPitch);
+            triggerVoicelineSource.pitch = 1f;
+        }
+        else
+        {
+            // No mixer configured - fall back to AudioSource.pitch (also speeds playback).
+            triggerVoicelineSource.pitch = clampedPitch;
+        }
+        
+        triggerVoicelineSource.PlayOneShot(clip, finalVolume);
+        
+        if (debugMode)
+        {
+            bool viaMixer = voicelineMixerGroup != null && !string.IsNullOrEmpty(voicelinePitchParameter);
+        }
     }
     
     public void TriggerSubtitleForLevel(int level, string text, float duration = 3f) => ShowSubtitle(text, duration);

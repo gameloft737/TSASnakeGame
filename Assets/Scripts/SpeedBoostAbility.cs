@@ -73,8 +73,6 @@ public class SpeedBoostAbility : BaseAbility
         
         // Also directly update PlayerMovement speeds
         UpdatePlayerSpeed();
-        
-        Debug.Log($"SpeedBoostAbility: Applied +{currentBonus * 100:F0}% speed boost (Level {currentLevel})");
     }
     
     private void UpdatePlayerSpeed()

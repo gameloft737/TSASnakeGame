@@ -60,9 +60,6 @@ public class XPManager : MonoBehaviour
         
         OnLevelUp?.Invoke(currentLevel);
         OnLeveledUp?.Invoke(currentLevel);
-        
-        Debug.Log($"Level Up! Now level {currentLevel}. Next level requires {xpToNextLevel} XP.");
-    Debug.Log($"OnLevelUp listeners: {OnLevelUp?.GetPersistentEventCount()}");
     }
     
     public int GetCurrentXP() => currentXP;

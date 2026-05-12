@@ -17,6 +17,9 @@ public class FireParticleDamage : MonoBehaviour
     private Dictionary<AppleEnemy, float> damageTimers = new Dictionary<AppleEnemy, float>();
     private Dictionary<AppleEnemy, BurnEffect> burnEffects = new Dictionary<AppleEnemy, BurnEffect>();
     private List<ParticleCollisionEvent> collisionEvents = new List<ParticleCollisionEvent>();
+    // Reusable scratch buffers (avoid GC allocations every frame in Update)
+    private readonly List<AppleEnemy> _keyScratch = new List<AppleEnemy>(32);
+    private readonly List<AppleEnemy> _burnKeyScratch = new List<AppleEnemy>(32);
     
     // Evolution stats
     private float lifeStealPercent = 0f;
@@ -72,9 +75,12 @@ public class FireParticleDamage : MonoBehaviour
     private void Update()
     {
         // Increment all timers and remove destroyed enemies
-        var keys = new List<AppleEnemy>(damageTimers.Keys);
-        foreach (var apple in keys)
+        // Reuse scratch list to avoid per-frame GC allocations (critical for WebGL)
+        _keyScratch.Clear();
+        foreach (var k in damageTimers.Keys) _keyScratch.Add(k);
+        for (int i = 0; i < _keyScratch.Count; i++)
         {
+            var apple = _keyScratch[i];
             if (apple == null)
             {
                 damageTimers.Remove(apple);
@@ -84,7 +90,7 @@ public class FireParticleDamage : MonoBehaviour
                 damageTimers[apple] += Time.deltaTime;
             }
         }
-        
+
         // Update burn effects
         UpdateBurnEffects();
     }
@@ -94,9 +100,11 @@ public class FireParticleDamage : MonoBehaviour
     /// </summary>
     private void UpdateBurnEffects()
     {
-        var burnKeys = new List<AppleEnemy>(burnEffects.Keys);
-        foreach (var apple in burnKeys)
+        _burnKeyScratch.Clear();
+        foreach (var k in burnEffects.Keys) _burnKeyScratch.Add(k);
+        for (int i = 0; i < _burnKeyScratch.Count; i++)
         {
+            var apple = _burnKeyScratch[i];
             if (apple == null)
             {
                 // Clean up burn effect for destroyed enemy
@@ -199,7 +207,8 @@ public class FireParticleDamage : MonoBehaviour
             
             if (isCrit)
             {
-                Debug.Log($"FireParticleDamage: Critical hit! Dealt {finalDamage:F1} damage");
+                #if UNITY_EDITOR
+                #endif
             }
         }
     }

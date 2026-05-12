@@ -61,8 +61,6 @@ public class CriticalHitAbility : BaseAbility
         
         PlayerStats.Instance.AddCritChance(currentCritChanceBonus);
         PlayerStats.Instance.AddCritMultiplier(currentCritMultiplierBonus);
-        
-        Debug.Log($"CriticalHitAbility: Applied +{currentCritChanceBonus * 100:F0}% crit chance, +{currentCritMultiplierBonus:F1}x crit damage (Level {currentLevel})");
     }
     
     private void RemoveBonus()

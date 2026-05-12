@@ -185,7 +185,6 @@ public class PlayerStats : MonoBehaviour
     {
         damageMultiplierBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Damage multiplier now: {GetDamageMultiplier():F2}x");
     }
     
     /// <summary>
@@ -195,7 +194,6 @@ public class PlayerStats : MonoBehaviour
     {
         rangeMultiplierBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Range multiplier now: {GetRangeMultiplier():F2}x");
     }
     
     /// <summary>
@@ -205,7 +203,6 @@ public class PlayerStats : MonoBehaviour
     {
         maxHealthBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Max health bonus now: +{GetMaxHealthBonus():F0}");
     }
     
     /// <summary>
@@ -215,7 +212,6 @@ public class PlayerStats : MonoBehaviour
     {
         maxHealthPercentBonus += percent;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Max health percent bonus now: +{GetMaxHealthPercentBonus() * 100:F0}%");
     }
     
     /// <summary>
@@ -225,7 +221,6 @@ public class PlayerStats : MonoBehaviour
     {
         healthRegenPerSecond += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Health regen now: {GetHealthRegenPerSecond():F1}/sec");
     }
     
     /// <summary>
@@ -235,7 +230,6 @@ public class PlayerStats : MonoBehaviour
     {
         speedMultiplierBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Speed multiplier now: {GetSpeedMultiplier():F2}x");
     }
     
     /// <summary>
@@ -245,7 +239,6 @@ public class PlayerStats : MonoBehaviour
     {
         cooldownReductionBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Cooldown reduction now: {GetCooldownReduction() * 100:F0}%");
     }
     
     /// <summary>
@@ -255,7 +248,6 @@ public class PlayerStats : MonoBehaviour
     {
         critChanceBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Crit chance now: {GetCritChance() * 100:F0}%");
     }
     
     /// <summary>
@@ -265,7 +257,6 @@ public class PlayerStats : MonoBehaviour
     {
         critMultiplierBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Crit multiplier now: {GetCritMultiplier():F2}x");
     }
     
     /// <summary>
@@ -275,7 +266,6 @@ public class PlayerStats : MonoBehaviour
     {
         lifestealBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Lifesteal now: {GetLifesteal() * 100:F0}%");
     }
     
     /// <summary>
@@ -285,7 +275,6 @@ public class PlayerStats : MonoBehaviour
     {
         damageReductionBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] Damage reduction now: {GetDamageReduction() * 100:F0}%");
     }
     
     /// <summary>
@@ -295,7 +284,6 @@ public class PlayerStats : MonoBehaviour
     {
         xpMultiplierBonus += amount;
         onStatsChanged?.Invoke();
-        Debug.Log($"[PlayerStats] XP multiplier now: {GetXPMultiplier():F2}x");
     }
     
     // ============ RESET METHOD ============
@@ -318,6 +306,5 @@ public class PlayerStats : MonoBehaviour
         damageReductionBonus = 0f;
         xpMultiplierBonus = 0f;
         onStatsChanged?.Invoke();
-        Debug.Log("[PlayerStats] All bonuses reset!");
     }
 }

@@ -12,11 +12,6 @@ public class AttackManager : MonoBehaviour
     [Tooltip("The player's single attack. Player can only have one attack that they upgrade.")]
     public List<Attack> attacks = new List<Attack>();
 
-    [Header("Replaced Attacks")]
-    [Tooltip("Attacks that were replaced during swap - stored with their level for potential reuse")]
-    private List<Attack> replacedAttacks = new List<Attack>();
-    private List<int> replacedAttackLevels = new List<int>();
-
     [Header("Animation")]
     [SerializeField] private Animator animator;
     
@@ -113,7 +108,6 @@ public class AttackManager : MonoBehaviour
         
         attacks.Add(newAttack);
         #if UNITY_EDITOR
-        Debug.Log($"Set player attack: {newAttack.attackName}");
         #endif
         
         ApplyCurrentVariation();
@@ -152,7 +146,6 @@ public class AttackManager : MonoBehaviour
         
         attacks.Clear();
         #if UNITY_EDITOR
-        Debug.Log("Cleared all attacks");
         #endif
         OnAttacksChanged?.Invoke();
     }
@@ -292,9 +285,6 @@ public class AttackManager : MonoBehaviour
         );
         
         #if UNITY_EDITOR
-        Debug.Log($"Applied evolution visuals for {attack.attackName}: {evolution.evolutionName}" +
-                  $" (Head Material: {(evolution.evolutionHeadMaterial != null ? evolution.evolutionHeadMaterial.name : "none")}" +
-                  $", Body Material: {(evolution.evolutionBodyMaterial != null ? evolution.evolutionBodyMaterial.name : "none")})");
         #endif
     }
     
@@ -304,7 +294,6 @@ public class AttackManager : MonoBehaviour
     public void RefreshEvolutionVisuals()
     {
         #if UNITY_EDITOR
-        Debug.Log($"RefreshEvolutionVisuals called. CurrentAttack: {(CurrentAttack != null ? CurrentAttack.attackName : "null")}");
         #endif
         
         if (CurrentAttack == null)
@@ -318,14 +307,12 @@ public class AttackManager : MonoBehaviour
         if (CurrentAttack.IsAtEvolutionLevel())
         {
             #if UNITY_EDITOR
-            Debug.Log($"CurrentAttack {CurrentAttack.attackName} is at evolution level {CurrentAttack.GetCurrentLevel()}");
             #endif
             ApplyEvolutionVisuals(CurrentAttack);
         }
         else
         {
             #if UNITY_EDITOR
-            Debug.Log($"CurrentAttack {CurrentAttack.attackName} is NOT at evolution level (level {CurrentAttack.GetCurrentLevel()})");
             #endif
         }
     }
@@ -386,22 +373,4 @@ public class AttackManager : MonoBehaviour
     }
     
     public Animator GetAnimator() => animator;
-    
-    public List<Attack> GetReplacedAttacks() => replacedAttacks;
-    public List<int> GetReplacedAttackLevels() => replacedAttackLevels;
-    
-    public void StoreReplacedAttack(Attack attack, int level)
-    {
-        if (attack == null) return;
-        
-        replacedAttacks.Add(attack);
-        replacedAttackLevels.Add(level);
-        Debug.Log($"Stored replaced attack: {attack.attackName} at level {level}");
-    }
-    
-    public void ClearReplacedAttacks()
-    {
-        replacedAttacks.Clear();
-        replacedAttackLevels.Clear();
-    }
 }

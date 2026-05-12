@@ -141,6 +141,10 @@ public class SnakePauseMenu : MonoBehaviour
         {
             SoundManager.SetVolume("GameMusic", waveManager.gameObject, 0.3f);
         }
+        if (LevelUIManager.Instance != null)
+        {
+            LevelUIManager.Instance.SetLevelMusicVolume(0.3f);
+        }
         
         if (pauseMenuPanel != null)
         {
@@ -196,8 +200,6 @@ public class SnakePauseMenu : MonoBehaviour
             if (enemy != null)
                 enemy.SetFrozen(true);
         }
-        
-        Debug.Log("[SnakePauseMenu] Game paused");
     }
     
     public void ResumeGame()
@@ -209,6 +211,10 @@ public class SnakePauseMenu : MonoBehaviour
         if (waveManager != null)
         {
             SoundManager.SetVolume("GameMusic", waveManager.gameObject, 1f);
+        }
+        if (LevelUIManager.Instance != null)
+        {
+            LevelUIManager.Instance.SetLevelMusicVolume(1f);
         }
         
         if (pauseMenuPanel != null)
@@ -251,8 +257,6 @@ public class SnakePauseMenu : MonoBehaviour
             if (enemy != null)
                 enemy.SetFrozen(false);
         }
-        
-        Debug.Log("[SnakePauseMenu] Game resumed");
     }
     
     public void OpenSettings()

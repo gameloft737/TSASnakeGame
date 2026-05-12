@@ -76,7 +76,6 @@ public class FullscreenPersistence : MonoBehaviour
         // Only apply if different from current state to avoid unnecessary screen mode changes
         if (Screen.fullScreen != savedFullscreen)
         {
-            Debug.Log($"[FullscreenPersistence] Applying fullscreen setting: {savedFullscreen} (was {Screen.fullScreen})");
             Screen.fullScreen = savedFullscreen;
         }
     }
@@ -88,7 +87,6 @@ public class FullscreenPersistence : MonoBehaviour
     {
         bool savedFullscreen = PlayerPrefs.GetInt(FULLSCREEN_KEY, Screen.fullScreen ? 1 : 0) == 1;
         Screen.fullScreen = savedFullscreen;
-        Debug.Log($"[FullscreenPersistence] Force applied fullscreen: {savedFullscreen}");
     }
     
     /// <summary>
@@ -99,7 +97,6 @@ public class FullscreenPersistence : MonoBehaviour
         Screen.fullScreen = isFullscreen;
         PlayerPrefs.SetInt(FULLSCREEN_KEY, isFullscreen ? 1 : 0);
         PlayerPrefs.Save();
-        Debug.Log($"[FullscreenPersistence] Set fullscreen to: {isFullscreen}");
     }
     
     /// <summary>
@@ -123,7 +120,5 @@ public class FullscreenPersistence : MonoBehaviour
         // Create new GameObject with FullscreenPersistence
         GameObject go = new GameObject("FullscreenPersistence");
         go.AddComponent<FullscreenPersistence>();
-        
-        Debug.Log("[FullscreenPersistence] Initialized via RuntimeInitializeOnLoadMethod");
     }
 }

@@ -86,8 +86,6 @@ public class CutsceneController : MonoBehaviour
 
     private IEnumerator CutsceneRoutine()
     {
-        Debug.Log("CutsceneController: CutsceneRoutine started");
-        
         // Disable FPS camera and player movement
         // Use gameObject.SetActive to ensure it works even if MainMenuManager disabled the GameObject
         if (mainCamera != null)
@@ -108,30 +106,23 @@ public class CutsceneController : MonoBehaviour
         
         if (cutsceneAnimator != null && !string.IsNullOrEmpty(animationClipName))
         {
-            Debug.Log($"CutsceneController: Playing animation '{animationClipName}'");
             cutsceneAnimator.Play(animationClipName);
             
             // Get animation duration
             if (autoDetectAnimationEnd)
             {
                 animationDuration = GetAnimationDuration();
-                Debug.Log($"CutsceneController: Auto-detected animation duration: {animationDuration}s");
             }
         }
 
         // Notify ObjectiveManager that cutscene has started (shows subtitle)
-        Debug.Log($"CutsceneController: ObjectiveManager.Instance = {(ObjectiveManager.Instance != null ? "exists" : "NULL")}");
-        Debug.Log($"CutsceneController: SubtitleUI.Instance = {(SubtitleUI.Instance != null ? "exists" : "NULL")}");
-        
         if (ObjectiveManager.Instance != null)
         {
-            Debug.Log("CutsceneController: Calling ObjectiveManager.OnCutsceneStart()");
             ObjectiveManager.Instance.OnCutsceneStart();
         }
         // Fallback: Show subtitle directly if ObjectiveManager doesn't handle it
         else if (!string.IsNullOrEmpty(subtitleText) && SubtitleUI.Instance != null)
         {
-            Debug.Log("CutsceneController: Showing subtitle directly (fallback)");
             SubtitleUI.Instance.ShowSubtitle(subtitleText, subtitleDuration);
         }
         else
@@ -142,33 +133,60 @@ public class CutsceneController : MonoBehaviour
         // Wait for the animation to complete
         if (autoDetectAnimationEnd && cutsceneAnimator != null)
         {
-            Debug.Log($"CutsceneController: Waiting for animation to complete...");
             yield return StartCoroutine(WaitForAnimationToEnd());
         }
         else
         {
-            Debug.Log($"CutsceneController: Waiting {animationDuration} seconds (fallback duration)...");
             yield return new WaitForSeconds(animationDuration);
         }
 
-        Debug.Log("CutsceneController: Cutscene ended, transitioning to gameplay");
-        
-        // Cutscene ends: disable cutscene camera
-        if (cutsceneCamera != null)
+        // ONE-FRAME FREEZE: Pause the cutscene animator on its final pose and
+        // hold for a frame. This eliminates any residual motion in the final
+        // keyframe (e.g. non-zero velocity at the last frame of the clip) which
+        // would otherwise read as a "jitter" in the moment we swap cameras.
+        if (cutsceneAnimator != null)
         {
-            cutsceneCamera.gameObject.SetActive(false);
+            cutsceneAnimator.speed = 0f;
         }
-
-        // Enable FPS camera (use SetActive to ensure it works)
+        yield return null; // hold the frozen pose for exactly one frame
+        
+        // SEAMLESS CAMERA SWITCH:
+        // The previous implementation disabled the cutscene camera, enabled the FPS
+        // camera, and THEN teleported the player. That left a one-frame window
+        // where the FPS camera rendered at its OLD position -> visible jitter/pop.
+        //
+        // The new order is:
+        //   1. Teleport + align the FPS player (while the FPS camera is still
+        //      disabled, so no rendering happens at the wrong pose).
+        //   2. Enable the FPS camera AND disable the cutscene camera in the same
+        //      frame, after the transform is already correct.
+        //   3. Restore control.
+        
+        // 1. Move the FPS controller into position while its camera is still off.
+        if (fpsController != null)
+        {
+            TeleportPlayerToCutsceneEnd();
+        }
+        
+        // 2. Swap cameras in a single frame. Enable the FPS camera first so we
+        //    never have zero active cameras (which can cause a black flash in
+        //    some render pipelines), then disable the cutscene camera.
         if (mainCamera != null)
         {
             mainCamera.gameObject.SetActive(true);
         }
-
-        // Teleport FPS controller to cutscene end position for seamless transition
+        if (cutsceneCamera != null)
+        {
+            cutsceneCamera.gameObject.SetActive(false);
+        }
+        
+        // Force a physics/transform sync so the FPS camera's first rendered frame
+        // uses the new position rather than a stale one from before the teleport.
+        Physics.SyncTransforms();
+        
+        // 3. Re-enable input now that the camera is already looking at the right spot.
         if (fpsController != null)
         {
-            TeleportPlayerToCutsceneEnd();
             fpsController.SetControl(true);
         }
         
@@ -176,13 +194,11 @@ public class CutsceneController : MonoBehaviour
         if (SettingsManager.Instance != null)
         {
             SettingsManager.Instance.ReapplySensitivity();
-            Debug.Log("CutsceneController: Reapplied sensitivity settings");
         }
 
         // Notify ObjectiveManager that cutscene has ended (shows objective UI)
         if (ObjectiveManager.Instance != null)
         {
-            Debug.Log("CutsceneController: Calling ObjectiveManager.OnCutsceneEnd()");
             ObjectiveManager.Instance.OnCutsceneEnd();
         }
         else
@@ -192,7 +208,6 @@ public class CutsceneController : MonoBehaviour
         
         // Fire the OnCutsceneEnded event for any listeners (e.g., ControlsSlideInPanel)
         OnCutsceneEnded?.Invoke();
-        Debug.Log("CutsceneController: OnCutsceneEnded event fired");
     }
 
     /// <summary>
@@ -261,7 +276,6 @@ public class CutsceneController : MonoBehaviour
             // Also check if it's still the same animation state
             if (stateInfo.normalizedTime >= 1f && !cutsceneAnimator.IsInTransition(0))
             {
-                Debug.Log("CutsceneController: Animation completed (normalizedTime >= 1)");
                 break;
             }
             
@@ -270,7 +284,10 @@ public class CutsceneController : MonoBehaviour
     }
 
     /// <summary>
-    /// Teleports the FPS controller so that its camera matches the cutscene end transform position and rotation
+    /// Teleports the FPS controller so that its camera matches the cutscene end transform position and rotation.
+    /// Order matters: we must (1) reset transient camera state, (2) apply rotation, (3) then measure the
+    /// camera offset and position the player. Doing it in any other order leaves a mismatch between the
+    /// cutscene camera pose and the FPS camera pose on the swap frame -> visible jitter.
     /// </summary>
     private void TeleportPlayerToCutsceneEnd()
     {
@@ -281,45 +298,49 @@ public class CutsceneController : MonoBehaviour
 
         if (targetTransform == null) return;
 
-        // Get the CharacterController to properly teleport
         CharacterController characterController = fpsController.GetComponent<CharacterController>();
-        
         if (characterController != null)
         {
-            // Disable CharacterController temporarily to allow position change
+            // Disable CharacterController temporarily to allow direct transform writes.
             characterController.enabled = false;
         }
-        
-        // The target transform represents where the CAMERA should be (eye level)
-        // We need to position the player so that their camera ends up at this position
-        
-        // Get the camera's local position relative to the player
-        Vector3 cameraLocalPos = Vector3.zero;
+
+        // STEP 1: Reset all transient camera state (head bob, recoil, tilt, FOV, cameraParent local
+        // pose) BEFORE measuring the camera offset. Otherwise cameraParent.localPosition.y might be
+        // mid-bob or crouched, and our offset calculation below will be based on that stale pose.
+        // After this call, cameraParent is at its rest local pose (localPosition.y = originalHeight,
+        // localRotation = identity).
+        fpsController.ResetCameraTransientState();
+
+        // STEP 2: Apply rotation from the cutscene camera. This rotates the player root (yaw) and
+        // playerCamera.localRotation (pitch). It MUST happen before we measure playerCamera.position,
+        // because rotating the player root also rotates the camera in world space around the player
+        // origin. Measuring the offset before rotation and moving after would leave a position
+        // mismatch equal to the yaw-rotated radius.
+        fpsController.SetCameraRotation(targetTransform, false);
+
+        // Force transforms to update so playerCamera.position reflects the new rotation.
+        Physics.SyncTransforms();
+
+        // STEP 3: Now that the camera is at its rest local pose and correct rotation, compute the
+        // world-space offset from the player root to the camera. Moving the player root by
+        // (targetPos - offset) places the camera exactly at targetPos.
+        Vector3 cameraWorldOffset = Vector3.zero;
         if (fpsController.playerCamera != null)
         {
-            // Get the world offset from player root to camera
-            cameraLocalPos = fpsController.playerCamera.position - fpsController.transform.position;
-        }
-        
-        // Calculate where the player root should be so that the camera ends up at targetTransform.position
-        Vector3 playerPosition = targetTransform.position - cameraLocalPos;
-        playerPosition.y += playerHeightOffset;
-        
-        // Teleport the player
-        fpsController.transform.position = playerPosition;
-        
-        Debug.Log($"CutsceneController: Target camera position: {targetTransform.position}");
-        Debug.Log($"CutsceneController: Camera offset from player: {cameraLocalPos}");
-        Debug.Log($"CutsceneController: Teleported player root to: {playerPosition}");
-        Debug.Log($"CutsceneController: Resulting camera position: {fpsController.playerCamera?.position}");
-        
-        if (characterController != null)
-        {
-            // Re-enable CharacterController
-            characterController.enabled = true;
+            cameraWorldOffset = fpsController.playerCamera.position - fpsController.transform.position;
         }
 
-        // Align the camera rotation to match the target transform's rotation
-        fpsController.SetCameraRotation(targetTransform, false);
+        Vector3 playerPosition = targetTransform.position - cameraWorldOffset;
+        playerPosition.y += playerHeightOffset;
+        fpsController.transform.position = playerPosition;
+
+        // One more sync so the camera's world position is up-to-date before the render swap.
+        Physics.SyncTransforms();
+
+        if (characterController != null)
+        {
+            characterController.enabled = true;
+        }
     }
 }

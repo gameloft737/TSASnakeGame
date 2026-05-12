@@ -59,6 +59,8 @@ public class AppleAllyAbility : BaseAbility
     private SnakeHealth snakeHealth;
     private GameObject foundAttachment; // Cached reference to found attachment
     private int baseMaxAlliesAlive = 5; // Base maximum allies that can be alive at once
+    // Track whether we've subscribed to OnAppleDied so we don't subscribe multiple times per ally.
+    private bool _subscribedToDeathEvent;
     
     protected override void Awake()
     {
@@ -100,7 +102,6 @@ public class AppleAllyAbility : BaseAbility
         if (attachmentToShow != null)
         {
             foundAttachment = attachmentToShow;
-            Debug.Log($"AppleAllyAbility: Using direct attachment reference: {foundAttachment.name}");
             return;
         }
         
@@ -124,7 +125,6 @@ public class AppleAllyAbility : BaseAbility
             
             if (foundAttachment != null)
             {
-                Debug.Log($"AppleAllyAbility: Found attachment by name: {foundAttachment.name}");
                 return;
             }
         }
@@ -149,7 +149,6 @@ public class AppleAllyAbility : BaseAbility
             
             if (foundAttachment != null)
             {
-                Debug.Log($"AppleAllyAbility: Found attachment by tag: {foundAttachment.name}");
                 return;
             }
         }
@@ -212,7 +211,8 @@ public class AppleAllyAbility : BaseAbility
         // Spawn initial allies
         SpawnAllies();
         
-        Debug.Log($"AppleAllyAbility: Activated at level {currentLevel} - can spawn {GetAllyCount()} allies");
+        #if UNITY_EDITOR
+        #endif
     }
     
     protected override void Update()
@@ -250,7 +250,6 @@ public class AppleAllyAbility : BaseAbility
         if (foundAttachment != null)
         {
             foundAttachment.SetActive(show);
-            Debug.Log($"AppleAllyAbility: Attachment '{foundAttachment.name}' {(show ? "shown" : "hidden")}");
         }
         else
         {
@@ -304,7 +303,6 @@ public class AppleAllyAbility : BaseAbility
         
         if (spawned > 0)
         {
-            Debug.Log($"AppleAllyAbility: Spawned {spawned} white apple allies");
         }
     }
     
@@ -346,8 +344,13 @@ public class AppleAllyAbility : BaseAbility
         // Add to our list
         currentAllies.Add(ally);
         
-        // Subscribe to death event to remove from list
-        AppleEnemy.OnAppleDied += OnAllyDied;
+        // Subscribe to death event to remove from list — subscribe ONCE (was previously
+        // subscribed per-spawn, which multiplied OnAllyDied invocations across a session).
+        if (!_subscribedToDeathEvent)
+        {
+            AppleEnemy.OnAppleDied += OnAllyDied;
+            _subscribedToDeathEvent = true;
+        }
         
         // Play spawn effect
         if (spawnEffectPrefab != null)
@@ -377,7 +380,15 @@ public class AppleAllyAbility : BaseAbility
     /// </summary>
     private void CleanupDeadAllies()
     {
-        currentAllies.RemoveAll(ally => ally == null);
+        // Manual reverse-iteration avoids allocating a delegate every call
+        // (previously `currentAllies.RemoveAll(a => a == null)` every frame).
+        for (int i = currentAllies.Count - 1; i >= 0; i--)
+        {
+            if (currentAllies[i] == null)
+            {
+                currentAllies.RemoveAt(i);
+            }
+        }
     }
     
     /// <summary>
@@ -442,8 +453,6 @@ public class AppleAllyAbility : BaseAbility
         
         // Immediately try to spawn more allies on level up
         SpawnAllies();
-        
-        Debug.Log($"AppleAllyAbility: Level {currentLevel} - Allies: {GetAllyCount()}, Radius: {GetSpawnRadius():F1}, Cooldown: {GetSpawnCooldown():F1}s, Max: {GetMaxAllies()}");
     }
     
     protected override void DeactivateAbility()
@@ -464,7 +473,11 @@ public class AppleAllyAbility : BaseAbility
         currentAllies.Clear();
         
         // Unsubscribe from events
-        AppleEnemy.OnAppleDied -= OnAllyDied;
+        if (_subscribedToDeathEvent)
+        {
+            AppleEnemy.OnAppleDied -= OnAllyDied;
+            _subscribedToDeathEvent = false;
+        }
     }
     
     private void OnDestroy()

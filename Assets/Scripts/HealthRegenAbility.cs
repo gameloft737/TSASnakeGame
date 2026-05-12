@@ -80,8 +80,6 @@ public class HealthRegenAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddHealthRegen(currentBonus);
-        
-        Debug.Log($"HealthRegenAbility: Applied +{currentBonus:F1} HP/sec (Level {currentLevel})");
     }
     
     private void RemoveBonus()

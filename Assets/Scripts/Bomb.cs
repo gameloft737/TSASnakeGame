@@ -28,6 +28,8 @@ public class Bomb : MonoBehaviour
     public float damage;
     private bool hasExploded = false;
     private bool isArmed = false; // Bomb can't explode until armed
+    // Shared non-alloc buffer for proximity detection (avoids per-tick Collider[] GC).
+    private static readonly Collider[] _proximityBuffer = new Collider[16];
     private Collider bombCollider;
 
     private void Start()
@@ -57,7 +59,8 @@ public class Bomb : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         isArmed = true;
-        Debug.Log($"Bomb armed at {transform.position}");
+        #if UNITY_EDITOR
+        #endif
     }
 
     private void OnTriggerEnter(Collider other)
@@ -68,7 +71,8 @@ public class Bomb : MonoBehaviour
         // Check if an apple touched the bomb
         if (!hasExploded && other.GetComponentInParent<AppleEnemy>() != null)
         {
-            Debug.Log("Bomb triggered by apple via OnTriggerEnter!");
+            #if UNITY_EDITOR
+            #endif
             Explode();
         }
     }
@@ -81,7 +85,8 @@ public class Bomb : MonoBehaviour
         // Check if an apple touched the bomb (backup for non-trigger colliders)
         if (!hasExploded && collision.gameObject.GetComponentInParent<AppleEnemy>() != null)
         {
-            Debug.Log("Bomb triggered by apple via OnCollisionEnter!");
+            #if UNITY_EDITOR
+            #endif
             Explode();
         }
     }
@@ -99,20 +104,18 @@ public class Bomb : MonoBehaviour
             // Only check proximity if bomb is armed
             if (isArmed)
             {
-                // Check for apples within trigger radius
-                Collider[] nearbyColliders = Physics.OverlapSphere(transform.position, triggerRadius, appleLayer);
+                // Check for apples within trigger radius (non-alloc)
+                int hitCount = Physics.OverlapSphereNonAlloc(transform.position, triggerRadius, _proximityBuffer, appleLayer);
                 
-                if (nearbyColliders.Length > 0)
+                for (int i = 0; i < hitCount; i++)
                 {
-                    foreach (Collider col in nearbyColliders)
+                    AppleEnemy apple = _proximityBuffer[i].GetComponentInParent<AppleEnemy>();
+                    if (apple != null)
                     {
-                        AppleEnemy apple = col.GetComponentInParent<AppleEnemy>();
-                        if (apple != null)
-                        {
-                            Debug.Log($"Bomb triggered by apple via proximity detection! Apple: {apple.gameObject.name}");
-                            Explode();
-                            yield break;
-                        }
+                        #if UNITY_EDITOR
+                        #endif
+                        Explode();
+                        yield break;
                     }
                 }
             }
@@ -172,7 +175,8 @@ public class Bomb : MonoBehaviour
             StartCoroutine(KillAppleAfterDelay(apple, delay));
         }
 
-        Debug.Log($"Bomb exploded! Killing {applesInRange.Count} apples in radius");
+        #if UNITY_EDITOR
+        #endif
 
         // Destroy the bomb AFTER the longest delay + a small buffer
         Destroy(gameObject, maxDeathDelay + 0.1f);

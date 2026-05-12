@@ -50,7 +50,6 @@ public class GoopAbility : BaseAbility
         if (goopParticles != null)
         {
             goopParticles.Play();
-            Debug.Log($"GoopAbility: Activated at level {currentLevel} with effector {effector}");
         }
     }
     
@@ -62,7 +61,6 @@ public class GoopAbility : BaseAbility
         if (goopParticles != null)
         {
             goopParticles.Stop();
-            Debug.Log("GoopAbility: Deactivated - particles stopped");
         }
         
         // Destroy the ability
@@ -83,7 +81,6 @@ public class GoopAbility : BaseAbility
         if (collisionScript != null)
         {
             collisionScript.effector = effector;
-            Debug.Log($"GoopAbility: Leveled up! New slow multiplier: {effector}");
         }
     }
     

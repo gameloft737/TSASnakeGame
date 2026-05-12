@@ -70,8 +70,6 @@ public class SpawnPointGenerator : MonoBehaviour
                 generated++;
             }
         }
-        
-        Debug.Log($"Generated {generated} spawn points out of {pointCount} requested.");
     }
     
     // Call this to spawn at a random point

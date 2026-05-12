@@ -118,9 +118,6 @@ public class ControlsPanelManager : MonoBehaviour
         isPanelVisible = startVisible;
         UpdatePanelVisibility(false); // false = no animation on start
         UpdateHintText();
-        
-        if (debugMode)
-            Debug.Log($"[ControlsPanelManager] Initialized. Panel visible: {isPanelVisible}");
     }
     
     private void Update()
@@ -233,9 +230,6 @@ public class ControlsPanelManager : MonoBehaviour
         isPanelVisible = !isPanelVisible;
         UpdatePanelVisibility(useFadeAnimation);
         UpdateHintText();
-        
-        if (debugMode)
-            Debug.Log($"[ControlsPanelManager] Panel toggled. Now visible: {isPanelVisible}");
     }
     
     /// <summary>
@@ -258,9 +252,6 @@ public class ControlsPanelManager : MonoBehaviour
             
             UpdatePanelVisibility(useFadeAnimation);
             UpdateHintText();
-            
-            if (debugMode)
-                Debug.Log("[ControlsPanelManager] Panel shown");
         }
     }
     
@@ -289,9 +280,6 @@ public class ControlsPanelManager : MonoBehaviour
             
             UpdatePanelVisibility(useFadeAnimation);
             UpdateHintText();
-            
-            if (debugMode)
-                Debug.Log("[ControlsPanelManager] Panel hidden");
         }
     }
     

@@ -78,8 +78,6 @@ public class ShaderWarmup : MonoBehaviour
             yield break;
         }
         
-        Debug.Log($"ShaderWarmup: Warming up {materialsToWarmup.Count} materials...");
-        
         // Create temporary warmup object off-screen
         GameObject warmupObj = new GameObject("_ShaderWarmup");
         if (hideWarmupObject)
@@ -102,7 +100,6 @@ public class ShaderWarmup : MonoBehaviour
         
         // Clean up
         Destroy(warmupObj);
-        Debug.Log("ShaderWarmup: Complete!");
     }
     
     // Create a simple cube mesh if built-in resource isn't available

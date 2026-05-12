@@ -128,9 +128,6 @@ public class ControlsSlideInPanel : MonoBehaviour
         
         // Start hidden
         SetPanelPosition(hiddenPosition);
-        
-        if (debugMode)
-            Debug.Log("[ControlsSlideInPanel] Initialized. Panel hidden off-screen.");
     }
     
     private void Update()
@@ -167,9 +164,6 @@ public class ControlsSlideInPanel : MonoBehaviour
         
         // Hidden position is offset to the right (off-screen)
         hiddenPosition = new Vector2(visiblePosition.x + offScreenOffset, visiblePosition.y);
-        
-        if (debugMode)
-            Debug.Log($"[ControlsSlideInPanel] Positions set - Hidden: {hiddenPosition}, Visible: {visiblePosition}");
     }
     
     private void SetupCutsceneIntegration()
@@ -184,21 +178,11 @@ public class ControlsSlideInPanel : MonoBehaviour
         if (cutsceneController != null)
         {
             cutsceneController.OnCutsceneEnded += OnCutsceneEnded;
-            
-            if (debugMode)
-                Debug.Log("[ControlsSlideInPanel] Subscribed to CutsceneController.OnCutsceneEnded");
-        }
-        else if (debugMode)
-        {
-            Debug.Log("[ControlsSlideInPanel] No CutsceneController found. Call SlideIn() manually.");
         }
     }
     
     private void OnCutsceneEnded()
     {
-        if (debugMode)
-            Debug.Log("[ControlsSlideInPanel] Cutscene ended. Triggering slide-in.");
-        
         SlideIn();
     }
     
@@ -257,9 +241,6 @@ public class ControlsSlideInPanel : MonoBehaviour
             yield return new WaitForSeconds(slideInDelay);
         }
         
-        if (debugMode)
-            Debug.Log("[ControlsSlideInPanel] Starting slide-in animation");
-        
         float elapsed = 0f;
         Vector2 startPos = panelRectTransform.anchoredPosition;
         
@@ -280,9 +261,6 @@ public class ControlsSlideInPanel : MonoBehaviour
         hasAppeared = true;
         slideCoroutine = null;
         
-        if (debugMode)
-            Debug.Log("[ControlsSlideInPanel] Slide-in complete");
-        
         // Start auto-hide timer if enabled
         if (autoHide && autoHideDelay > 0)
         {
@@ -292,9 +270,6 @@ public class ControlsSlideInPanel : MonoBehaviour
     
     private IEnumerator SlideOutCoroutine()
     {
-        if (debugMode)
-            Debug.Log("[ControlsSlideInPanel] Starting slide-out animation");
-        
         float elapsed = 0f;
         Vector2 startPos = panelRectTransform.anchoredPosition;
         
@@ -313,9 +288,6 @@ public class ControlsSlideInPanel : MonoBehaviour
         SetPanelPosition(hiddenPosition);
         isVisible = false;
         slideCoroutine = null;
-        
-        if (debugMode)
-            Debug.Log("[ControlsSlideInPanel] Slide-out complete");
     }
     
     private IEnumerator AutoHideCoroutine()
@@ -324,9 +296,6 @@ public class ControlsSlideInPanel : MonoBehaviour
         
         if (isVisible)
         {
-            if (debugMode)
-                Debug.Log("[ControlsSlideInPanel] Auto-hiding panel");
-            
             SlideOut();
         }
         

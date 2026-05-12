@@ -250,7 +250,6 @@ public class AppleEnemyManager : MonoBehaviour
         
         if (showDebugInfo && Time.frameCount % 60 == 0)
         {
-            Debug.Log($"[AppleEnemyManager] Enemies: {totalEnemies}, Updated: {updated}, Checked: {checked_count}, Null: {skippedNull}, NavMesh updates: {navMeshUpdatesThisFrame}");
         }
     }
     
@@ -434,7 +433,6 @@ public class AppleEnemyManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"[AppleEnemyManager] Force updated {allEnemies.Count} enemies");
     }
     
     /// <summary>
@@ -469,7 +467,6 @@ public class AppleEnemyManager : MonoBehaviour
         
         if (removed > 0 || registered > 0)
         {
-            Debug.Log($"[AppleEnemyManager] ValidateEnemyList: Removed {removed} null entries, registered {registered} untracked enemies");
         }
     }
     

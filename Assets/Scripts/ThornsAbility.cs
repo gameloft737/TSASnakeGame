@@ -24,6 +24,9 @@ public class ThornsAbility : BaseAbility
     [Header("References")]
     [SerializeField] private SnakeBody snakeBody;
     [SerializeField] private SnakeHealth snakeHealth;
+
+    // Reusable HashSet so ReflectDamageToNearbyEnemies doesn't allocate per damage event.
+    private readonly HashSet<AppleEnemy> _damagedEnemiesScratch = new HashSet<AppleEnemy>();
     
     // Custom stat names for upgrade data
     private const string STAT_REFLECT_PERCENT = "reflectPercent";
@@ -112,7 +115,6 @@ public class ThornsAbility : BaseAbility
 
         CreateThornsVisuals();
         hasInitialized = true;
-        Debug.Log($"ThornsAbility: Initialized at level {currentLevel} with {GetReflectPercent() * 100:F0}% reflection");
     }
 
     private void CreateThornsVisuals()
@@ -229,7 +231,8 @@ public class ThornsAbility : BaseAbility
         float reflectPercent = GetReflectPercent();
         float bonusDamage = GetBonusDamage();
         
-        HashSet<AppleEnemy> damagedEnemies = new HashSet<AppleEnemy>();
+        HashSet<AppleEnemy> damagedEnemies = _damagedEnemiesScratch;
+        damagedEnemies.Clear();
         // Use AppleEnemy's static list instead of FindObjectsByType for better performance
         var allEnemies = AppleEnemy.GetAllActiveEnemies();
         
@@ -270,8 +273,6 @@ public class ThornsAbility : BaseAbility
             {
                 audioSource.PlayOneShot(reflectSound, 0.5f);
             }
-            
-            Debug.Log($"ThornsAbility: Reflected {(damageTaken * reflectPercent) + bonusDamage:F1} damage to {damagedEnemies.Count} enemies!");
         }
     }
 
@@ -311,8 +312,6 @@ public class ThornsAbility : BaseAbility
         
         // Recreate visuals with new settings
         CreateThornsVisuals();
-        
-        Debug.Log($"ThornsAbility: Level {currentLevel} - Reflect: {GetReflectPercent() * 100:F0}%, Bonus Damage: {GetBonusDamage():F0}");
     }
 
     private void ClearThornsVisuals()

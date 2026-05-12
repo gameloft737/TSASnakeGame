@@ -90,9 +90,6 @@ public class EndlessModeManager : MonoBehaviour
     /// </summary>
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (debugMode)
-            Debug.Log($"[EndlessModeManager] Scene loaded: {scene.name}, IsEndlessMode: {IsEndlessMode}");
-        
         StartCoroutine(ApplySettingsDelayed());
     }
     
@@ -131,8 +128,6 @@ public class EndlessModeManager : MonoBehaviour
         
         if (endingTrigger == null)
         {
-            if (debugMode)
-                Debug.Log("[EndlessModeManager] EndingCutsceneTrigger not found in scene");
             return;
         }
         
@@ -140,17 +135,11 @@ public class EndlessModeManager : MonoBehaviour
         {
             // Set to endless mode scene name
             endingTrigger.snakeSceneName = configuredEndlessSceneName ?? "";
-            
-            if (debugMode)
-                Debug.Log($"[EndlessModeManager] Endless mode applied - Scene set to: '{configuredEndlessSceneName}'");
         }
         else
         {
             // Set to regular mode scene name
             endingTrigger.snakeSceneName = configuredRegularSceneName ?? "Snake";
-            
-            if (debugMode)
-                Debug.Log($"[EndlessModeManager] Regular mode applied - Scene set to: '{configuredRegularSceneName}'");
         }
     }
     
@@ -161,9 +150,6 @@ public class EndlessModeManager : MonoBehaviour
     public void SetRegularMode()
     {
         IsEndlessMode = false;
-        
-        if (debugMode)
-            Debug.Log("[EndlessModeManager] Regular mode set");
         
         ApplyEndingCutsceneSettings();
     }
@@ -177,9 +163,6 @@ public class EndlessModeManager : MonoBehaviour
         if (confirmationPanel != null)
         {
             confirmationPanel.SetActive(true);
-            
-            if (debugMode)
-                Debug.Log("[EndlessModeManager] Showing confirmation panel");
         }
         else
         {
@@ -207,9 +190,6 @@ public class EndlessModeManager : MonoBehaviour
         HideConfirmationPanel();
         
         IsEndlessMode = true;
-        
-        // Always log this for debugging
-        Debug.Log($"[EndlessModeManager] Endless mode confirmed - IsEndlessMode is now: {IsEndlessMode}");
         
         ApplyEndingCutsceneSettings();
         

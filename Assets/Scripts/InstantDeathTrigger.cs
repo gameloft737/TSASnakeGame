@@ -73,14 +73,12 @@ public class InstantDeathTrigger : MonoBehaviour
     {
         // Grant immunity when snake dies
         GrantImmunity(postDeathImmunityDuration);
-        Debug.Log($"[InstantDeathTrigger] Death immunity granted for {postDeathImmunityDuration}s");
     }
     
     private void OnWaveStarted(int waveIndex)
     {
         // Grant immunity when wave starts (after respawn)
         GrantImmunity(postRespawnImmunityDuration);
-        Debug.Log($"[InstantDeathTrigger] Respawn immunity granted for {postRespawnImmunityDuration}s");
     }
 
     private void FixedUpdate()
@@ -97,12 +95,14 @@ public class InstantDeathTrigger : MonoBehaviour
                 {
                     hasImmunity = false;
                     immunityTimer = 0f;
-                    Debug.Log("[InstantDeathTrigger] Immunity expired");
+                    #if UNITY_EDITOR
+                    #endif
                 }
                 else
                 {
                     // Still hitting snake, keep immunity until they move away
-                    Debug.Log("[InstantDeathTrigger] Immunity duration reached but still hitting snake");
+                    #if UNITY_EDITOR
+                    #endif
                 }
             }
             
@@ -142,8 +142,6 @@ public class InstantDeathTrigger : MonoBehaviour
     
     private void TriggerDeath(Vector3 hitPoint)
     {
-        Debug.Log("[InstantDeathTrigger] Triggering instant death!");
-        
         if (particlePrefab != null)
         {
             Vector3 spawnPosition = hitPoint + particleOffset;

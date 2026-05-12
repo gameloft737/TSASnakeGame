@@ -361,20 +361,94 @@ public void SetCameraRotation(Transform targetCamera, bool movePlayer = false)
         {
             // Move the player object to cutscene camera position
             Vector3 offset = playerCamera.position - transform.position; // camera offset from player
-            transform.position = targetCamera.position - offset; 
+            transform.position = targetCamera.position - offset;
         }
 
-        // Match rotation
-        transform.rotation = Quaternion.Euler(0f, targetCamera.eulerAngles.y, 0f);
+        // Decompose the target camera's world rotation into yaw (Y) and pitch (X) using the
+        // forward vector directly. This is immune to the two failure modes of eulerAngles:
+        //   1. eulerAngles returns values in [0, 360), so a pitch of -10 comes back as 350,
+        //      which would be clamped to 90 by Update() and cause a full 100 degree whip-pan.
+        //   2. eulerAngles can produce discontinuous yaw/pitch/roll decompositions near gimbal
+        //      lock (looking straight up/down), with different valid solutions from frame to
+        //      frame. Using the forward vector guarantees a single stable decomposition for
+        //      any rotation that isn't exactly straight up or down.
+        Vector3 fwd = targetCamera.forward;
 
-        // Update internal rotation values
-        rotX = targetCamera.eulerAngles.y;
-        rotY = targetCamera.eulerAngles.x;
+        // Pitch = angle between forward and the horizontal plane. Positive when looking down
+        // (matches this controller's convention where rotY increases when you look down, see
+        // the `rotY -= mouseY` line in Update when invertY is false -> mouseY up gives rotY
+        // decrease -> looking up). asin returns [-pi/2, pi/2] so pitch is already in [-90, 90].
+        float pitch = -Mathf.Asin(Mathf.Clamp(fwd.y, -1f, 1f)) * Mathf.Rad2Deg;
+        // Wait - sign depends on this controller's convention. In Update:
+        //   rotY -= mouseY   (invertY == false)
+        //   playerCamera.localRotation = Quaternion.Euler(yVelocity - currentTiltAngle, 0, 0)
+        // So rotY=0 is looking forward, rotY=-90 is looking up (forward.y=1), rotY=+90 is
+        // looking down (forward.y=-1). Therefore pitch = -asin(fwd.y) in degrees.
+        // (The line above already implements that - keeping the comment for clarity.)
+
+        // Yaw = angle of the forward vector projected onto the XZ plane. atan2 returns the
+        // correct value in (-180, 180] with no wraparound.
+        float yaw;
+        Vector3 flat = new Vector3(fwd.x, 0f, fwd.z);
+        if (flat.sqrMagnitude < 1e-6f)
+        {
+            // Forward is pointing straight up or down (gimbal lock on yaw). Fall back to the
+            // up/down vector to derive a stable yaw so we don't produce NaN.
+            Vector3 up = targetCamera.up;
+            if (fwd.y > 0f) up = -up; // when looking straight up, project camera's up (which now points "back") onto horizontal
+            yaw = Mathf.Atan2(up.x, up.z) * Mathf.Rad2Deg;
+        }
+        else
+        {
+            yaw = Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg;
+        }
+
+        pitch = Mathf.Clamp(pitch, -90f, 90f);
+
+        // Match rotation on the player root (yaw only)
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+        // Update internal rotation values so Update()'s Lerp doesn't interpolate from stale
+        // values (which would also produce a visible drift/jitter).
+        rotX = yaw;
+        rotY = pitch;
         xVelocity = rotX;
         yVelocity = rotY;
 
         // Immediately apply rotation to camera
         playerCamera.localRotation = Quaternion.Euler(rotY, 0f, 0f);
+    }
+
+    /// <summary>
+    /// Resets transient camera state (head bob, recoil, FOV, slide tilt) so that the
+    /// first rendered frame after a hard teleport / camera swap is stable. Without
+    /// this, HandleHeadBob lerps cameraParent.localPosition.y from whatever stale
+    /// value it had before the cutscene towards the rest height over many frames,
+    /// producing a visible vertical drift that reads as "jitter".
+    /// </summary>
+    public void ResetCameraTransientState()
+    {
+        // Reset head bob / recoil state
+        bobTimer = 0f;
+        currentBobOffset = 0f;
+        currentCameraHeight = originalCameraParentHeight;
+        recoil = Vector3.zero;
+        currentTiltAngle = 0f;
+        tiltVelocity = 0f;
+
+        // Reset FOV to the idle value so HandleMovement's SmoothDamp doesn't crawl
+        // it up/down from the sprint/slide values on the first frame.
+        currentFov = normalFov;
+        fovVelocity = 0f;
+        if (cam != null) cam.fieldOfView = currentFov;
+
+        // Snap cameraParent back to its rest pose immediately.
+        if (cameraParent != null)
+        {
+            Vector3 lp = cameraParent.localPosition;
+            cameraParent.localPosition = new Vector3(lp.x, originalCameraParentHeight, lp.z);
+            cameraParent.localRotation = Quaternion.identity;
+        }
     }
     
     /// <summary>

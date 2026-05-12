@@ -43,6 +43,11 @@ public class ForceFieldAbility : BaseAbility
     private HashSet<AppleEnemy> enemiesInField = new HashSet<AppleEnemy>();
     private List<AppleEnemy> enemiesToRemove = new List<AppleEnemy>();
     private List<LineRenderer> circleLineRenderers = new List<LineRenderer>();
+    // Cached positions buffer to avoid allocating a new Vector3[] per circle per frame.
+    private Vector3[] _cachedCirclePositions;
+    // Throttle enemy scanning to damage interval rather than running every frame.
+    private float _findEnemiesTimer = 0f;
+    private static readonly int _EmissionColorId = Shader.PropertyToID("_EmissionColor");
     private Material emissiveMaterial;
     private Material baseCircleMaterial;
 
@@ -88,7 +93,8 @@ public class ForceFieldAbility : BaseAbility
 
         CreateForceFieldVisual();
         SoundManager.Play("ForceField", gameObject);
-        Debug.Log($"ForceFieldAbility: Activated at level {currentLevel} with radius {GetRadius()}");
+        #if UNITY_EDITOR
+        #endif
     }
 
     protected override void Update()
@@ -98,10 +104,18 @@ public class ForceFieldAbility : BaseAbility
         if (!isActive || isFrozen) return;
 
         UpdateVisualPosition();
-        FindEnemiesInField();
 
         damageTimer += Time.deltaTime;
+        _findEnemiesTimer += Time.deltaTime;
         float currentInterval = GetDamageInterval();
+
+        // Only scan for enemies when we're about to apply damage (not every frame).
+        // This is a huge WebGL win: FindEnemiesInField iterates ALL active enemies.
+        if (_findEnemiesTimer >= currentInterval)
+        {
+            FindEnemiesInField();
+            _findEnemiesTimer = 0f;
+        }
 
         if (damageTimer >= currentInterval)
         {
@@ -362,10 +376,16 @@ public class ForceFieldAbility : BaseAbility
             float circleRadius = radius * ((float)(i + 1) / numberOfCircles);
 
             int segments = lineRenderer.positionCount;
-            Vector3[] positions = new Vector3[segments];
+            // Reuse cached buffer; only reallocate when segment count changes.
+            if (_cachedCirclePositions == null || _cachedCirclePositions.Length != segments)
+            {
+                _cachedCirclePositions = new Vector3[segments];
+            }
+            Vector3[] positions = _cachedCirclePositions;
+            float invSeg = 1f / segments;
             for (int j = 0; j < segments; j++)
             {
-                float angle = (float)j / segments * Mathf.PI * 2f;
+                float angle = j * invSeg * Mathf.PI * 2f;
                 float x = Mathf.Cos(angle) * circleRadius;
                 float y = Mathf.Sin(angle) * circleRadius;
                 positions[j] = new Vector3(x, y, 0f);
@@ -401,11 +421,11 @@ public class ForceFieldAbility : BaseAbility
             forceFieldVisual.transform.localRotation = Quaternion.Euler(90f, rotationAngle, 0f);
 
             // Pulse the emission intensity in sync with the size pulse
-            if (emissiveMaterial != null && emissiveMaterial.HasProperty("_EmissionColor"))
+            if (emissiveMaterial != null && emissiveMaterial.HasProperty(_EmissionColorId))
             {
                 // Use the same pulse value for emission to keep everything synchronized
                 Color emissionColor = forceFieldColor * emissionIntensity * pulse;
-                emissiveMaterial.SetColor("_EmissionColor", emissionColor);
+                emissiveMaterial.SetColor(_EmissionColorId, emissionColor);
             }
 
             yield return null;
@@ -534,7 +554,6 @@ public class ForceFieldAbility : BaseAbility
 
         if (enemiesHit > 0)
         {
-            Debug.Log($"ForceFieldAbility: Dealt {currentDamage:F1} damage to {enemiesHit} enemies!");
         }
     }
 
@@ -584,7 +603,6 @@ public class ForceFieldAbility : BaseAbility
     {
         base.OnLevelUp();
         UpdateVisualScale();
-        Debug.Log($"ForceFieldAbility: Level {currentLevel} - Radius: {GetRadius():F1}, Damage: {GetFieldDamage():F0}, Interval: {GetDamageInterval():F2}s");
     }
 
     protected override void DeactivateAbility()

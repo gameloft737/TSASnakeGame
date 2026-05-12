@@ -354,7 +354,6 @@ public class HomingProjectileAttack : Attack
     
     protected override void OnUpgrade()
     {
-        Debug.Log($"Homing Projectile upgraded! Count: {GetProjectileCount()}, Speed: {GetProjectileSpeed():F1}, Homing: {GetHomingStrength():F1}, Explosion: {IsExplosionEnabled()}");
     }
     
     // Explosion stat getters
@@ -570,7 +569,6 @@ public class HomingProjectile : MonoBehaviour
         if (enemy != null)
         {
             enemy.TakeDamage(damage);
-            Debug.Log($"Homing projectile hit {enemy.name} for {damage} damage!");
             
             // Create explosion if enabled
             if (explosionEnabled)
@@ -626,7 +624,6 @@ public class HomingProjectile : MonoBehaviour
                 
                 nearbyEnemy.TakeDamage(finalDamage);
                 #if UNITY_EDITOR
-                Debug.Log($"Explosion hit {nearbyEnemy.name} for {finalDamage:F1} damage!");
                 #endif
             }
         }

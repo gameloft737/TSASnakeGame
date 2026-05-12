@@ -57,8 +57,6 @@ public class HealthBoostAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddMaxHealthPercentBonus(currentBonus);
-        
-        Debug.Log($"HealthBoostAbility: Applied +{currentBonus * 100:F0}% max health (Level {currentLevel})");
     }
     
     private void RemoveBonus()

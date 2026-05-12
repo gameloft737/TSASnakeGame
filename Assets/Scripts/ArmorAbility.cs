@@ -55,8 +55,6 @@ public class ArmorAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddDamageReduction(currentBonus);
-        
-        Debug.Log($"ArmorAbility: Applied +{currentBonus * 100:F0}% damage reduction (Level {currentLevel})");
     }
     
     private void RemoveBonus()

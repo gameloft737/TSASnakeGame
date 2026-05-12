@@ -105,7 +105,6 @@ public class DropManager : MonoBehaviour
         activeDrops.Clear();
         
         #if UNITY_EDITOR
-        Debug.Log("[DropManager] Cleared all ability drops");
         #endif
     }
 
@@ -138,7 +137,6 @@ public class DropManager : MonoBehaviour
         if (!CanSpawnDrop())
         {
             #if UNITY_EDITOR
-            Debug.Log($"[DropManager] Cannot spawn drop - maximum of {maxDrops} drops already active ({GetActiveDropCount()})");
             #endif
             return;
         }
@@ -161,7 +159,6 @@ public class DropManager : MonoBehaviour
         {
             activeDrops.Add(dropScript);
             #if UNITY_EDITOR
-            Debug.Log($"[DropManager] Spawned drop. Active drops: {activeDrops.Count}/{maxDrops}");
             #endif
         }
     }
@@ -240,7 +237,6 @@ public class DropManager : MonoBehaviour
         }
         
         #if UNITY_EDITOR
-        Debug.Log($"Cached {dropPoints.Count} drop points from {dropPointsContainer.name}");
         #endif
     }
     

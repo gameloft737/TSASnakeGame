@@ -97,7 +97,6 @@ public class SnakeScenePauseManager : MonoBehaviour
         {
             // Ensure it renders on top of everything
             pauseMenuCanvas.sortingOrder = 100;
-            Debug.Log($"[SnakeScenePauseManager] Canvas found: {pauseMenuCanvas.name}, sortingOrder set to {pauseMenuCanvas.sortingOrder}");
         }
         else if (pauseMenuPanel != null)
         {
@@ -208,8 +207,6 @@ public class SnakeScenePauseManager : MonoBehaviour
                 canvasGroup.interactable = true;
                 canvasGroup.blocksRaycasts = true;
             }
-            
-            Debug.Log($"[SnakeScenePauseManager] Pause menu activated. Active: {pauseMenuPanel.activeSelf}, ActiveInHierarchy: {pauseMenuPanel.activeInHierarchy}");
         }
         else
         {
@@ -270,8 +267,6 @@ public class SnakeScenePauseManager : MonoBehaviour
             if (enemy != null)
                 enemy.SetFrozen(true);
         }
-        
-        Debug.Log("[SnakeScenePauseManager] Game paused");
     }
     
     /// <summary>
@@ -332,8 +327,6 @@ public class SnakeScenePauseManager : MonoBehaviour
             if (enemy != null)
                 enemy.SetFrozen(false);
         }
-        
-        Debug.Log("[SnakeScenePauseManager] Game resumed");
     }
     
     /// <summary>

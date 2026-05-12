@@ -285,7 +285,6 @@ public abstract class Attack : MonoBehaviour
             }
         }
         
-        Debug.Log($"{attackName} upgraded to level {currentLevel}!");
         return true;
     }
     
@@ -295,7 +294,6 @@ public abstract class Attack : MonoBehaviour
     protected virtual void OnEvolutionReached()
     {
         hasAppliedEvolutionVisuals = true;
-        Debug.Log($"{attackName} evolved to level {currentLevel}!");
     }
     
     /// <summary>

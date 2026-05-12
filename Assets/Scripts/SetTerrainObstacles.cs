@@ -5,80 +5,132 @@ using UnityEngine.AI;
 
 public class SetTerrainObstacles : MonoBehaviour
 {
-    // Start is called before the first frame update
+    // Per-prototype collider cache so we don't call GetComponent<Collider>() (and
+    // its subtype lookups) for every tree when there can be hundreds/thousands of
+    // trees. Also spreads obstacle creation across frames on WebGL to avoid
+    // multi-second main-thread stalls at scene start.
+    [Header("WebGL Optimization")]
+    [Tooltip("If true, obstacle creation is spread across multiple frames to avoid a long stall on startup.")]
+    [SerializeField] private bool spreadOverFrames = true;
+    [Tooltip("How many obstacles to create per frame when spreading.")]
+    [SerializeField] private int obstaclesPerFrame = 64;
+
     TreeInstance[] Obstacle;
     Terrain terrain;
     float width;
     float lenght;
     float hight;
     bool isError;
+
     void Start()
     {
         terrain = Terrain.activeTerrain;
+        if (terrain == null) return;
+
         Obstacle = terrain.terrainData.treeInstances;
 
         lenght = terrain.terrainData.size.z;
         width = terrain.terrainData.size.x;
         hight = terrain.terrainData.size.y;
-        Debug.Log("Terrain Size is :" + width + " , " + hight + " , " + lenght);
 
-        int i = 0;
-        GameObject parent = new GameObject("Tree_Obstacles");
-
-        Debug.Log("Adding " + Obstacle.Length + " navMeshObstacle Components for Trees");
-        foreach (TreeInstance tree in Obstacle)
+        if (spreadOverFrames && Obstacle != null && Obstacle.Length > obstaclesPerFrame)
         {
-            Vector3 worldPosition = Vector3.Scale(tree.position, terrain.terrainData.size) + terrain.transform.position;
-            Quaternion tempRot = Quaternion.AngleAxis(tree.rotation * Mathf.Rad2Deg, Vector3.up);
-
-            GameObject obs = new GameObject("Obstacle" + i);
-            obs.transform.SetParent(parent.transform);
-            obs.transform.position = worldPosition; // Use the adjusted world position
-            obs.transform.rotation = tempRot;
-
-            obs.AddComponent<NavMeshObstacle>();
-            NavMeshObstacle obsElement = obs.GetComponent<NavMeshObstacle>();
-            obsElement.carving = true;
-            obsElement.carveOnlyStationary = true;
-
-            if (terrain.terrainData.treePrototypes[tree.prototypeIndex].prefab.GetComponent<Collider>() == null)
-            {
-                isError = true;
-                Debug.LogError("ERROR  There is no CapsuleCollider or BoxCollider attached to ''" + terrain.terrainData.treePrototypes[tree.prototypeIndex].prefab.name + "'' please add one of them.");
-                break;
-            }
-            Collider coll = terrain.terrainData.treePrototypes[tree.prototypeIndex].prefab.GetComponent<Collider>();
-            if (coll.GetType() == typeof(CapsuleCollider) || coll.GetType() == typeof(BoxCollider))
-            {
-
-                if (coll.GetType() == typeof(CapsuleCollider))
-                {
-                    CapsuleCollider capsuleColl = terrain.terrainData.treePrototypes[tree.prototypeIndex].prefab.GetComponent<CapsuleCollider>();
-                    obsElement.shape = NavMeshObstacleShape.Capsule;
-                    obsElement.center = capsuleColl.center;
-                    obsElement.radius = capsuleColl.radius;
-                    obsElement.height = capsuleColl.height;
-
-                }
-                else if (coll.GetType() == typeof(BoxCollider))
-                {
-                    BoxCollider boxColl = terrain.terrainData.treePrototypes[tree.prototypeIndex].prefab.GetComponent<BoxCollider>();
-                    obsElement.shape = NavMeshObstacleShape.Box;
-                    obsElement.center = boxColl.center;
-                    obsElement.size = boxColl.size;
-                }
-
-            }
-            else
-            {
-                isError = true;
-                Debug.LogError("ERROR  There is no CapsuleCollider or BoxCollider attached to ''" + terrain.terrainData.treePrototypes[tree.prototypeIndex].prefab.name + "'' please add one of them.");
-                break;
-            }
-
-
-            i++;
+            StartCoroutine(BuildObstaclesSpread());
         }
-        if (!isError) Debug.Log("All " + Obstacle.Length + " NavMeshObstacles were succesfully added to your Scene, Horray !");
+        else
+        {
+            BuildObstaclesImmediate();
+        }
+    }
+
+    private void BuildObstaclesImmediate()
+    {
+        GameObject parent = new GameObject("Tree_Obstacles");
+        var colliderCache = new Dictionary<int, Collider>();
+
+        for (int i = 0; i < Obstacle.Length; i++)
+        {
+            if (!CreateObstacle(i, parent.transform, colliderCache)) break;
+        }
+    }
+
+    private IEnumerator BuildObstaclesSpread()
+    {
+        GameObject parent = new GameObject("Tree_Obstacles");
+        var colliderCache = new Dictionary<int, Collider>();
+
+        int created = 0;
+        for (int i = 0; i < Obstacle.Length; i++)
+        {
+            if (!CreateObstacle(i, parent.transform, colliderCache)) break;
+            created++;
+            if (created >= obstaclesPerFrame)
+            {
+                created = 0;
+                yield return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Creates a single obstacle. Returns false on a fatal error so the caller
+    /// can break out.
+    /// </summary>
+    private bool CreateObstacle(int i, Transform parent, Dictionary<int, Collider> colliderCache)
+    {
+        TreeInstance tree = Obstacle[i];
+
+        Vector3 worldPosition = Vector3.Scale(tree.position, terrain.terrainData.size) + terrain.transform.position;
+        Quaternion tempRot = Quaternion.AngleAxis(tree.rotation * Mathf.Rad2Deg, Vector3.up);
+
+        GameObject obs = new GameObject("Obstacle" + i);
+        obs.transform.SetParent(parent);
+        obs.transform.position = worldPosition;
+        obs.transform.rotation = tempRot;
+
+        NavMeshObstacle obsElement = obs.AddComponent<NavMeshObstacle>();
+        obsElement.carving = true;
+        obsElement.carveOnlyStationary = true;
+
+        int protoIdx = tree.prototypeIndex;
+        if (!colliderCache.TryGetValue(protoIdx, out Collider coll))
+        {
+            var prefab = terrain.terrainData.treePrototypes[protoIdx].prefab;
+            coll = prefab != null ? prefab.GetComponent<Collider>() : null;
+            colliderCache[protoIdx] = coll;
+        }
+
+        if (coll == null)
+        {
+            isError = true;
+            #if UNITY_EDITOR
+            Debug.LogError("ERROR No CapsuleCollider or BoxCollider on tree prototype " + protoIdx);
+            #endif
+            return false;
+        }
+
+        if (coll is CapsuleCollider capsuleColl)
+        {
+            obsElement.shape = NavMeshObstacleShape.Capsule;
+            obsElement.center = capsuleColl.center;
+            obsElement.radius = capsuleColl.radius;
+            obsElement.height = capsuleColl.height;
+        }
+        else if (coll is BoxCollider boxColl)
+        {
+            obsElement.shape = NavMeshObstacleShape.Box;
+            obsElement.center = boxColl.center;
+            obsElement.size = boxColl.size;
+        }
+        else
+        {
+            isError = true;
+            #if UNITY_EDITOR
+            Debug.LogError("ERROR Unsupported collider type on tree prototype " + protoIdx);
+            #endif
+            return false;
+        }
+
+        return true;
     }
 }

@@ -171,8 +171,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
 
     private IEnumerator EndingCutsceneSequence()
     {
-        Debug.Log("EndingCutsceneTrigger: Starting ending cutscene sequence");
-
         // Play ending audio if assigned
         if (endingAudioSource != null && endingAudioClip != null)
         {
@@ -206,8 +204,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
 
     private void DisablePlayerControl()
     {
-        Debug.Log("EndingCutsceneTrigger: Disabling player control");
-
         // Disable FPS controller movement and look
         if (fpsControllerScript != null)
         {
@@ -234,8 +230,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
 
     private IEnumerator LookAtTargetAndAnimateFOVWithFade()
     {
-        Debug.Log("EndingCutsceneTrigger: Starting look at target and FOV animation with fade");
-
         fadeStarted = false;
         
         if (fpsCamera == null)
@@ -259,8 +253,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
         float totalDuration = GetTotalFOVDuration();
         float fadeStartTime = Mathf.Max(0, totalDuration - fadeStartOffset);
         float elapsedTotal = 0f;
-        
-        Debug.Log($"EndingCutsceneTrigger: Total FOV duration: {totalDuration}s, Fade starts at: {fadeStartTime}s");
 
         // Animate through each keyframe
         for (int i = 0; i < fovKeyframes.Count - 1; i++)
@@ -272,8 +264,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
             float endFOV = toKeyframe.fov;
             float duration = toKeyframe.duration;
             AnimationCurve curve = toKeyframe.easingCurve;
-            
-            Debug.Log($"EndingCutsceneTrigger: FOV transition {i + 1}/{fovKeyframes.Count - 1}: {startFOV} -> {endFOV} over {duration}s");
             
             if (duration <= 0)
             {
@@ -297,7 +287,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
                 {
                     fadeStarted = true;
                     StartCoroutine(FadeToWhite());
-                    Debug.Log($"EndingCutsceneTrigger: Starting fade at {elapsedTotal}s (offset: {fadeStartOffset}s before end)");
                 }
 
                 // Animate FOV using the keyframe's easing curve
@@ -326,8 +315,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
             fadeStarted = true;
             StartCoroutine(FadeToWhite());
         }
-
-        Debug.Log("EndingCutsceneTrigger: Look at and FOV animation complete");
     }
 
     private void UpdateLookAtTarget(Transform cameraTransform, Transform playerBody)
@@ -391,7 +378,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
 
     private IEnumerator FadeToWhite()
     {
-        Debug.Log("EndingCutsceneTrigger: Starting fade to white");
         isFading = true;
 
         if (fadeImage == null)
@@ -418,15 +404,11 @@ public class EndingCutsceneTrigger : MonoBehaviour
         // Ensure fully opaque at the end
         fadeImage.color = new Color(fadeColor.r, fadeColor.g, fadeColor.b, 1f);
 
-        Debug.Log("EndingCutsceneTrigger: Fade to white complete");
         isFading = false;
     }
 
     private void LoadSnakeScene()
     {
-        // Always log the current state for debugging
-        Debug.Log($"EndingCutsceneTrigger: LoadSnakeScene called - EndlessModeManager.IsEndlessMode = {EndlessModeManager.IsEndlessMode}");
-        
         // Determine which scene to load based on mode
         string sceneToLoad;
         
@@ -434,7 +416,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
         {
             // Endless mode - load SnakeEndless scene
             sceneToLoad = "SnakeEndless";
-            Debug.Log($"EndingCutsceneTrigger: Endless mode active - loading '{sceneToLoad}'");
         }
         else
         {
@@ -446,7 +427,6 @@ public class EndingCutsceneTrigger : MonoBehaviour
             {
                 sceneToLoad = "Snake";
             }
-            Debug.Log($"EndingCutsceneTrigger: Regular mode - loading '{sceneToLoad}'");
         }
 
         if (!string.IsNullOrEmpty(sceneToLoad))

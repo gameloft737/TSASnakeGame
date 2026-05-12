@@ -19,8 +19,6 @@ public class GoopParticleCollision : MonoBehaviour
         ps = GetComponent<ParticleSystem>();
         collisionEvents = new List<ParticleCollisionEvent>();
         
-        Debug.Log("GoopParticleCollision: Initializing on " + gameObject.name);
-        
         // Ensure collision is enabled
         var collision = ps.collision;
         collision.enabled = true;

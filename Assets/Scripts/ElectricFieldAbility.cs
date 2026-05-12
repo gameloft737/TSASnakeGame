@@ -107,7 +107,6 @@ public class ElectricFieldAbility : BaseAbility
 
         CreateFieldVisuals();
         hasInitialized = true;
-        Debug.Log($"ElectricFieldAbility: Initialized at level {currentLevel} with radius {GetFieldRadius()}");
     }
 
     private void CreateFieldVisuals()
@@ -224,7 +223,8 @@ public class ElectricFieldAbility : BaseAbility
         
         if (shockedEnemies.Count > 0)
         {
-            Debug.Log($"ElectricFieldAbility: Shocked {shockedEnemies.Count} enemies for {damage} damage!");
+            #if UNITY_EDITOR
+            #endif
         }
     }
 
@@ -276,8 +276,6 @@ public class ElectricFieldAbility : BaseAbility
         
         // Recreate visuals with new settings
         CreateFieldVisuals();
-        
-        Debug.Log($"ElectricFieldAbility: Level {currentLevel} - Radius: {GetFieldRadius():F1}, Damage: {GetShockDamage():F0}, Interval: {GetShockInterval():F2}s");
     }
 
     private void ClearFieldVisuals()

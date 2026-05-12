@@ -36,6 +36,13 @@ public class SnakeHealth : MonoBehaviour
     public UnityEvent<float, float> onHealthChanged;
     public UnityEvent onDeath;
     
+    [Header("Death Sound")]
+    [Tooltip("Drag the death audio clip here directly (plays reliably without depending on SoundManager name lookup)")]
+    [SerializeField] private AudioClip deathSound;
+    [Tooltip("Volume for the death sound (0-1)")]
+    [Range(0f, 1f)]
+    [SerializeField] private float deathSoundVolume = 1f;
+    
     private bool isDead = false;
     private Coroutine autoHealCoroutine;
     
@@ -118,7 +125,8 @@ public class SnakeHealth : MonoBehaviour
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
         
-        Debug.Log($"Snake took {damage:F1} damage! Health: {currentHealth:F1}/{maxHealth}");
+        #if UNITY_EDITOR
+        #endif
         
         lastDamageTime = Time.time;
         
@@ -144,7 +152,8 @@ public class SnakeHealth : MonoBehaviour
         currentHealth += amount;
         currentHealth = Mathf.Min(maxHealth, currentHealth);
         
-        Debug.Log($"Snake healed {amount:F1}! Health: {currentHealth:F1}/{maxHealth}");
+        #if UNITY_EDITOR
+        #endif
         
         lastDamageTime = Time.time;
         
@@ -220,7 +229,6 @@ public class SnakeHealth : MonoBehaviour
         if (isDead) return;
         
         isDead = true;
-        Debug.Log("Snake died!");
         
         // Reset level timer
         if (LevelUIManager.Instance != null)
@@ -228,8 +236,20 @@ public class SnakeHealth : MonoBehaviour
             LevelUIManager.Instance.ResetTimerForCurrentLevel();
         }
         
-        // Play death sound
-        SoundManager.Play("Death", gameObject);
+        // Play death sound. Prefer the directly-assigned AudioClip (drag-in)
+        // so it plays reliably even if the SoundManager registration is missing
+        // and even though ShowDeathScreen deactivates the snake moments later.
+        // AudioSource.PlayClipAtPoint creates its own temporary, top-level
+        // GameObject that survives the snake being disabled.
+        if (deathSound != null)
+        {
+            AudioSource.PlayClipAtPoint(deathSound, transform.position, deathSoundVolume);
+        }
+        else
+        {
+            // Fallback: try the named sound from SoundManager
+            SoundManager.PlayAtPoint("Death", transform.position);
+        }
         
         // Immediately stop player movement and pause attacks
         StopPlayerAndAttacks();
@@ -251,7 +271,6 @@ public class SnakeHealth : MonoBehaviour
                 // Create a new DeathScreenManager
                 GameObject deathManagerObj = new GameObject("DeathScreenManager");
                 deathScreenManager = deathManagerObj.AddComponent<DeathScreenManager>();
-                Debug.Log("[SnakeHealth] Created DeathScreenManager automatically");
             }
             
             deathScreenManager.ShowDeathScreen();
@@ -267,7 +286,6 @@ public class SnakeHealth : MonoBehaviour
         currentHealth = maxHealth;
         isDead = false;
         onHealthChanged?.Invoke(currentHealth, maxHealth);
-        Debug.Log("[SnakeHealth] Health reset to full");
     }
     
     public float GetHealthPercentage()
@@ -296,7 +314,6 @@ public class SnakeHealth : MonoBehaviour
     public void SetInvincible(bool invincible)
     {
         isInvincible = invincible;
-        Debug.Log($"[SnakeHealth] Invincibility set to: {invincible}");
     }
     
     /// <summary>

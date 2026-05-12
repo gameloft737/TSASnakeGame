@@ -38,6 +38,12 @@ public class IntroCutsceneManager : MonoBehaviour
     [Header("Audio")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip cutsceneMusic;
+    [Tooltip("Optional dedicated AudioSource for subtitle voicelines. If not assigned, voicelines play via PlayOneShot on 'audioSource' (music continues).")]
+    [SerializeField] private AudioSource voicelineAudioSource;
+    [Tooltip("If true, waits for the currently-playing voiceline to finish before loading the next scene. Prevents voicelines from being cut off by scene transitions.")]
+    [SerializeField] private bool waitForVoicelineBeforeSceneLoad = true;
+    [Tooltip("Max seconds to wait for a voiceline to finish before giving up and loading the next scene anyway (safety cap).")]
+    [SerializeField] private float maxVoicelineWaitSeconds = 30f;
     
     [Header("Debug")]
     [SerializeField] private bool debugMode = false;
@@ -45,6 +51,8 @@ public class IntroCutsceneManager : MonoBehaviour
     private bool isPlaying = false;
     private Coroutine cutsceneCoroutine;
     private bool subtitlesComplete = false;
+    // Tracks when the currently-playing voiceline will finish so we can wait it out before scene transitions.
+    private float voicelineEndTime = 0f;
     
     public event Action OnCutsceneStarted;
     public event Action OnCutsceneEnded;
@@ -79,7 +87,6 @@ public class IntroCutsceneManager : MonoBehaviour
     public void StartCutscene()
     {
         if (isPlaying) return;
-        if (debugMode) Debug.Log("[IntroCutsceneManager] Starting cutscene");
         isPlaying = true;
         HideCursor();
         OnCutsceneStarted?.Invoke();
@@ -144,11 +151,72 @@ public class IntroCutsceneManager : MonoBehaviour
         {
             if (entry.startTime > 0) yield return new WaitForSeconds(entry.startTime);
             ShowSubtitle(entry.text);
+            PlayVoiceline(entry.voiceline, entry.voicelineVolume);
             yield return new WaitForSeconds(entry.duration);
             HideSubtitle();
             if (entry.gapAfter > 0) yield return new WaitForSeconds(entry.gapAfter);
         }
+        
+        // Don't mark subtitles complete until the final voiceline has finished playing,
+        // so the cutscene doesn't fade/transition out and cut the voiceline off.
+        if (waitForVoicelineBeforeSceneLoad)
+        {
+            yield return WaitForVoicelineToFinish();
+        }
+        
         subtitlesComplete = true;
+    }
+    
+    /// <summary>
+    /// Yields until the currently-tracked voiceline has finished, capped by
+    /// <see cref="maxVoicelineWaitSeconds"/> as a safety net.
+    /// </summary>
+    private IEnumerator WaitForVoicelineToFinish()
+    {
+        float cap = Time.time + Mathf.Max(0f, maxVoicelineWaitSeconds);
+        while (Time.time < voicelineEndTime && Time.time < cap)
+        {
+            yield return null;
+        }
+    }
+    
+    private void PlayVoiceline(AudioClip clip, float volume)
+    {
+        if (clip == null)
+        {
+            return;
+        }
+        float vol = Mathf.Clamp01(volume);
+        
+        // Use PlayOneShot so voicelines layer and finish naturally instead of
+        // cutting each other off when subtitles change rapidly.
+        if (voicelineAudioSource != null)
+        {
+            // Ensure the base volume is 1 so PlayOneShot volume is applied directly
+            if (voicelineAudioSource.volume <= 0.001f) voicelineAudioSource.volume = 1f;
+            voicelineAudioSource.PlayOneShot(clip, vol);
+        }
+        else if (audioSource != null)
+        {
+            // Layer on top of cutscene music without stopping it
+            audioSource.PlayOneShot(clip, vol);
+        }
+        else
+        {
+            // Neither AudioSource was assigned in the Inspector - create a dedicated one on this GameObject.
+            voicelineAudioSource = gameObject.AddComponent<AudioSource>();
+            voicelineAudioSource.playOnAwake = false;
+            voicelineAudioSource.loop = false;
+            voicelineAudioSource.spatialBlend = 0f; // 2D
+            voicelineAudioSource.volume = 1f;
+            voicelineAudioSource.PlayOneShot(clip, vol);
+            Debug.LogWarning($"[IntroCutsceneManager] No AudioSource assigned in Inspector - auto-created one to play voiceline '{clip.name}'. Assign 'voicelineAudioSource' or 'audioSource' to silence this warning.");
+        }
+        
+        // Track when this voiceline should finish so scene transitions can wait for it.
+        // Extend (not overwrite) in case an earlier longer voiceline is still playing.
+        float clipEnd = Time.time + clip.length;
+        if (clipEnd > voicelineEndTime) voicelineEndTime = clipEnd;
     }
     
     private void ShowSubtitle(string text)
@@ -180,7 +248,6 @@ public class IntroCutsceneManager : MonoBehaviour
     private void LoadNextScene()
     {
         if (string.IsNullOrEmpty(nextSceneName)) { Debug.LogWarning("[IntroCutsceneManager] No next scene specified!"); return; }
-        if (debugMode) Debug.Log($"[IntroCutsceneManager] Loading scene: {nextSceneName}");
         
         #if UNITY_EDITOR
         // Deselect all objects to prevent Editor inspector errors during scene transition
@@ -217,6 +284,11 @@ public class SubtitleEntry
     public float startTime = 0f;
     public float duration = 3f;
     public float gapAfter = 0.5f;
+    [Tooltip("Optional voiceline AudioClip to play when this subtitle appears.")]
+    public AudioClip voiceline;
+    [Tooltip("Volume for the voiceline (0-1).")]
+    [Range(0f, 1f)]
+    public float voicelineVolume = 1f;
 }
 
 #if UNITY_EDITOR

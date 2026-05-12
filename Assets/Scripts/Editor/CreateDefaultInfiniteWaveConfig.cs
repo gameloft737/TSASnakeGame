@@ -130,14 +130,6 @@ public class CreateDefaultInfiniteWaveConfig : MonoBehaviour
         // Select the created asset
         Selection.activeObject = config;
         EditorGUIUtility.PingObject(config);
-        
-        Debug.Log($"Created InfiniteWaveConfig at {path}");
-        Debug.Log("Wave Difficulty Progression:");
-        Debug.Log($"  Wave 1: {config.GetDifficultyMultiplier(0):F2}x");
-        Debug.Log($"  Wave 10: {config.GetDifficultyMultiplier(9):F2}x");
-        Debug.Log($"  Wave 20: {config.GetDifficultyMultiplier(19):F2}x");
-        Debug.Log($"  Wave 30: {config.GetDifficultyMultiplier(29):F2}x");
-        Debug.Log($"  Wave 40: {config.GetDifficultyMultiplier(39):F2}x");
     }
 }
 #endif

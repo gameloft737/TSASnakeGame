@@ -39,10 +39,15 @@ public class BasicContactAttack : MonoBehaviour
     private HashSet<AppleEnemy> recentlyDamagedEnemies = new HashSet<AppleEnemy>();
     private float damageCooldown = 0.15f; // Prevent hitting same enemy too fast
     private Dictionary<AppleEnemy, float> enemyDamageTimestamps = new Dictionary<AppleEnemy, float>();
+    // Shared non-alloc buffer for OverlapSphere to avoid per-frame GC.
+    private static readonly Collider[] _overlapBuffer = new Collider[32];
+    // Cached wait-for-seconds to avoid per-coroutine allocations.
+    private WaitForSeconds _waitMouthOpen;
     
     private void Start()
     {
         backupAttackRangeSqr = backupAttackRange * backupAttackRange;
+        _waitMouthOpen = new WaitForSeconds(mouthOpenDelay);
     }
 
     private void OnTriggerEnter(Collider other)
@@ -55,11 +60,13 @@ public class BasicContactAttack : MonoBehaviour
         
         if (enemy.isMetal)
         {
-            Debug.Log($"[BasicContactAttack] OnTriggerEnter: {enemy.name} is metal, ignoring");
+            #if UNITY_EDITOR
+            #endif
             return;
         }
 
-        Debug.Log($"[BasicContactAttack] OnTriggerEnter: {enemy.name}, mouthOpen={mouthOpen}, waitingToOpen={waitingToOpen}");
+        #if UNITY_EDITOR
+        #endif
 
         if (!mouthOpen && !waitingToOpen)
         {
@@ -71,7 +78,8 @@ public class BasicContactAttack : MonoBehaviour
 
     private IEnumerator OpenAfterDelay()
     {
-        yield return new WaitForSeconds(mouthOpenDelay);
+        if (_waitMouthOpen == null) _waitMouthOpen = new WaitForSeconds(mouthOpenDelay);
+        yield return _waitMouthOpen;
 
         waitingToOpen = false;
         mouthOpen = true;
@@ -105,7 +113,18 @@ public class BasicContactAttack : MonoBehaviour
 
         if (mouthOpen)
         {
-            Debug.Log($"[BasicContactAttack] OnTriggerStay: Attacking {enemy.name}, instantKill={instantKill}");
+            // Rate-limit per-enemy damage+sound so this doesn't fire every frame for every
+            // collider inside the trigger (huge CPU + audio spam source on WebGL).
+            float now = Time.time;
+            if (enemyDamageTimestamps.TryGetValue(enemy, out float lastDamageTime) &&
+                now - lastDamageTime < damageCooldown)
+            {
+                return;
+            }
+            enemyDamageTimestamps[enemy] = now;
+
+            #if UNITY_EDITOR
+            #endif
             snakeBody.TriggerSwallowAnimation();
             if (instantKill)
             {
@@ -142,11 +161,12 @@ public class BasicContactAttack : MonoBehaviour
 
         bool enemyNearby = false;
 
-        Collider[] hits = Physics.OverlapSphere(transform.position, nearbyRange, enemyLayer);
+        // OverlapSphereNonAlloc avoids allocating a new Collider[] every frame.
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, nearbyRange, _overlapBuffer, enemyLayer);
 
-        foreach (var h in hits)
+        for (int i = 0; i < hitCount; i++)
         {
-            AppleEnemy e = h.GetComponentInParent<AppleEnemy>();
+            AppleEnemy e = _overlapBuffer[i].GetComponentInParent<AppleEnemy>();
             if (e != null && !e.isMetal)
             {
                 enemyNearby = true;

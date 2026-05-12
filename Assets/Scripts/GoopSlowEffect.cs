@@ -19,22 +19,20 @@ public class GoopSlowEffect : MonoBehaviour
     private float effectTimer;
     private bool isActive = false;
     private float lastRefreshTime;
+
     private void Awake()
     {
-        Debug.Log("========== GOOP SLOW EFFECT AWAKE CALLED ==========");
-        Debug.Log("GoopSlowEffect: Starting on " + (transform.parent != null ? transform.parent.name : "NO PARENT"));
-        
         // Get the NavMeshAgent from parent (AppleEnemy)
         agent = GetComponentInParent<NavMeshAgent>();
         
         if (agent == null)
         {
+            #if UNITY_EDITOR
             Debug.LogWarning("GoopSlowEffect: No NavMeshAgent found on parent!");
+            #endif
             Destroy(gameObject);
             return;
         }
-        
-        Debug.Log("GoopSlowEffect: Found NavMeshAgent with speed: " + agent.speed);
         
         // Store original speed
         originalSpeed = agent.speed;
@@ -42,14 +40,8 @@ public class GoopSlowEffect : MonoBehaviour
         // Apply slow effect
         ApplySlow();
         
-        
         effectTimer = effectDuration;
         lastRefreshTime = Time.time;
-    }
-    
-    private void Start()
-    {
-        Debug.Log("========== GOOP SLOW EFFECT START CALLED ==========");
     }
     
     private void Update()
@@ -61,7 +53,6 @@ public class GoopSlowEffect : MonoBehaviour
         
         if (effectTimer <= 0f)
         {
-            Debug.Log("GoopSlowEffect: Effect timer expired, removing slow");
             RemoveSlow();
         }
     }
@@ -73,7 +64,6 @@ public class GoopSlowEffect : MonoBehaviour
             float newSpeed = originalSpeed * speedMultiplier;
             agent.speed = newSpeed;
             isActive = true;
-            Debug.Log($"GoopSlowEffect: Applied slow. Original speed: {originalSpeed}, New speed: {newSpeed}");
         }
     }
     
@@ -83,9 +73,7 @@ public class GoopSlowEffect : MonoBehaviour
         {
             agent.speed = originalSpeed;
             isActive = false;
-            Debug.Log("GoopSlowEffect: Restored original speed: " + originalSpeed);
         }
-        
         
         Destroy(gameObject);
     }
@@ -100,7 +88,6 @@ public class GoopSlowEffect : MonoBehaviour
         {
             effectTimer = effectDuration;
             lastRefreshTime = Time.time;
-            Debug.Log("GoopSlowEffect: Effect refreshed");
             
             // Reapply slow in case it was removed
             if (!isActive)
@@ -112,13 +99,10 @@ public class GoopSlowEffect : MonoBehaviour
     
     private void OnDestroy()
     {
-        Debug.Log("GoopSlowEffect: OnDestroy called");
-        
         // Make sure to restore speed when destroyed
         if (agent != null && isActive)
         {
             agent.speed = originalSpeed;
         }
-        
     }
 }

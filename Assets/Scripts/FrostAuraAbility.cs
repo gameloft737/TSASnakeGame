@@ -35,6 +35,8 @@ public class FrostAuraAbility : BaseAbility
     private bool hasInitialized = false;
     private Dictionary<AppleEnemy, FrostSlowData> frostedEnemies = new Dictionary<AppleEnemy, FrostSlowData>();
     private List<AppleEnemy> enemiesToRemove = new List<AppleEnemy>();
+    // Reusable set so ApplyFrostEffects doesn't allocate a HashSet every pulse.
+    private readonly HashSet<AppleEnemy> _enemiesInRangeScratch = new HashSet<AppleEnemy>();
 
     private class FrostSlowData
     {
@@ -124,7 +126,6 @@ public class FrostAuraAbility : BaseAbility
 
         CreateAuraVisuals();
         hasInitialized = true;
-        Debug.Log($"FrostAuraAbility: Initialized at level {currentLevel} with radius {GetAuraRadius()}");
     }
 
     private void CreateAuraVisuals()
@@ -212,7 +213,8 @@ public class FrostAuraAbility : BaseAbility
         float damage = GetFrostDamage();
         float slowPercent = GetSlowPercent();
         
-        HashSet<AppleEnemy> enemiesInRange = new HashSet<AppleEnemy>();
+        HashSet<AppleEnemy> enemiesInRange = _enemiesInRangeScratch;
+        enemiesInRange.Clear();
         // Use AppleEnemy's static list instead of FindObjectsByType for better performance
         var allEnemies = AppleEnemy.GetAllActiveEnemies();
         
@@ -285,7 +287,8 @@ public class FrostAuraAbility : BaseAbility
         agent.speed = data.originalSpeed * (1f - slowPercent);
         frostedEnemies[enemy] = data;
         
-        Debug.Log($"FrostAuraAbility: Slowed {enemy.name} from {data.originalSpeed} to {agent.speed}");
+        #if UNITY_EDITOR
+        #endif
     }
 
     private void RestoreEnemySpeed(AppleEnemy enemy)
@@ -297,7 +300,8 @@ public class FrostAuraAbility : BaseAbility
         if (data.agent != null && data.isSlowed)
         {
             data.agent.speed = data.originalSpeed;
-            Debug.Log($"FrostAuraAbility: Restored {enemy.name} speed to {data.originalSpeed}");
+            #if UNITY_EDITOR
+            #endif
         }
         
         frostedEnemies.Remove(enemy);
@@ -390,8 +394,6 @@ public class FrostAuraAbility : BaseAbility
         
         // Recreate visuals with new settings
         CreateAuraVisuals();
-        
-        Debug.Log($"FrostAuraAbility: Level {currentLevel} - Radius: {GetAuraRadius():F1}, Damage: {GetFrostDamage():F0}, Slow: {GetSlowPercent() * 100:F0}%");
     }
 
     private void ClearAuraVisuals()

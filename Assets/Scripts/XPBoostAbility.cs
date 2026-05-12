@@ -55,8 +55,6 @@ public class XPBoostAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddXPMultiplier(currentBonus);
-        
-        Debug.Log($"XPBoostAbility: Applied +{currentBonus * 100:F0}% XP boost (Level {currentLevel})");
     }
     
     private void RemoveBonus()

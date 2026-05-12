@@ -102,7 +102,6 @@ public class BombPlacementAbility : BaseAbility
         // Need at least 7 parts (3 near head + 3 tapered tail + 1 for bomb) to place any bombs
         if (totalParts < 7)
         {
-            Debug.Log("BombPlacementAbility: Not enough body parts to place bombs!");
             return;
         }
 
@@ -123,7 +122,6 @@ public class BombPlacementAbility : BaseAbility
         
         if (bombCount <= 0)
         {
-            Debug.Log("BombPlacementAbility: Not enough slots for bombs!");
             return;
         }
 
@@ -176,7 +174,6 @@ public class BombPlacementAbility : BaseAbility
 
         hasPlacedBombs = true;
         bombsExploded = 0; // Reset counter
-        Debug.Log($"BombPlacementAbility: Placed {activeBombs.Count} bombs at level {currentLevel}!");
     }
 
     /// <summary>
@@ -185,7 +182,6 @@ public class BombPlacementAbility : BaseAbility
     private void HandleBombExploded()
     {
         bombsExploded++;
-        Debug.Log($"Bomb exploded! Total exploded: {bombsExploded}/{activeBombs.Count}");
         
         // If all bombs have exploded, start respawn timer
         if (bombsExploded >= activeBombs.Count)
@@ -201,8 +197,6 @@ public class BombPlacementAbility : BaseAbility
     {
         // Get cooldown from upgrade data, or use default
         float cooldown = GetRespawnCooldown();
-        
-        Debug.Log($"All bombs exploded! Respawning in {cooldown} seconds.");
         
         // Clear the exploded bombs list
         activeBombs.Clear();
@@ -242,12 +236,10 @@ public class BombPlacementAbility : BaseAbility
     {
         if (currentLevel >= maxLevel)
         {
-            Debug.Log($"{GetType().Name} already at max level!");
             return false;
         }
         
         currentLevel++;
-        Debug.Log($"{GetType().Name} leveled up to {currentLevel}!");
         
         // Clear existing bombs and reposition with new spacing
         ClearBombs();

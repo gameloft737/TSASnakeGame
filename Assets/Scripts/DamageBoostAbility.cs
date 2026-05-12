@@ -55,8 +55,6 @@ public class DamageBoostAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddDamageMultiplier(currentBonus);
-        
-        Debug.Log($"DamageBoostAbility: Applied +{currentBonus * 100:F0}% damage boost (Level {currentLevel})");
     }
     
     private void RemoveBonus()

@@ -55,8 +55,6 @@ public class LifestealAbility : BaseAbility
         }
         
         PlayerStats.Instance.AddLifesteal(currentBonus);
-        
-        Debug.Log($"LifestealAbility: Applied +{currentBonus * 100:F0}% lifesteal (Level {currentLevel})");
     }
     
     private void RemoveBonus()

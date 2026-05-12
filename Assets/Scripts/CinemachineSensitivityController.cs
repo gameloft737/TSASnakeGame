@@ -127,8 +127,6 @@ public class CinemachineSensitivityController : MonoBehaviour
                     controller.Input.Gain = baseGain * scaledSensitivity;
                 }
             }
-            
-            Debug.Log($"[CinemachineSensitivityController] Set sensitivity to {sensitivity} (scaled: {scaledSensitivity})");
         }
     }
     

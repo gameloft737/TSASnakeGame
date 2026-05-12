@@ -68,6 +68,13 @@ public class PerformanceMonitor : MonoBehaviour
     
     private void Update()
     {
+        // PerformanceMonitor is an editor/dev-only overlay. OnGUI (IMGUI) is notoriously
+        // expensive on WebGL — it can halve framerate and allocate GUIContent each frame.
+        // Short-circuit everything in non-dev builds to keep it free of cost at runtime.
+        #if !(UNITY_EDITOR || DEVELOPMENT_BUILD)
+        isVisible = false;
+        return;
+        #else
         // Toggle visibility
         if (Input.GetKeyDown(toggleKey))
         {
@@ -88,6 +95,7 @@ public class PerformanceMonitor : MonoBehaviour
             fpsTimer = 0f;
             frameCount = 0;
         }
+        #endif
     }
     
     private void UpdateMetrics()
@@ -193,6 +201,9 @@ public class PerformanceMonitor : MonoBehaviour
     
     private void OnGUI()
     {
+        #if !(UNITY_EDITOR || DEVELOPMENT_BUILD)
+        return;
+        #else
         if (!isVisible) return;
         
         // Initialize styles if needed
@@ -225,6 +236,7 @@ public class PerformanceMonitor : MonoBehaviour
         // Draw text
         Rect textRect = new Rect(displayRect.x + 10, displayRect.y + 10, size.x, size.y);
         GUI.Label(textRect, displayText, textStyle);
+        #endif
     }
     
     private void OnDestroy()

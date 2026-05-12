@@ -91,7 +91,6 @@ public class SpikesAbility : BaseAbility
         // Need at least 5 parts to place any spikes
         if (totalParts < 5)
         {
-            Debug.Log("SpikesAbility: Not enough body parts to place spikes!");
             return;
         }
 
@@ -131,7 +130,6 @@ public class SpikesAbility : BaseAbility
         }
 
         hasPlacedSpikes = true;
-        Debug.Log($"SpikesAbility: Placed {activeSpikes.Count} spikes at level {currentLevel}!");
     }
     
     private GameObject CreateDefaultSpikeVisual()
@@ -214,12 +212,10 @@ public class SpikesAbility : BaseAbility
     {
         if (currentLevel >= maxLevel)
         {
-            Debug.Log($"{GetType().Name} already at max level!");
             return false;
         }
         
         currentLevel++;
-        Debug.Log($"{GetType().Name} leveled up to {currentLevel}!");
         
         // Clear existing spikes and reposition
         ClearSpikes();
@@ -307,7 +303,5 @@ public class SpikeInstance : MonoBehaviour
         
         // Set cooldown
         enemyCooldowns[enemy] = damageCooldown;
-        
-        Debug.Log($"Spike hit {enemy.name} for {damage} damage!");
     }
 }

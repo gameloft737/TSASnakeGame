@@ -300,7 +300,6 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
         lastValidVelocity = agentObj ? agentObj.forward : transform.forward;
         
         #if UNITY_EDITOR
-        Debug.Log($"[AppleEnemy] OnSpawnFromPool complete for {gameObject.name}: isDead={isDead}, health={currentHealth}/{maxHealth}, inList={s_allAppleEnemies.Contains(this)}");
         #endif
     }
     
@@ -1224,14 +1223,12 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
         if (isAlly)
         {
             #if UNITY_EDITOR
-            Debug.Log($"[AppleEnemy] TakeDamage blocked - {gameObject.name} is an ally");
             #endif
             return;
         }
         
         currentHealth -= damage;
         #if UNITY_EDITOR
-        Debug.Log($"[AppleEnemy] {gameObject.name} took {damage} damage, health: {currentHealth}/{maxHealth}");
         #endif
         if (currentHealth <= 0) Die();
     }
@@ -1404,7 +1401,6 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
             {
                 SetNextCardinalDestination();
             }
-            Debug.Log($"[AppleEnemy] Classic mode enabled - movement restricted to 4 directions");
         }
         else
         {
@@ -1417,7 +1413,6 @@ public class AppleEnemy : MonoBehaviour, IPooledObject
                     agent.SetDestination(nearestBodyPart.position);
                 }
             }
-            Debug.Log($"[AppleEnemy] Classic mode disabled");
         }
     }
     

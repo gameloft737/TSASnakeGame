@@ -9,6 +9,11 @@ public class ObjectiveManager : MonoBehaviour
     [TextArea(1, 3)]
     public string startSubtitle;
     public float startSubtitleDuration = 3f;
+    [Tooltip("Optional voiceline AudioClip to play alongside the startup subtitle.")]
+    public AudioClip startSubtitleVoiceline;
+    [Tooltip("Volume for the startup subtitle voiceline (0-1).")]
+    [Range(0f, 1f)]
+    public float startSubtitleVoicelineVolume = 1f;
 
     [Header("UI")]
     public TextMeshProUGUI objectiveTextUI;
@@ -34,7 +39,6 @@ public class ObjectiveManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            Debug.Log("ObjectiveManager: Instance set successfully");
         }
         else
         {
@@ -46,8 +50,6 @@ public class ObjectiveManager : MonoBehaviour
     {
         // Hide objective UI on start - it will be shown after cutscene ends
         HideObjectiveUI();
-        
-        Debug.Log("ObjectiveManager: Start() called, UI hidden. Waiting for cutscene events.");
         
         // Find all ObjectiveOutline components
         if (autoUpdateOutlines)
@@ -103,24 +105,13 @@ public class ObjectiveManager : MonoBehaviour
     /// </summary>
     public void ShowObjectiveUI()
     {
-        Debug.Log("ObjectiveManager: ShowObjectiveUI() called");
-        
         if (objectiveUIContainer != null)
         {
             objectiveUIContainer.SetActive(true);
-            Debug.Log($"ObjectiveManager: objectiveUIContainer '{objectiveUIContainer.name}' set active. ActiveInHierarchy: {objectiveUIContainer.activeInHierarchy}");
-            
-            // Check if parent Canvas is active
-            Canvas parentCanvas = objectiveUIContainer.GetComponentInParent<Canvas>();
-            if (parentCanvas != null)
-            {
-                Debug.Log($"ObjectiveManager: Parent Canvas '{parentCanvas.name}' activeInHierarchy: {parentCanvas.gameObject.activeInHierarchy}");
-            }
         }
         else if (objectiveTextUI != null)
         {
             objectiveTextUI.gameObject.SetActive(true);
-            Debug.Log($"ObjectiveManager: objectiveTextUI set active. ActiveInHierarchy: {objectiveTextUI.gameObject.activeInHierarchy}");
         }
         else
         {
@@ -134,14 +125,16 @@ public class ObjectiveManager : MonoBehaviour
     /// </summary>
     public void OnCutsceneStart()
     {
-        Debug.Log("ObjectiveManager: OnCutsceneStart() called");
-        
         if (SubtitleUI.Instance != null)
         {
             if (!string.IsNullOrEmpty(startSubtitle))
             {
-                Debug.Log($"ObjectiveManager: Showing subtitle: {startSubtitle}");
-                SubtitleUI.Instance.ShowSubtitle(startSubtitle, startSubtitleDuration);
+                SubtitleUI.Instance.ShowSubtitle(startSubtitle, startSubtitleDuration, startSubtitleVoiceline, startSubtitleVoicelineVolume);
+            }
+            else if (startSubtitleVoiceline != null)
+            {
+                // Voiceline-only (no visible subtitle text)
+                SubtitleUI.Instance.PlayVoiceline(startSubtitleVoiceline, startSubtitleVoicelineVolume);
             }
             else
             {
@@ -160,18 +153,11 @@ public class ObjectiveManager : MonoBehaviour
     /// </summary>
     public void OnCutsceneEnd()
     {
-        Debug.Log("ObjectiveManager: OnCutsceneEnd() called");
-        
         if (!hasStarted)
         {
             hasStarted = true;
-            Debug.Log("ObjectiveManager: Showing objective UI and starting first objective");
             ShowObjectiveUI();
             StartObjective(0);
-        }
-        else
-        {
-            Debug.Log("ObjectiveManager: Already started, skipping");
         }
     }
 
